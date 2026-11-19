@@ -347,7 +347,7 @@ const defeatModal = document.getElementById('defeat-modal');
 const victoryModal = document.getElementById('victory-modal');
 const seedInput = document.getElementById('seed-input');
 
-function initWorld(seedStr) {
+function initWorld(seedStr, { menuPreview = false } = {}) {
   if (scene) {
     scene.dispose();
   }
@@ -369,8 +369,13 @@ function initWorld(seedStr) {
 
   scene = new BABYLON.Scene(engine);
   scene.useRightHandedSystem = true;
+  scene.blockMaterialDirtyMechanism = true;
+  if (worldMode === 'sky') {
+    scene.autoClear = false;
+    scene.autoClearDepthAndStencil = true;
+  }
   explosionEffects=new ExplosionEffects(scene);
-  if (worldMode === 'sky') scene.collisionWorld = new CollisionWorld(scene);
+  if (worldMode === 'sky' && !menuPreview) scene.collisionWorld = new CollisionWorld(scene);
   scene.clearColor = new BABYLON.Color4(0.01, 0.02, 0.045, 1.0);
 
   camera = new BABYLON.FreeCamera('mainCam', new BABYLON.Vector3(0, 60, 160), scene);
@@ -380,7 +385,7 @@ function initWorld(seedStr) {
   scene.activeCamera = camera;
 
   if (worldMode === 'sky') {
-    world = new SkyArchipelagoWorld(scene, currentSeed, activeMissionTheme, selectedQuality);
+    world = new SkyArchipelagoWorld(scene, currentSeed, activeMissionTheme, selectedQuality, { menuPreview });
     asteroidBase = new AsteroidBase(scene, 742);
     world.registerVagabondBase(asteroidBase);
     construction = new IslandConstruction(scene, asteroidBase, world.shadowGenerator);
@@ -404,7 +409,7 @@ function initWorld(seedStr) {
 
   player = new NavigatorPlayer(scene, camera, audio);
   player.placeOnAsteroid(asteroidBase);
-  if (worldMode==='sky') {
+  if (worldMode==='sky' && !menuPreview) {
     world.islandConstruction=construction;
     world.practicalLights=new PracticalLights(scene,world,asteroidBase,ship);
     world.industrialCranes=new IndustrialCranes(scene,world.industrialIsland.group,world.shadowGenerator);
@@ -414,6 +419,7 @@ function initWorld(seedStr) {
     world.jobs=new AircraftJobs(scene,world,asteroidBase,{onReward:amount=>construction.addSalvage(amount),onToast:msg=>ui.showToast(msg,4500),onExplosion:(pos,scale)=>spawnDemoExplosion(pos,scale)});
     ship.onProjectileImpact=event=>{const targetHit=world.jobs?.onProjectileImpact(event);if(!targetHit&&event.position&&['bomb','rocket'].includes(event.kind))spawnDemoExplosion(event.position,event.kind==='bomb'?1.5:.7);};
   }
+  scene.blockMaterialDirtyMechanism = false;
 
   if (world.shadowGenerator) {
     for (const m of asteroidBase.group.getChildMeshes()) {
@@ -541,7 +547,7 @@ function initWorld(seedStr) {
 }
 
 let modalReturnState = 'playing';
-initWorld(seedInput.value);
+initWorld(seedInput.value, { menuPreview: !shotMode && urlParams.get('qa') !== '1' });
 
 // Optional screenshot / inspection presets (?shot=arch_panorama|arch_vagabond|arch_forest|arch_industrial|arch_vista|arch_flight|...)
 if (urlParams.get('bloom') === '0' && world?.graphics?.pipeline) {
@@ -1423,12 +1429,12 @@ soundToggleBtn.addEventListener('click', () => {
 });
 
 const MENU_PREVIEW_INFO = {
-  'start-btn': { id: 'prologue', tag: 'ЗАКАТНЫЙ АРХИПЕЛАГ · СЮЖЕТ', title: 'Пролог: Аварийная посадка', desc: 'Посадите повреждённый борт на «Бродягу», восстановите питание, постройте оборону и отбейте налёт.', role: 'Борт: Грузовой / «Оса»' },
-  'mission-dreadnought-btn': { id: 'dreadnought', tag: 'ШТОРМОВОЙ АРХИПЕЛАГ · БОСС', title: 'Охота на Дредноут', desc: 'Прорвитесь сквозь грозу и молнии, уничтожьте двигатели и турели 65-метрового воздушного дредноута.', role: 'Борт: Штурмовик · Ракеты' },
-  'mission-night-btn': { id: 'night', tag: 'ЛУННЫЙ АРХИПЕЛАГ · НОЧЬ', title: 'Ночной перехват', desc: 'Ночной бой под звёздами в лучах прожекторов ПВО. Перехватите звено вражеских перехватчиков.', role: 'Борт: Истребитель «Оса»' },
-  'mission-convoy-btn': { id: 'convoy', tag: 'РАССВЕТНЫЙ АРХИПЕЛАГ · ШТУРМ', title: 'Перехват конвоя', desc: 'Атакуйте тяжёлый воздушный транспорт и его эскорт на рассвете. Бомбы и прикрытие ЗРК.', role: 'Борт: Бомбардировщик' },
-  'mission-bastion-btn': { id: 'bastion', tag: 'ОБОРОНА «БРОДЯГИ» · 1-Е ЛИЦО', title: 'Оборона бастиона', desc: 'Отбивайтесь из Зенитной пушки, сбивайте вражеские ракеты и разнесите остров-крепость «Монолит» ракетой «Громобой»!', role: 'Орудие: Зенитная пушка + ЗРК' },
-  'hangar-start-btn': { id: null, tag: 'СВОБОДНЫЙ ПОЛЁТ · ЭСКАДРИЛЬЯ', title: 'Ангар «Бродяги»', desc: 'Все 4 самолёта готовы к вылету прямо в ангаре. Выбирайте любой борт, апгрейдите на верстаке и берите задания.', role: 'Все 4 класса самолётов' },
+  'start-btn': { id: 'prologue', theme: 'sunset', tag: 'ЗАКАТНЫЙ АРХИПЕЛАГ · СЮЖЕТ', title: 'Пролог: Аварийная посадка', desc: 'Посадите повреждённый борт на «Бродягу», восстановите питание, постройте оборону и отбейте налёт.', role: 'Борт: Грузовой / «Оса»' },
+  'mission-dreadnought-btn': { id: 'dreadnought', theme: 'storm', tag: 'ШТОРМОВОЙ АРХИПЕЛАГ · БОСС', title: 'Охота на Дредноут', desc: 'Прорвитесь сквозь грозу и молнии, уничтожьте двигатели и турели 65-метрового воздушного дредноута.', role: 'Борт: Штурмовик · Ракеты' },
+  'mission-night-btn': { id: 'night', theme: 'night', tag: 'ЛУННЫЙ АРХИПЕЛАГ · НОЧЬ', title: 'Ночной перехват', desc: 'Ночной бой под звёздами в лучах прожекторов ПВО. Перехватите звено вражеских перехватчиков.', role: 'Борт: Истребитель «Оса»' },
+  'mission-convoy-btn': { id: 'convoy', theme: 'dawn', tag: 'РАССВЕТНЫЙ АРХИПЕЛАГ · ШТУРМ', title: 'Перехват конвоя', desc: 'Атакуйте тяжёлый воздушный транспорт и его эскорт на рассвете. Бомбы и прикрытие ЗРК.', role: 'Борт: Бомбардировщик' },
+  'mission-bastion-btn': { id: 'bastion', theme: 'sunset', tag: 'ОБОРОНА «БРОДЯГИ» · 1-Е ЛИЦО', title: 'Оборона бастиона', desc: 'Отбивайтесь из Зенитной пушки, сбивайте вражеские ракеты и разнесите остров-крепость «Монолит» ракетой «Громобой»!', role: 'Орудие: Зенитная пушка + ЗРК' },
+  'hangar-start-btn': { id: null, theme: 'sunset', tag: 'СВОБОДНЫЙ ПОЛЁТ · ЭСКАДРИЛЬЯ', title: 'Ангар «Бродяги»', desc: 'Все 4 самолёта готовы к вылету прямо в ангаре. Выбирайте любой борт, апгрейдите на верстаке и берите задания.', role: 'Все 4 класса самолётов' },
 };
 function updateMenuPreview(btnId) {
   const info = MENU_PREVIEW_INFO[btnId];
@@ -1442,6 +1448,7 @@ function updateMenuPreview(btnId) {
   document.getElementById('mp-role').textContent = info.role;
   const rec = info.id ? getMissionRecord(info.id) : null;
   document.getElementById('mp-record').textContent = rec ? `Рекорд: ${rec.time}с · ${rec.kills} сбито` : 'Рекорд: —';
+  if (gameState === 'menu' && world?.setPreviewTheme) world.setPreviewTheme(info.theme);
 }
 for (const btnId of Object.keys(MENU_PREVIEW_INFO)) {
   const el = document.getElementById(btnId);

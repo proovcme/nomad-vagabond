@@ -234,14 +234,15 @@ function registerSkyShaders() {
 
         float nightMask = 1.0 - smoothstep(0.02, 0.18, uTimeOfDay);
         vec3 shadowCol = mix(
-          mix(vec3(0.26, 0.44, 0.72), vec3(0.48, 0.42, 0.56), sunAlign * 0.42),
-          vec3(0.015, 0.03, 0.075),
+          mix(vec3(0.20, 0.36, 0.66), vec3(0.46, 0.36, 0.54), sunAlign * 0.48),
+          vec3(0.012, 0.024, 0.068),
           nightMask
         );
-        vec3 litCol = mix(vec3(1.00, 0.96, 0.88), vec3(0.09, 0.15, 0.28), nightMask);
-        vec3 warmRim = mix(vec3(1.00, 0.82, 0.48), vec3(0.24, 0.38, 0.62), nightMask);
-        vec3 col = mix(shadowCol, litCol, lit);
-        col = mix(col, warmRim, smoothstep(0.42, 0.94, lit) * 0.55 + sunGlint * 0.48);
+        vec3 litCol = mix(vec3(1.00, 0.96, 0.86), vec3(0.10, 0.17, 0.32), nightMask);
+        vec3 warmRim = mix(vec3(1.00, 0.78, 0.40), vec3(0.28, 0.44, 0.72), nightMask);
+        vec3 col = mix(shadowCol, litCol, smoothstep(0.08, 0.95, lit));
+        col = mix(col, warmRim, smoothstep(0.38, 0.92, lit) * 0.58 + sunGlint * 0.62);
+        col += vec3(1.00, 0.84, 0.50) * pow(sunAlign, 12.0) * smoothstep(0.55, 0.96, lit) * (1.0 - nightMask) * 0.35;
 
         float horizonBlend = smoothstep(950.0, 2700.0, dist);
         vec3 horizonHaze = mix(
@@ -1976,11 +1977,12 @@ function sceneOr(s) {
  * - Keeps SolarWorld / TerrainPlanet completely intact as a separate mode
  */
 export class SkyArchipelagoWorld {
-  constructor(scene, seedStr = 'ARCHIPELAGO-1', theme = 'sunset', quality = 'medium') {
+  constructor(scene, seedStr = 'ARCHIPELAGO-1', theme = 'sunset', quality = 'medium', options = {}) {
     this.scene = scene;
     this.seedStr = seedStr;
     this.theme = theme || 'sunset';
     this.quality = quality || 'medium';
+    this.menuPreview = Boolean(options?.menuPreview);
     this.simTime = 0;
     this.timeOfDay = this.theme === 'night' ? 0.0 : this.theme === 'storm' ? 0.25 : this.theme === 'dawn' ? 0.92 : 0.72;
     this.isSkyWorld = true;
@@ -2002,7 +2004,30 @@ export class SkyArchipelagoWorld {
     this.skyMat = null;
 
     this._setupAtmosphereAndLighting();
-    this._buildIslands();
+    if (!this.menuPreview) {
+      this._buildIslands();
+    }
+  }
+
+  /** Instant zero-cost atmosphere mood preview (used when hovering missions in Main Menu). */
+  setPreviewTheme(theme) {
+    const t = theme || 'sunset';
+    const isNight = t === 'night';
+    const isStorm = t === 'storm';
+    const isDawn = t === 'dawn';
+    this.timeOfDay = isNight ? 0.0 : isStorm ? 0.25 : isDawn ? 0.92 : 0.72;
+    if (this.sunDirLight) {
+      this.sunDirLight.intensity = isNight ? 0.52 : isStorm ? 2.05 : isDawn ? 3.55 : 3.35;
+      this.sunDirLight.diffuse = c3(isNight ? '#82aef5' : isStorm ? '#ff9c6e' : isDawn ? '#ffd8c4' : '#ffe4b5');
+    }
+    if (this.hemiLight) {
+      this.hemiLight.intensity = isNight ? 0.26 : isStorm ? 0.34 : 0.42;
+      this.hemiLight.diffuse = c3(isNight ? '#2c4670' : isStorm ? '#707e96' : isDawn ? '#c8e4fa' : '#b2d6f5');
+      this.hemiLight.groundColor = c3(isNight ? '#151c29' : isStorm ? '#3c3430' : '#7d5b3b');
+    }
+    this.scene.fogColor = c3(isNight ? '#162034' : isStorm ? '#6e5c58' : isDawn ? '#e4d6d2' : '#d8cec0');
+    this.scene.environmentIntensity = isNight ? 0.18 : isStorm ? 0.56 : 0.78;
+    if (this._sunFlareMesh) this._sunFlareMesh.isVisible = !isNight;
   }
 
   _setupAtmosphereAndLighting() {
@@ -2031,9 +2056,9 @@ export class SkyArchipelagoWorld {
     this.rimFillLight.specular = c3(isNight ? '#7aa6e0' : '#ffe0b2');
 
     this.hemiLight = new BABYLON.HemisphericLight('archHemiLight', new BABYLON.Vector3(0, 1, 0), this.scene);
-    this.hemiLight.intensity = isNight ? 0.26 : isStorm ? 0.32 : 0.38;
-    this.hemiLight.diffuse = c3(isNight ? '#2c4670' : isStorm ? '#707e96' : isDawn ? '#c2e0f8' : '#a8d0f2');
-    this.hemiLight.groundColor = c3(isNight ? '#151c29' : isStorm ? '#3c3430' : '#5a4432');
+    this.hemiLight.intensity = isNight ? 0.26 : isStorm ? 0.34 : 0.42;
+    this.hemiLight.diffuse = c3(isNight ? '#2c4670' : isStorm ? '#707e96' : isDawn ? '#c8e4fa' : '#b2d6f5');
+    this.hemiLight.groundColor = c3(isNight ? '#151c29' : isStorm ? '#3c3430' : '#7d5b3b');
     this.scene.environmentIntensity = 1.25;
 
     if (this.scene.getEngine().constructor.name !== 'NullEngine') {
@@ -2065,6 +2090,45 @@ export class SkyArchipelagoWorld {
     this.scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
     this.scene.fogColor = c3(isNight ? '#162034' : isStorm ? '#6e5c58' : isDawn ? '#e4d6d2' : '#d8cec0');
     this.scene.fogDensity = isNight ? 0.00056 : isStorm ? 0.00062 : isDawn ? 0.00038 : 0.00042;
+
+    // Lightweight 1-draw-call Anamorphic Sun Flare Billboard (cinematic glow with zero bloom cost!)
+    if (this.scene.getEngine().constructor.name !== 'NullEngine' && typeof document !== 'undefined') {
+      const fTex = new BABYLON.DynamicTexture('sunAnamorphicFlareTex', { width: 256, height: 128 }, this.scene, false);
+      const fCtx = fTex.getContext();
+      fCtx.clearRect(0, 0, 256, 128);
+      const rg = fCtx.createRadialGradient(128, 64, 2, 128, 64, 62);
+      rg.addColorStop(0.0, 'rgba(255, 248, 224, 0.92)');
+      rg.addColorStop(0.28, 'rgba(255, 212, 130, 0.42)');
+      rg.addColorStop(0.65, 'rgba(255, 160, 72, 0.10)');
+      rg.addColorStop(1.0, 'rgba(255, 140, 60, 0)');
+      fCtx.fillStyle = rg;
+      fCtx.fillRect(0, 0, 256, 128);
+      // Subtle horizontal anamorphic lens streak
+      const lg = fCtx.createLinearGradient(0, 64, 256, 64);
+      lg.addColorStop(0.0, 'rgba(255, 200, 110, 0)');
+      lg.addColorStop(0.5, 'rgba(255, 232, 175, 0.42)');
+      lg.addColorStop(1.0, 'rgba(255, 200, 110, 0)');
+      fCtx.fillStyle = lg;
+      fCtx.fillRect(0, 59, 256, 10);
+      fTex.update();
+      fTex.hasAlpha = true;
+      const fMat = new BABYLON.StandardMaterial('sunAnamorphicFlareMat', this.scene);
+      fMat.emissiveTexture = fTex;
+      fMat.opacityTexture = fTex;
+      fMat.disableLighting = true;
+      fMat.backFaceCulling = false;
+      fMat.depthWrite = false;
+      fMat.alphaMode = BABYLON.Engine.ALPHA_ADD;
+      const flare = BABYLON.MeshBuilder.CreatePlane('sunAnamorphicFlare', { width: 820, height: 410 }, this.scene);
+      flare.material = fMat;
+      flare.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+      flare.renderingGroupId = 0;
+      flare.isPickable = false;
+      flare.checkCollisions = false;
+      flare.isVisible = !isNight;
+      flare.position.copyFrom(new BABYLON.Vector3(this.sunDir.x, 0.125, this.sunDir.z).normalize().scale(2600));
+      this._sunFlareMesh = flare;
+    }
 
     // 1. Sky Dome
     this.skyDome = BABYLON.MeshBuilder.CreateSphere('archSkyDome', { diameter: 7600, segments: 24, sideOrientation: BABYLON.Mesh.BACKSIDE }, this.scene);
@@ -2614,6 +2678,10 @@ export class SkyArchipelagoWorld {
       this.skyMat.setFloat('uTime', this.simTime);
       if (cameraPos) this.skyMat.setVector3('uCameraPosition', cameraPos);
       this.skyMat.setFloat('uTimeOfDay', this.timeOfDay);
+    }
+    if (this._sunFlareMesh && cameraPos) {
+      const sDir = new BABYLON.Vector3(this.sunDir.x, 0.125, this.sunDir.z).normalize();
+      this._sunFlareMesh.position.copyFrom(cameraPos).addInPlace(sDir.scale(2600));
     }
     for (const mat of this.cloudSeaMats) {
       mat.setFloat('uTime', this.simTime);
