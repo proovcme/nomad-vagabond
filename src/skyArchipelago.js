@@ -1141,7 +1141,28 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   const towerFooting = BABYLON.MeshBuilder.CreateBox('vagTowerFooting', {width:11.4,height:.76,depth:10.8},scene);
   towerFooting.parent=asteroidBase.group;towerFooting.position.set(-28,21.49,-15.5);
   towerFooting.material=concreteMat;towerFooting.receiveShadows=true;
+  // 4. Control Tower & Rotating Aviation Lighthouse Beacon (visible across the archipelago at night & in storm, 0 lights!)
   instantiateGLBInto(scene, './assets/buildings/', 'control_tower.glb', asteroidBase.group, new BABYLON.Vector3(-28.0, 21.95, -15.5), 1.0, 0.0, shadowGen);
+  const beaconRig = new BABYLON.TransformNode('vagTowerBeaconRig', scene);
+  beaconRig.parent = asteroidBase.group;
+  beaconRig.position.set(-28.0, 35.8, -15.5);
+  const towerBeaconMat = new BABYLON.StandardMaterial('vagTowerBeaconMat', scene);
+  towerBeaconMat.emissiveColor = c3('#ffd070');
+  towerBeaconMat.disableLighting = true;
+  towerBeaconMat.alpha = 0.24;
+  towerBeaconMat.alphaMode = BABYLON.Engine.ALPHA_ADD;
+  towerBeaconMat.backFaceCulling = false;
+  towerBeaconMat.depthWrite = false;
+  for (const dirSign of [-1, 1]) {
+    const beam = BABYLON.MeshBuilder.CreateCylinder(`vagTowerBeam_${dirSign}`, { diameterTop: 0.45, diameterBottom: 7.5, height: 42, tessellation: 8 }, scene);
+    beam.parent = beaconRig;
+    beam.rotation.z = dirSign * Math.PI * 0.5;
+    beam.position.x = dirSign * 21.0;
+    beam.material = towerBeaconMat;
+    beam.isPickable = false;
+    beam.checkCollisions = false;
+  }
+  asteroidBase._towerBeaconRig = beaconRig;
 
   // 4B. Upper Workshop & Ether Generator Complex (high-detail dieselpunk GLB)
   const generatorFooting = BABYLON.MeshBuilder.CreateBox('vagGeneratorFooting', {width:14,height:.76,depth:18},scene);
@@ -2701,6 +2722,9 @@ export class SkyArchipelagoWorld {
       this._sunFlareMesh.position.copyFrom(cameraPos).addInPlace(sDir.scale(2600));
     }
     // Distance-cull Vagabond interior PointLights when camera is far (flight/menu) so Vagabond shades against 3 lights instead of 8+!
+    if (this.asteroidBase?._towerBeaconRig) {
+      this.asteroidBase._towerBeaconRig.rotation.y += dt * 0.85;
+    }
     if (this.asteroidBase && cameraPos) {
       const dVag = BABYLON.Vector3.Distance(cameraPos, this.asteroidBase.group.position);
       const wantInteriorLights = this._interiorLightsOn ? dVag < 64 : dVag < 52;

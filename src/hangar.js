@@ -54,11 +54,12 @@ export function finishRockHangar(scene, base, shadowGenerator, rockMasses) {
     m.parent = base.group; m.position.set(...pos); m.material = mat; m.receiveShadows = true; return m;
   }
   box('hangarInnerFloor', [38.4,.7,38.4], [-19.2,3.03,10], iron);
+  const serviceDetails=[];
   // Receding ribs make the excavated volume readable from the runway.
   for (const x of [-34,-27,-20,-13,-6,1]) {
     // Inner wall faces are z=±8.9. Put ribs in the room instead of inside the wall solid.
-    for (const z of [-8.67,28.77]) box(`hangarRib_${x}_${z}`, [.38,11.5,.4], [x,9.14,z], iron);
-    box(`hangarRoofRib_${x}`, [.38,.30,37.0], [x,15.10,10], iron);
+    for (const z of [-8.67,28.77]) serviceDetails.push(box(`hangarRib_${x}_${z}`, [.38,11.5,.4], [x,9.14,z], iron));
+    serviceDetails.push(box(`hangarRoofRib_${x}`, [.38,.30,37.0], [x,15.10,10], iron));
     box(`hangarRoofLamp_${x}`, [.25,.12,24], [x,14.78,10], glow);
   }
   // Visible hoist connects both playable decks; E travels with the cabin.
@@ -85,7 +86,6 @@ export function finishRockHangar(scene, base, shadowGenerator, rockMasses) {
     box(`hangarRearServiceLamp_${z}`,[.12,.18,.48],[-37.08,5.35,z+10],glow);
   }
   sign('hangarRearServiceSign','МАСТЕРСКАЯ 01',[-37.80,10.4,10],Math.PI/2);
-  const serviceDetails=[];
   // Cable trays and pipe brackets sit against the walls, outside the central walking aisle.
   for(const z of [-8.35,28.35]) {
     serviceDetails.push(box(`hangarServiceTray_${z}`,[30,.16,.32],[-20,12.8,z],iron));
@@ -111,22 +111,31 @@ export function finishRockHangar(scene, base, shadowGenerator, rockMasses) {
       l.parent=base.group; l.diffuse=B.Color3.FromHexString('#ffcf86'); l.intensity=1.6; l.range=18;
     }
   }
-  // A continuous walkable service stair alongside the rock, from apron to courtyard.
+  // A continuous walkable service stair alongside the rock, from apron to courtyard (merged into 2 draw calls!).
   const stairGlow = new B.StandardMaterial('stairEdgeAmber', scene);
   stairGlow.diffuseColor = B.Color3.FromHexString('#dcb359');
   const count = 56, startX = 10, endX = -18;
+  const stairStepMeshes = [], stairStripeMeshes = [];
   for (let i=0;i<count;i++) {
     const x = startX + (endX-startX)*(i+.5)/count;
     const y = 3.38 + rise*(i+1)/count;
-    box(`hangarServiceStep_${i}`, [.51,.34,3.6], [x,y-.17,-12.4], iron);
-    if (i%4===0) box(`hangarStepStripe_${i}`, [.08,.025,3.5], [x+.20,y+.025,-12.4], stairGlow);
+    stairStepMeshes.push(box(`hangarServiceStep_${i}`, [.51,.34,3.6], [x,y-.17,-12.4], iron));
+    if (i%4===0) stairStripeMeshes.push(box(`hangarStepStripe_${i}`, [.08,.025,3.5], [x+.20,y+.025,-12.4], stairGlow));
   }
-  // Stop at the runway edge z=-10: the old 7m slab duplicated 15m² of runway at y=3.38.
-  box('hangarStairEntry', [5,.32,4.2], [10,3.22,-12.1], iron);
+  stairStepMeshes.push(box('hangarStairEntry', [5,.32,4.2], [10,3.22,-12.1], iron));
   for (const z of [-14.5,-10.3]) {
     const rail = box(`hangarStairRail_${z}`, [34,.15,.15], [-4,13.55,z], iron);
     rail.rotation.z = -Math.atan2(rise,28);
+    stairStepMeshes.push(rail);
   }
+  const stairOff = base.group.position.clone(); base.group.position.setAll(0); base.group.computeWorldMatrix(true);
+  stairStepMeshes.forEach(m => m.computeWorldMatrix(true));
+  stairStripeMeshes.forEach(m => m.computeWorldMatrix(true));
+  const mergedSteps = B.Mesh.MergeMeshes(stairStepMeshes, true, true, undefined, false, false);
+  if (mergedSteps) { mergedSteps.name = 'hangarMergedStairs'; mergedSteps.parent = base.group; mergedSteps.material = iron; mergedSteps.receiveShadows = true; }
+  const mergedStripes = B.Mesh.MergeMeshes(stairStripeMeshes, true, true, undefined, false, false);
+  if (mergedStripes) { mergedStripes.name = 'hangarMergedStairStripes'; mergedStripes.parent = base.group; mergedStripes.material = stairGlow; mergedStripes.receiveShadows = false; mergedStripes.isPickable = false; }
+  base.group.position.copyFrom(stairOff);
   // Lateral wall plaque; nothing spans the stair or upper exit.
   const stairSign=sign('hangarStairSign', 'ПАЛУБА ←', [9.5,5.3,-8.55],0,3.2);
   const oldSurface = base.getLocalSurfaceY;

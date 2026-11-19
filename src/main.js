@@ -1040,7 +1040,7 @@ if (shotMode && worldMode === 'sky') {
 }
 if (shotMode && urlParams.get('hud') === '0') ui.showHUD(false);
 
-async function startRun(seedStr) {
+async function startRun(seedStr, { skipPrologue = false } = {}) {
   const generation = ++runGeneration;
   audio.init();
   initWorld(seedStr);
@@ -1051,7 +1051,7 @@ async function startRun(seedStr) {
   pauseModal.style.display = 'none';
   ui.showHUD(false);
   gameState = 'loading';
-  if (prologue) {
+  if (prologue && !skipPrologue) {
     document.body.classList.add('in-prologue');
     prologue.showLoading();
   }
@@ -1063,8 +1063,8 @@ async function startRun(seedStr) {
   // The menu's Enter/Space must never skip the opening or fire on handoff.
   ship.keys = {};
   gameState = 'playing';
-  ui.showHUD(!prologue);
-  if (prologue) prologue.frame(0);
+  ui.showHUD(!prologue || skipPrologue);
+  if (prologue && !skipPrologue) prologue.frame(0);
 }
 
 function finishPrologue() {
@@ -1133,7 +1133,7 @@ async function startStandaloneMission(missionId) {
   activeMissionId = missionId;
   activeMissionTheme = cfg.theme;
   const generation = runGeneration + 1;
-  await startRun(cfg.seed);
+  await startRun(cfg.seed, { skipPrologue: true });
   if (generation !== runGeneration) return;
   const canopyEl = document.getElementById('cockpit-canopy-frame');
   if (canopyEl) canopyEl.style.display = 'none';
