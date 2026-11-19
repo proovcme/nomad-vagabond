@@ -57,11 +57,18 @@ const menu = await page.evaluate(() => window.__perfStats);
 const runtimeCheck = await page.evaluate(async () => {
   const sc = BABYLON.EngineStore.LastCreatedEngine?.scenes?.[0];
   const rig = sc?.getTransformNodeByName('vagTowerBeaconRig');
+  const rad = sc?.getTransformNodeByName('vagRadarRotor');
   const y0 = rig ? rig.rotation.y : null;
+  const r0 = rad ? rad.rotation.y : null;
   await new Promise((r) => setTimeout(r, 450));
   const y1 = rig ? rig.rotation.y : null;
+  const r1 = rad ? rad.rotation.y : null;
   const activePointLights = sc ? sc.lights.filter((l) => l.getTypeID() === BABYLON.Light.LIGHTTYPEID_POINTLIGHT && l.isEnabled()).length : -1;
-  return { beaconDelta: (y0 !== null && y1 !== null) ? Math.abs(y1 - y0) : 0, activePointLights };
+  return {
+    beaconDelta: (y0 !== null && y1 !== null) ? Math.abs(y1 - y0) : 0,
+    radarDelta: (r0 !== null && r1 !== null) ? Math.abs(r1 - r0) : 0,
+    activePointLights,
+  };
 });
 console.log('MENU:', JSON.stringify({ loadMs, frameMs: menu.frameMs, draws: menu.drawCalls, tris: Math.round(menu.triangles), ...runtimeCheck }));
 
@@ -76,7 +83,7 @@ if (errors.length) console.error(errors.join('\n'));
 await browser.close();
 server.close();
 
-if (errors.length > 0 || menu.drawCalls > 650 || menu.triangles > 450000 || runtimeCheck.beaconDelta < 0.05 || runtimeCheck.activePointLights > 0) {
+if (errors.length > 0 || menu.drawCalls > 650 || menu.triangles > 450000 || runtimeCheck.beaconDelta < 0.05 || runtimeCheck.radarDelta < 0.03 || runtimeCheck.activePointLights > 0) {
   console.error('PERF/RUNTIME ASSERTION FAILED!', runtimeCheck);
   process.exit(1);
 }

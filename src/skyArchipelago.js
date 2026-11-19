@@ -1109,7 +1109,62 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
 
   const radarCollar = BABYLON.MeshBuilder.CreateCylinder('vagRadarMountCollar',{diameter:7.2,height:.18,tessellation:16},scene);
   radarCollar.parent=radarPlat;radarCollar.position.y=.89;radarCollar.material=concreteMat;radarCollar.receiveShadows=true;
-  instantiateGLBInto(scene, './assets/buildings/', 'radar_array.glb', radarPlat, new BABYLON.Vector3(0, 1.06, 0), 1.0, -0.35, shadowGen);
+
+  // Authentic WWII / Dieselpunk Rotating Lattice Radar Array (replaces modern blue dish, merged into 2 draw calls!)
+  const radarBaseMat = new BABYLON.PBRMaterial('vagDieselRadarIron', scene);
+  radarBaseMat.albedoColor = c3('#474c45');
+  radarBaseMat.metallic = 0.62;
+  radarBaseMat.roughness = 0.48;
+  const radarBrassMat = new BABYLON.PBRMaterial('vagDieselRadarBrass', scene);
+  radarBrassMat.albedoColor = c3('#c89c4e');
+  radarBrassMat.metallic = 0.82;
+  radarBrassMat.roughness = 0.32;
+
+  const radarPed = BABYLON.MeshBuilder.CreateCylinder('vagRadarPedestal', { diameterTop: 3.4, diameterBottom: 4.8, height: 3.0, tessellation: 8 }, scene);
+  radarPed.parent = radarPlat; radarPed.position.y = 2.4; radarPed.material = radarBaseMat; radarPed.receiveShadows = true;
+  if (shadowGen) shadowGen.addShadowCaster(radarPed, false);
+
+  const radarRotor = new BABYLON.TransformNode('vagRadarRotor', scene);
+  radarRotor.parent = radarPlat;
+  radarRotor.position.set(0, 4.0, 0);
+
+  const ironParts = [], brassParts = [];
+  const addPart = (m, arr, px, py, pz, rx = 0, ry = 0, rz = 0) => {
+    m.position.set(px, py, pz); m.rotation.set(rx, ry, rz); m.computeWorldMatrix(true); arr.push(m); return m;
+  };
+  // Rotating turret cabin + mast + rear counterweight
+  addPart(BABYLON.MeshBuilder.CreateBox('radCab', { width: 2.6, height: 1.9, depth: 3.2 }, scene), ironParts, 0, 1.0, 0);
+  addPart(BABYLON.MeshBuilder.CreateBox('radCounter', { width: 2.2, height: 1.1, depth: 1.2 }, scene), ironParts, 0, 1.4, -2.1);
+  addPart(BABYLON.MeshBuilder.CreateCylinder('radMast', { diameter: 0.72, height: 4.8, tessellation: 8 }, scene), ironParts, 0, 3.8, 0.2);
+  // Wide WWII "mattress" open-grid dipole lattice frame (7.6m wide x 3.8m tall, tilted slightly up)
+  const frameY = 5.4, frameZ = 1.05;
+  for (let row = -2; row <= 2; row++) {
+    addPart(BABYLON.MeshBuilder.CreateBox(`radHBar_${row}`, { width: 7.6, height: 0.14, depth: 0.16 }, scene), ironParts, 0, frameY + row * 0.76, frameZ, -0.18, 0, 0);
+  }
+  for (let col = -4; col <= 4; col++) {
+    const cx = col * 0.92;
+    const curveZ = frameZ + (col * col) * 0.045;
+    addPart(BABYLON.MeshBuilder.CreateBox(`radVBar_${col}`, { width: 0.14, height: 3.3, depth: 0.16 }, scene), ironParts, cx, frameY, curveZ, -0.18, 0, 0);
+  }
+  // Brass dipole elements & central copper waveguide feed boom
+  for (let col = -3; col <= 3; col += 2) {
+    for (const dy of [-0.85, 0.85]) {
+      addPart(BABYLON.MeshBuilder.CreateCylinder(`radDipole_${col}_${dy}`, { diameter: 0.09, height: 0.95, tessellation: 6 }, scene), brassParts, col * 0.92, frameY + dy, frameZ + 0.45, Math.PI * 0.5, 0, 0);
+    }
+  }
+  addPart(BABYLON.MeshBuilder.CreateCylinder('radFeedBoom', { diameter: 0.22, height: 2.8, tessellation: 8 }, scene), brassParts, 0, frameY + 0.15, frameZ + 1.5, Math.PI * 0.5 - 0.18, 0, 0);
+  addPart(BABYLON.MeshBuilder.CreateCylinder('radFeedHorn', { diameterTop: 0.92, diameterBottom: 0.28, height: 0.72, tessellation: 10 }, scene), brassParts, 0, frameY + 0.35, frameZ + 2.9, Math.PI * 0.5 - 0.18, 0, 0);
+
+  const mergedIron = BABYLON.Mesh.MergeMeshes(ironParts, true, true, undefined, false, false);
+  if (mergedIron) {
+    mergedIron.name = 'vagDieselRadarGrid'; mergedIron.parent = radarRotor; mergedIron.material = radarBaseMat; mergedIron.receiveShadows = true;
+    if (shadowGen) shadowGen.addShadowCaster(mergedIron, false);
+  }
+  const mergedBrass = BABYLON.Mesh.MergeMeshes(brassParts, true, true, undefined, false, false);
+  if (mergedBrass) {
+    mergedBrass.name = 'vagDieselRadarDipoles'; mergedBrass.parent = radarRotor; mergedBrass.material = radarBrassMat; mergedBrass.receiveShadows = true;
+  }
+  asteroidBase._radarRotor = radarRotor;
 
   // ---------------------------------------------------------------------------
   // 4. UPPER LEVEL (y = 20.5): HUGE 50m CONSTRUCTION PLATEAU + TOWER + WORKSHOP
@@ -2769,6 +2824,9 @@ export class SkyArchipelagoWorld {
       if (this.vagabondBase._towerBeaconMat) {
         this.vagabondBase._towerBeaconMat.alpha = this.timeOfDay < 0.35 ? 0.58 : 0.24;
       }
+    }
+    if (this.vagabondBase?._radarRotor) {
+      this.vagabondBase._radarRotor.rotation.y += dt * 0.58;
     }
     // Distance-cull Vagabond interior PointLights when camera is far (flight/menu) so Vagabond shades against 3 lights instead of 8+!
     if (this.vagabondBase && cameraPos) {
