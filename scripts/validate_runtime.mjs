@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);
+globalThis.BABYLON=require('../vendor/babylon.js');
+const gradient={addColorStop(){}};
+const ctx=new Proxy({createLinearGradient:()=>gradient,createRadialGradient:()=>gradient,createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)}),getImageData:(x,y,w,h)=>({data:new Uint8ClampedArray(w*h*4)}),measureText:()=>({width:100})},{get:(t,k)=>t[k]||(()=>{})});
+const result={textContent:''};
+const element=()=>({width:256,height:256,style:{},getContext:()=>ctx,addEventListener(){},removeEventListener(){},setAttribute(){},appendChild(){},classList:{add(){},remove(){},toggle(){}},getBoundingClientRect:()=>({width:100,height:100})});
+globalThis.document={createElement:element,getElementById:()=>result,body:{appendChild(){},append(){}}};
+globalThis.window={addEventListener(){},removeEventListener(){},devicePixelRatio:1};
+globalThis.OffscreenCanvas=class{constructor(w,h){this.width=w;this.height=h;}getContext(){return ctx;}};
+const source=fs.readFileSync(new URL('../tests.html',import.meta.url),'utf8').split('<script type="module">')[1].split('</script>')[0].replaceAll("'./src/","'../src/");
+await import('data:text/javascript,'+encodeURIComponent(source.replace(/from '(\.\.\/src\/[^']+)'/g,(_,p)=>`from '${new URL(p,import.meta.url).href}'`)));
+console.log(result.textContent);
+if(!result.textContent.startsWith('ALL_TESTS_PASSED'))process.exitCode=1;

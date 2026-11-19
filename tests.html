@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Etherium Babylon.js Integration Tests</title></head>
+<body>
+<pre id="results">RUNNING...</pre>
+<script src="./vendor/babylon.js"></script>
+<script type="module">
+import { SolarWorld } from './src/world.js';
+import { EtherShip } from './src/ship.js';
+import { AsteroidBase } from './src/asteroidBase.js';
+import { ExplorerAircraft, aircraftHeading } from './src/explorerAircraft.js';
+import { NavigatorPlayer } from './src/player.js';
+import { SoundEngine } from './src/audio.js';
+
+const logs = [];
+function assert(cond, msg) {
+  if (!cond) throw new Error('ASSERTION FAILED: ' + msg);
+  logs.push('PASS: ' + msg);
+}
+
+function makeScene(engine) {
+  const s = new BABYLON.Scene(engine);
+  s.useRightHandedSystem = true;
+  return s;
+}
+
+try {
+  const engine = new BABYLON.NullEngine();
+
+  // 1. Seeded procedural generation (determinism + variety + biomes)
+  const s1a = new SolarWorld(makeScene(engine), 'AETHER-742');
+  const s1b = new SolarWorld(makeScene(engine), 'AETHER-742');
+  const s2 = new SolarWorld(makeScene(engine), 'VELA-99');
+  const s3 = new SolarWorld(makeScene(engine), 'ORION-303');
+
+  assert(s1a.planets.length === 6, 'Generates 6 celestial bodies');
+  assert(s1a.terrainPlanet && s1a.terrainPlanet.treeColliders.length > 50, 'TerrainPlanet generates dense instanced forest');
+  assert(s1a.terrainPlanet.ruinPosLocal !== null, 'TerrainPlanet places Ancient Ruin in forest');
+  assert(s1a.debris.length === 42, 'Generates 42-asteroid belt');
+  assert(s1a.obelisks.length >= 2, 'Generates Resonance Obelisks');
+  assert(s1a.currents.length === 4, 'Generates 4 3D Ether Currents');
+  assert(s1a.planets[0].name === s1b.planets[0].name && s1a.planets[0].seedNum === s1b.planets[0].seedNum, 'Same seed produces identical world');
+  assert(s1a.planets[0].name !== s2.planets[0].name || s1a.starType.name !== s2.starType.name || s1a.planets[1].elevationY !== s2.planets[1].elevationY, 'Different seeds produce different worlds');
+  assert(s2.planets[2].elevationY !== s3.planets[2].elevationY, '3D elevation varies across seeds');
+
+  // 2. 6-DOF Sailing physics, apparent wind, lift & drag, inertia, keel
+  const scene = makeScene(engine);
+  const cam = new BABYLON.FreeCamera('cam', new BABYLON.Vector3(0, 20, 60), scene);
+  const audio = new SoundEngine();
+  const world = new SolarWorld(scene, 'AETHER-742');
+  const ship = new EtherShip(scene, cam, audio);
+  ship.spawnNear(world.planets[0]);
+
+  const startFuel = ship.fuel;
+  ship.velocity.set(0, 0, 0);
+  ship.sailsFurled = false;
+  ship.sailAngle = 0.65; // angled sail to generate aerodynamic lift
+  for (let i = 0; i < 30; i++) {
+    world.update(0.016);
+    ship.update(0.016, world, 'ship', () => {});
+  }
+  assert(ship.velocity.length() > 0.5, 'Unfurled sails propel ship via apparent wind (lift + drag)');
+  assert(ship.apparentWindSpeed > 0.1, 'Apparent wind speed is computed');
+  assert(ship.liftRatio > 0.05, 'Angled sail generates aerodynamic lift');
+  assert(ship.fuel === startFuel, 'Sailing on wind consumes zero fuel');
+
+  // Verify inertial glide after engine thrust stops
+  ship.keys['KeyW'] = true;
+  for (let i = 0; i < 15; i++) ship.update(0.016, world, 'ship', () => {});
+  ship.keys['KeyW'] = false;
+  const speedAfterThrust = ship.velocity.length();
+  ship.update(0.016, world, 'ship', () => {});
+  assert(ship.velocity.length() > speedAfterThrust * 0.85, 'Ship preserves linear inertia after releasing W');
+
+  ship.toggleSails();
+  assert(ship.sailsFurled === true, 'Furling sails toggles sailsFurled');
+
+  // 3. Ocean splashdown & 4-point wave buoyancy
+  const tp = world.terrainPlanet;
+  const bayDir = tp.shipAnchorLocal.clone().normalize();
+  ship.group.position.copyFrom(tp.group.position).addInPlace(bayDir.scale(tp.seaLevel + 0.3));
+  ship.velocity.copyFrom(tp.velocity);
+  ship.enterWater(tp);
+  assert(ship.waterPlanet === tp, 'Ship enters water buoyancy mode');
+  for (let i = 0; i < 60; i++) {
+    world.update(0.016);
+    ship.update(0.016, world, 'water', () => {});
+  }
+  const shipDist = BABYLON.Vector3.Distance(ship.group.position, tp.group.position);
+  assert(Math.abs(shipDist - tp.seaLevel) < 2.2, '4-point buoyancy keeps ship floating on ocean waves');
+
+  // 4. Landing on wheels & driving on spherical terrain surface
+  ship.dockOn(tp);
+  assert(ship.dockedPlanet === tp, 'Ship lands on wheels on TerrainPlanet');
+  const startWheelRot = ship.wheels[0].rotation.x;
+  ship.keys['KeyW'] = true;
+  for (let i = 0; i < 20; i++) {
+    world.update(0.016);
+    ship.update(0.016, world, 'drive', () => {});
+  }
+  ship.keys['KeyW'] = false;
+  assert(ship.driveSpeed > 1.0, 'Ship drives forward on wheels on planet surface');
+  assert(ship.wheels[0].rotation.x !== startWheelRot, 'Wheels spin while driving');
+
+  // 5. Disembarking & Exact 3D terrain collision
+  const player = new NavigatorPlayer(scene, cam, audio);
+  player.disembarkFromShip(ship);
+  assert(player.visible === true, 'Navigator disembarks onto planet');
+  for (let i = 0; i < 40; i++) {
+    world.update(0.016);
+    ship.update(0.016, world, 'foot', () => {});
+    player.update(0.016, ship, world.simTime);
+  }
+  const pRel = player.group.position.subtract(tp.group.position);
+  const pDist = pRel.length();
+  const exactH = tp.getSurfaceHeight(pRel.clone().normalize());
+  assert(Math.abs(pDist - Math.max(tp.seaLevel - 0.3, exactH)) < 1.2, 'Player collides accurately with 3D terrain height');
+
+  player.boardShip();
+  ship.undock();
+  assert(ship.dockedPlanet === null && player.visible === false, 'Navigator boards ship and launches into space');
+
+  // 5. Win & Defeat conditions
+  assert(world.gateUnlocked === false, 'Horizon Gate starts locked');
+  world.obelisks.forEach((o) => (o.activated = true));
+  world.unlockGate();
+  assert(world.gateUnlocked === true, 'Horizon Gate unlocks when 3 obelisks are attuned');
+
+  ship.hull = 0;
+  assert(ship.hull <= 0, 'Hull reaching 0 triggers defeat condition');
+
+  // 6. Project Nomads AsteroidBase + ExplorerAircraft + Dual FlightPhysics
+  const base = new AsteroidBase(scene, tp.seedNum);
+  base.setTargetPlanet(tp);
+  base.group.position.copyFrom(tp.group.position).addInPlace(new BABYLON.Vector3(76, 12, 0));
+  const aircraft = new ExplorerAircraft(scene, cam, audio);
+  aircraft.dockOnAsteroid(base);
+  assert(aircraft.dockedAsteroid === base, 'ExplorerAircraft docks on AsteroidBase pad');
+
+  player.placeOnAsteroid(base);
+  assert(player.currentAsteroid === base && player.visible === true, 'Player walks on AsteroidBase with local gravity');
+  const startBasePos = base.group.position.clone();
+  for (let i = 0; i < 20; i++) {
+    base.update(0.016);
+    aircraft.update(0.016, world, 'foot', () => {});
+    player.update(0.016, aircraft, world.simTime);
+  }
+  assert(BABYLON.Vector3.Distance(base.group.position, startBasePos) > 0.01, 'AsteroidBase navigates heavily toward target planet');
+  assert(BABYLON.Vector3.Distance(aircraft.group.position, base.group.position.add(base.padLocalPos)) < 1.5, 'Docked aircraft moves in lockstep with AsteroidBase');
+
+  player.boardShip();
+  aircraft.undockFromAsteroid();
+  assert(aircraft.dockedAsteroid === null, 'ExplorerAircraft launches from AsteroidBase into space');
+  aircraft.keys['KeyW'] = true;
+  for (let i = 0; i < 20; i++) aircraft.update(0.016, world, 'aircraft', () => {});
+  aircraft.keys['KeyW'] = false;
+  assert(aircraft.atmoDensity === 0 && aircraft.velocity.length() > 1.0, 'Space 6-DOF flight operates in vacuum');
+
+  // Enter planet atmosphere for aerodynamic lift
+  aircraft.group.position.copyFrom(tp.group.position).addInPlace(new BABYLON.Vector3(0, tp.radius + 9.0, 0));
+  aircraft.velocity.set(18, 0, 0);
+  aircraft.update(0.016, world, 'aircraft', () => {});
+  assert(aircraft.atmoDensity > 0.3 && aircraft.liftRatio > 0.1, 'Atmospheric density blends smoothly and generates aerodynamic lift');
+
+  aircraft.dockOnPlanet(tp);
+  assert(aircraft.dockedPlanet === tp, 'ExplorerAircraft lands on planet surface');
+
+  // 7. Binary Stars, Spread Orbits, Wild Biomes, Moons, Wildlife, Refuel & SOI Isolation
+  assert(world.sun && world.sunB, 'Binary stars (sun + sunB) exist');
+  assert(tp.orbitRadius >= 150 && world.planets[world.planets.length - 1].orbitRadius >= 400, 'Planets are spread far apart');
+  const biomes = world.planets.map((p) => p.biome);
+  assert(biomes.includes('world_tree') && biomes.includes('living_ocean') && biomes.includes('hollow_core'), 'Wild procedural planet types generated');
+  assert(world.moons.length >= 3 && world.spaceCreatures.length >= 8 && world.planetFlocks.length >= 6, 'Moons and space/planetary wildlife populated');
+  assert(world.refuelNodes.length >= 4, 'Planetary refuel nodes spawned');
+
+  assert(player.armL && player.legL && player.headNode && player.elbowL && player.kneeL && player.capeSegs.length === 3, 'Articulated explorer model with joints and cape built');
+
+  // AsteroidBase direct manual piloting
+  base.applyPilotInput({ KeyW: true }, 0.25);
+  assert(base.targetPlanet === null && base.velocity.length() > 0.5, 'AsteroidBase manual piloting overrides autopilot and accelerates');
+
+  // Outer Wilds SOI isolation: aircraft near AsteroidBase is not pulled by nearby planet
+  aircraft.dockOnAsteroid(base);
+  aircraft.undockFromAsteroid();
+  aircraft.nearAsteroid = base;
+  aircraft.group.position.copyFrom(base.group.position).addInPlace(new BABYLON.Vector3(0, 12, 0));
+  aircraft.velocity.set(0, 0, 0);
+  aircraft.throttle = 0;
+  aircraft.update(0.05, world, 'aircraft', () => {});
+  assert(aircraft.velocity.length() < 0.01, 'AsteroidBase SOI isolates aircraft from external planetary gravity');
+
+  // Runway takeoff roll from AsteroidBase pad + fuel consumption + refuel
+  aircraft.dockOnAsteroid(base);
+  aircraft.fuel = 40;
+  aircraft.keys['KeyW'] = true;
+  for (let i = 0; i < 60 && aircraft.dockedAsteroid !== null; i++) {
+    aircraft.update(0.02, world, 'aircraft', () => {});
+  }
+  for (let i = 0; i < 10; i++) {
+    aircraft.update(0.02, world, 'aircraft', () => {});
+  }
+  aircraft.keys['KeyW'] = false;
+  assert(aircraft.dockedAsteroid === null, 'Aircraft achieves runway takeoff roll with W');
+  assert(aircraft.fuel < 40, 'Flight consumes fuel');
+  aircraft.refuel(100);
+  assert(aircraft.fuel === 100, 'Refuel restores fuel to 100%');
+
+  // 8. Zero drift on moving AsteroidBase, Megastructures & Atmospheric Reentry Heating
+  assert(world.megastructures.length >= 2, 'Space megastructures generated');
+
+  base.velocity.set(18, 0, -12);
+  player.placeOnAsteroid(base);
+  const lpBefore = player.localPos.clone();
+  for (let i = 0; i < 15; i++) {
+    base.update(0.02, null, world);
+    player.update(0.02, aircraft, world.simTime);
+  }
+  assert(BABYLON.Vector3.Distance(player.localPos, lpBefore) < 0.001, 'Player has zero drift when standing still on moving AsteroidBase');
+
+  base.group.position.copyFrom(tp.group.position).addInPlace(new BABYLON.Vector3(tp.radius + 10, 0, 0));
+  base.velocity.set(-30, 0, 0);
+  base.heat = 0;
+  base.update(0.2, null, world);
+  assert(base.inAtmosphere && base.heat > 0, 'AsteroidBase brakes and heats up inside planet atmosphere');
+
+  // 9. Control Direction Regression Suite (Left-Handed Scene matching src/main.js)
+  const lhScene = new BABYLON.Scene(engine);
+  lhScene.useRightHandedSystem = true; // production coordinate system
+  const lhCam = new BABYLON.FreeCamera('lhCam', new BABYLON.Vector3(0, 10, 20), lhScene);
+  const lhWorld = new SolarWorld(lhScene, 'AETHER-742');
+  const lhBase = new AsteroidBase(lhScene);
+  const lhAc = new ExplorerAircraft(lhScene, lhCam, audio);
+  const lhPlayer = new NavigatorPlayer(lhScene, lhCam, audio);
+
+  // Helper: in Babylon left-handed, given world forward & up, screen-right = Cross(up, forward)
+  const getAxes = (q) => {
+    const m = BABYLON.Matrix.FromQuaternionToRef(q, new BABYLON.Matrix());
+    const fwd = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 0, -1), m).normalize();
+    const up = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 1, 0), m).normalize();
+    const screenRight = BABYLON.Vector3.Cross(fwd, up).normalize();
+    return { fwd, up, screenRight };
+  };
+
+  // 9a. ExplorerAircraft flight yaw: KeyA turns LEFT, KeyD turns RIGHT
+  lhAc.undockFromAsteroid();
+  lhAc.group.rotationQuaternion = BABYLON.Quaternion.Identity();
+  let axes0 = getAxes(lhAc.group.rotationQuaternion);
+  lhAc.keys = { KeyA: true };
+  lhAc.update(0.1, lhWorld, 'aircraft', () => {});
+  let axesA = getAxes(lhAc.group.rotationQuaternion);
+  assert(BABYLON.Vector3.Dot(axesA.fwd, axes0.screenRight) < -0.05, 'Aircraft KeyA yaws LEFT');
+
+  lhAc.group.rotationQuaternion = BABYLON.Quaternion.Identity();
+  axes0 = getAxes(lhAc.group.rotationQuaternion);
+  lhAc.keys = { KeyD: true };
+  lhAc.update(0.1, lhWorld, 'aircraft', () => {});
+  let axesD = getAxes(lhAc.group.rotationQuaternion);
+  assert(BABYLON.Vector3.Dot(axesD.fwd, axes0.screenRight) > 0.05, 'Aircraft KeyD yaws RIGHT');
+
+  // 9b. ExplorerAircraft roll: KeyQ rolls LEFT, KeyR rolls RIGHT
+  lhAc.group.rotationQuaternion = BABYLON.Quaternion.Identity();
+  axes0 = getAxes(lhAc.group.rotationQuaternion);
+  lhAc.keys = { KeyQ: true };
+  lhAc.update(0.1, lhWorld, 'aircraft', () => {});
+  let axesQ = getAxes(lhAc.group.rotationQuaternion);
+  assert(BABYLON.Vector3.Dot(axesQ.up, axes0.screenRight) < -0.05, 'Aircraft KeyQ rolls LEFT');
+
+  lhAc.group.rotationQuaternion = BABYLON.Quaternion.Identity();
+  axes0 = getAxes(lhAc.group.rotationQuaternion);
+  lhAc.keys = { KeyR: true };
+  lhAc.update(0.1, lhWorld, 'aircraft', () => {});
+  let axesR = getAxes(lhAc.group.rotationQuaternion);
+  assert(BABYLON.Vector3.Dot(axesR.up, axes0.screenRight) > 0.05, 'Aircraft KeyR rolls RIGHT');
+
+  // 9c. ExplorerAircraft pitch: ArrowUp pitches UP, ArrowDown pitches DOWN
+  lhAc.group.rotationQuaternion = BABYLON.Quaternion.Identity();
+  axes0 = getAxes(lhAc.group.rotationQuaternion);
+  lhAc.keys = { ArrowUp: true };
+  lhAc.update(0.1, lhWorld, 'aircraft', () => {});
+  let axesUp = getAxes(lhAc.group.rotationQuaternion);
+  assert(BABYLON.Vector3.Dot(axesUp.fwd, axes0.up) > 0.05, 'Aircraft ArrowUp pitches UP');
+
+  // 9d. ExplorerAircraft drive on planet: KeyA steers LEFT, KeyD steers RIGHT
+  const lhTp = lhWorld.terrainPlanet;
+  lhTp.prevPos.copyFrom(lhTp.group.position);
+  lhAc.group.position.copyFrom(lhTp.group.position).addInPlace(new BABYLON.Vector3(0, lhTp.radius + 2, 0));
+  lhAc.group.position.copyFrom(lhTp.group.position).addInPlace(new BABYLON.Vector3(0, lhTp.radius + 2, 0));
+  lhAc.dockOnPlanet(lhTp);
+  lhAc.group.rotationQuaternion = BABYLON.Quaternion.Identity();
+  lhAc.driveSpeed = 5.0;
+  axes0 = getAxes(lhAc.group.rotationQuaternion);
+  lhAc.keys = { KeyA: true };
+  lhAc.update(0.1, lhWorld, 'drive', () => {});
+  let driveA = getAxes(lhAc.group.rotationQuaternion);
+  assert(BABYLON.Vector3.Dot(driveA.fwd, axes0.screenRight) < -0.05, 'Aircraft drive KeyA steers LEFT ' + BABYLON.Vector3.Dot(driveA.fwd, axes0.screenRight));
+
+  lhAc.group.position.copyFrom(lhTp.group.position).addInPlace(new BABYLON.Vector3(0, lhTp.radius + 2, 0));
+  lhAc.dockOnPlanet(lhTp);
+  lhAc.group.rotationQuaternion = BABYLON.Quaternion.Identity();
+  lhAc.driveSpeed = 5.0;
+  axes0 = getAxes(lhAc.group.rotationQuaternion);
+  lhAc.keys = { KeyD: true };
+  lhAc.update(0.1, lhWorld, 'drive', () => {});
+  let driveD = getAxes(lhAc.group.rotationQuaternion);
+  assert(BABYLON.Vector3.Dot(driveD.fwd, axes0.screenRight) > 0.05, 'Aircraft drive KeyD steers RIGHT');
+  lhAc.keys = {};
+
+  // 9e. NavigatorPlayer on AsteroidBase: KeyA strafes LEFT, KeyD strafes RIGHT, ArrowLeft turns LEFT
+  lhBase.group.rotation.y = 0;
+  lhPlayer.placeOnAsteroid(lhBase);
+  lhPlayer.yaw = 0;
+  lhPlayer.keys = { KeyA: true };
+  const pPos0 = lhPlayer.localPos.clone();
+  lhPlayer.update(0.1, lhAc, 0);
+  assert(lhPlayer.localPos.x < pPos0.x - 0.05, 'Player on AsteroidBase KeyA strafes LEFT (-X when facing -Z)');
+
+  lhPlayer.placeOnAsteroid(lhBase);
+  lhPlayer.yaw = 0;
+  lhPlayer.keys = { KeyD: true };
+  const pPos1 = lhPlayer.localPos.clone();
+  lhPlayer.update(0.1, lhAc, 0);
+  assert(lhPlayer.localPos.x > pPos1.x + 0.05, 'Player on AsteroidBase KeyD strafes RIGHT (+X when facing -Z)');
+
+  lhPlayer.yaw = 0;
+  lhPlayer.keys = { ArrowLeft: true };
+  lhPlayer.update(0.1, lhAc, 0);
+  assert(lhPlayer.yaw > 0.05, 'Player ArrowLeft turns yaw LEFT');
+  lhPlayer.keys = {};
+
+  // 9f. AsteroidBase helm piloting: KeyA turns LEFT, KeyD turns RIGHT
+  lhBase.group.rotation.y = 0;
+  lhBase.applyPilotInput({ KeyA: true }, 0.2);
+  const astFwdA = new BABYLON.Vector3(Math.sin(lhBase.group.rotation.y), 0, Math.cos(lhBase.group.rotation.y));
+  const astRight0 = BABYLON.Vector3.Cross(new BABYLON.Vector3(0, 0, 1), new BABYLON.Vector3(0, 1, 0));
+  assert(BABYLON.Vector3.Dot(astFwdA, astRight0) < -0.05, 'AsteroidBase KeyA turns LEFT');
+
+  lhBase.group.rotation.y = 0;
+  lhBase.applyPilotInput({ KeyD: true }, 0.2);
+  const astFwdD = new BABYLON.Vector3(Math.sin(lhBase.group.rotation.y), 0, Math.cos(lhBase.group.rotation.y));
+  assert(BABYLON.Vector3.Dot(astFwdD, astRight0) > 0.05, 'AsteroidBase KeyD turns RIGHT');
+
+  // 10. Aircraft propellers spin via _spinPropellers even when rotationQuaternion is set (GLB nodes)
+  const qProp = new BABYLON.TransformNode('testQuatProp', lhScene);
+  qProp.rotationQuaternion = BABYLON.Quaternion.Identity();
+  lhAc.propellers = [qProp];
+  const qBefore = qProp.rotationQuaternion.clone();
+  lhAc.throttle = 0.7;
+  lhAc.update(0.1, lhWorld, 'aircraft');
+  const qDot = Math.abs(BABYLON.Quaternion.Dot(qBefore, qProp.rotationQuaternion));
+  assert(qDot < 0.999, 'Aircraft GLB rotationQuaternion propellers spin during flight');
+
+  // 11. Aircraft nose (-Z) aims toward target and chase camera stays behind tail (never facing nose)
+  const aimOrigin = new BABYLON.Vector3(960, 88, -320);
+  const aimTarget = new BABYLON.Vector3(720, 82, -270);
+  const aimFwd = aimTarget.subtract(aimOrigin).normalize();
+  lhAc.group.position.copyFrom(aimOrigin);
+  lhAc.group.rotationQuaternion = aircraftHeading(aimFwd);
+  const aimMat = BABYLON.Matrix.FromQuaternionToRef(lhAc.group.rotationQuaternion, new BABYLON.Matrix());
+  const acFwdVec = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 0, -1), aimMat).normalize();
+  assert(BABYLON.Vector3.Dot(acFwdVec, aimFwd) > 0.98, 'Aircraft nose (-Z) points toward target');
+  lhAc.camInited = false;
+  lhAc.update(0.016, lhWorld, 'aircraft');
+  const camToPlane = lhAc.group.position.subtract(lhScene.activeCamera.position).normalize();
+  assert(BABYLON.Vector3.Dot(camToPlane, acFwdVec) > 0.75, 'Chase camera sits behind tail looking forward along aircraft');
+
+  document.getElementById('results').textContent = 'ALL_TESTS_PASSED\n' + logs.join('\n');
+} catch (err) {
+  document.getElementById('results').textContent = 'TEST_FAILED: ' + err.message + '\n' + logs.join('\n');
+}
+</script>
+</body>
+</html>

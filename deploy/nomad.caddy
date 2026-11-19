@@ -1,0 +1,13 @@
+redir /nomad /nomad/ 308
+handle_path /nomad/* {
+    header {
+        -Server
+        Cache-Control "no-cache"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "same-origin"
+        X-Frame-Options "SAMEORIGIN"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    }
+    root * /var/www/nomad/current
+    file_server
+}

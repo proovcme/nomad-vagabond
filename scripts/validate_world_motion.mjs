@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);globalThis.BABYLON=require('../vendor/babylon.js');const B=BABYLON;
+const {WorldMotion}=await import('../src/worldMotion.js');
+const e=new B.NullEngine(),s=new B.Scene(e);s.metadata={};
+const lever=new B.TransformNode('vagPowerLever',s),radar=new B.TransformNode('radarRotor',s),base=new B.TransformNode('radarBase',s);radar.rotationQuaternion=B.Quaternion.Identity();
+const leaf=B.MeshBuilder.CreateBox('testFoliage',{height:6},s);leaf.material=new B.PBRMaterial('FoliageMat',s);
+const motion=new WorldMotion(s,lever),start=motion.leverPivot.rotation.z;
+for(let i=0;i<60;i++)motion.update(1/60,false);
+assert.equal(radar.rotation.y,0);assert.equal(base.rotation.y,0);assert(Math.abs(motion.leverPivot.rotation.z-start)<1e-9);
+for(let i=0;i<120;i++)motion.update(1/60,true);
+assert(radar.rotation.y>.5,'Powered dish rotates');assert.equal(base.rotation.y,0,'Fixed radar base stays still');assert(Math.abs(motion.leverPivot.rotation.z+2.65)<.001,'Switch lowers to engaged detent');assert(leaf.material._foliageWind,'Leaf material receives vertex wind');
+const late=new B.TransformNode('radarRotor',s);for(let i=0;i<60;i++)motion.update(1/60,true);assert(late.rotation.y>0,'Newly built radar animates too');
+const last=radar.rotation.y;for(let i=0;i<240;i++)motion.update(1/60,false);assert(motion.radarSpeed<.001,'Dish coasts down when power removed');assert(Math.abs(motion.leverPivot.rotation.z+.35)<.001);
+assert(s.metadata.windTime>0);console.log('PASS powered dish/fixed base/switch detents/wind material/late radar/coast-down');s.dispose();e.dispose();

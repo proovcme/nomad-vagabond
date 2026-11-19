@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>БРОДЯГА — Просмотр главного героя</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #141c24; color: #e4edf5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+    #renderCanvas { width: 100vw; height: 100vh; display: block; outline: none; }
+    #ui-bar {
+      position: fixed; top: 14px; left: 14px; z-index: 10;
+      background: rgba(12, 18, 26, 0.82); border: 1px solid rgba(140, 185, 220, 0.25);
+      border-radius: 8px; padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      backdrop-filter: blur(8px);
+    }
+    .title { font-weight: 700; font-size: 13px; letter-spacing: 0.08em; color: #f0b865; margin-right: 8px; }
+    button {
+      background: #1f2d3d; color: #d8e5f0; border: 1px solid #354b63; border-radius: 5px;
+      padding: 5px 10px; font-size: 12px; cursor: pointer;
+    }
+    button:hover { background: #2c4057; }
+    button.active { background: #c47e2c; border-color: #f0b865; color: #10161d; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div id="ui-bar">
+    <span class="title">ГЕРОЙ «БРОДЯГИ»</span>
+    <button data-view="front">1. Спереди</button>
+    <button data-view="back">2. Сзади</button>
+    <button data-view="side">3. Сбоку</button>
+    <button data-view="closeup">4. Крупный план</button>
+    <button data-view="walk">5. Ходьба</button>
+    <button data-view="aircraft">6. Грузовой</button>
+    <button data-view="fighter">7. Истребитель</button>
+    <button data-view="bomber">8. Бомбардировщик</button>
+    <button data-view="attacker">9. Штурмовик</button>
+    <button data-view="fleet">10. Весь флот</button>
+    <span style="width:1px;height:18px;background:#354b63;margin:0 4px;"></span>
+    <button data-view="vagabond">11. Остров «Бродяга»</button>
+    <button data-view="forest">12. Лесной остров</button>
+    <button data-view="industrial">13. Индустр. остров</button>
+    <span style="width:1px;height:18px;background:#354b63;margin:0 4px;"></span>
+    <button data-anim="Idle_Loop">Idle</button>
+    <button data-anim="Walk_Loop">Walk</button>
+    <button data-anim="Jog_Fwd_Loop">Jog</button>
+    <button data-anim="Interact">Interact</button>
+    <button data-anim="Fixing_Kneeling">Repair</button>
+  </div>
+  <canvas id="renderCanvas"></canvas>
+
+  <script src="./vendor/babylon.js"></script>
+  <script src="./vendor/babylonjs.loaders.min.js"></script>
+  <script type="module">
+    import { ExplorerAircraft } from './src/explorerAircraft.js';
+    import { createTwilightEnvironmentTexture } from './src/graphics.js';
+    import { AsteroidBase } from './src/asteroidBase.js';
+    import { ForestIsland, IndustrialIsland, enhanceVagabondIsland } from './src/skyArchipelago.js';
+    import { attachHeroAviatorGear } from './src/player.js';
+
+    const params = new URLSearchParams(window.location.search);
+    const viewMode = params.get('view') || 'front';
+    const modelFile = params.get('model') || 'assets/character/nomad_hero.glb';
+    const hideUI = params.get('ui') === '0';
+    if (hideUI) document.getElementById('ui-bar').style.display = 'none';
+
+    const canvas = document.getElementById('renderCanvas');
+    const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true }, true);
+    const scene = new BABYLON.Scene(engine);
+    scene.useRightHandedSystem = true;
+    scene.clearColor = new BABYLON.Color4(0.11, 0.15, 0.20, 1.0);
+
+    // Bright studio + sunset IBL lighting so metallic PBR parts & dark details read crisply
+    scene.environmentTexture = createTwilightEnvironmentTexture(scene);
+    scene.environmentIntensity = 1.65;
+    scene.imageProcessingConfiguration.toneMappingEnabled = true;
+    scene.imageProcessingConfiguration.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
+    scene.imageProcessingConfiguration.exposure = 1.32;
+
+    const sun = new BABYLON.DirectionalLight('sun', new BABYLON.Vector3(-0.48, -0.68, -0.55).normalize(), scene);
+    sun.position = new BABYLON.Vector3(10, 14, 12);
+    sun.intensity = 3.2;
+    sun.diffuse = BABYLON.Color3.FromHexString('#ffe6c4');
+
+    const fill = new BABYLON.HemisphericLight('fill', new BABYLON.Vector3(0, 1, 0), scene);
+    fill.intensity = 1.35;
+    fill.diffuse = BABYLON.Color3.FromHexString('#cde4fa');
+    fill.groundColor = BABYLON.Color3.FromHexString('#627282');
+
+    const rim = new BABYLON.DirectionalLight('rim', new BABYLON.Vector3(0.5, -0.3, 0.8).normalize(), scene);
+    rim.intensity = 1.25;
+    rim.diffuse = BABYLON.Color3.FromHexString('#a2cef2');
+
+    const shadowGen = new BABYLON.ShadowGenerator(2048, sun);
+    shadowGen.usePercentageCloserFiltering = true;
+    shadowGen.bias = 0.0005;
+
+    // Wide neutral airfield floor
+    const floor = BABYLON.MeshBuilder.CreateDisc('floor', { radius: 46, tessellation: 64 }, scene);
+    floor.rotation.x = Math.PI * 0.5;
+    const floorMat = new BABYLON.PBRMaterial('floorMat', scene);
+    floorMat.albedoColor = BABYLON.Color3.FromHexString('#485462');
+    floorMat.metallic = 0.05;
+    floorMat.roughness = 0.88;
+    floor.material = floorMat;
+    floor.receiveShadows = true;
+
+    const camera = new BABYLON.ArcRotateCamera('cam', Math.PI * 0.5, 1.38, 3.2, new BABYLON.Vector3(0, 0.95, 0), scene);
+    camera.attachControl(canvas, true);
+    camera.minZ = 0.05;
+    camera.wheelPrecision = 40;
+
+    // Load character
+    const splitIdx = modelFile.lastIndexOf('/');
+    const dir = modelFile.slice(0, splitIdx + 1);
+    const file = modelFile.slice(splitIdx + 1);
+    const res = await BABYLON.SceneLoader.ImportMeshAsync('', './' + dir, file, scene);
+    const root = res.meshes[0];
+    attachHeroAviatorGear(scene, res);
+
+    for (const m of res.meshes) {
+      m.receiveShadows = true;
+      if (m.getTotalVertices() > 0) shadowGen.addShadowCaster(m, false);
+    }
+
+    // Measure bounding box height
+    let minY = Infinity, maxY = -Infinity;
+    for (const m of res.meshes) {
+      if (m.getTotalVertices() === 0) continue;
+      m.computeWorldMatrix(true);
+      const bi = m.getBoundingInfo().boundingBox;
+      minY = Math.min(minY, bi.minimumWorld.y);
+      maxY = Math.max(maxY, bi.maximumWorld.y);
+    }
+    if (isFinite(minY)) root.position.y -= minY;
+    const charHeight = isFinite(maxY - minY) ? (maxY - minY) : 1.8;
+
+    // Optional aircraft for scale check
+    const audioStub = { playThrust() {}, playClick() {}, playUpgrade() {} };
+    const aircraft = new ExplorerAircraft(scene, camera, audioStub, 'cargo');
+    aircraft.group.position.set(3.8, 0.72, -1.8);
+    aircraft.group.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(-0.58, 0, 0);
+    for (const m of aircraft.group.getChildMeshes()) {
+      m.receiveShadows = true;
+      shadowGen.addShadowCaster(m, false);
+    }
+    aircraft.group.setEnabled(viewMode === 'aircraft');
+
+    const fighter = new ExplorerAircraft(scene, camera, audioStub, 'fighter');
+    fighter.group.position.set(3.2, 0.72, -1.4);
+    fighter.group.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(-0.58, 0, 0);
+    for (const m of fighter.group.getChildMeshes()) {
+      m.receiveShadows = true;
+      shadowGen.addShadowCaster(m, false);
+    }
+    fighter.group.setEnabled(viewMode === 'fighter');
+
+    const bomber = new ExplorerAircraft(scene, camera, audioStub, 'bomber');
+    bomber.group.position.set(4.2, 0.72, -2.0);
+    bomber.group.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(-0.58, 0, 0);
+    for (const m of bomber.group.getChildMeshes()) {
+      m.receiveShadows = true;
+      shadowGen.addShadowCaster(m, false);
+    }
+    bomber.group.setEnabled(viewMode === 'bomber');
+
+    const attacker = new ExplorerAircraft(scene, camera, audioStub, 'attacker');
+    attacker.group.position.set(3.4, 0.72, -1.4);
+    attacker.group.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(-0.58, 0, 0);
+    for (const m of attacker.group.getChildMeshes()) {
+      m.receiveShadows = true;
+      shadowGen.addShadowCaster(m, false);
+    }
+    attacker.group.setEnabled(viewMode === 'attacker');
+
+    // Important world islands for inspection
+    const vagabondBase = new AsteroidBase(scene, 742);
+    vagabondBase.group.position.set(0, 18, 0);
+    enhanceVagabondIsland(vagabondBase, scene, shadowGen);
+    vagabondBase.group.setEnabled(viewMode === 'vagabond');
+
+    const forestIsland = new ForestIsland(scene, new BABYLON.Vector3(0, 26, 0), 108, shadowGen);
+    forestIsland.group.setEnabled(viewMode === 'forest');
+
+    const industrialIsland = new IndustrialIsland(scene, new BABYLON.Vector3(0, 26, 0), 309, shadowGen);
+    industrialIsland.group.setEnabled(viewMode === 'industrial');
+
+    const animMap = new Map();
+    for (const ag of res.animationGroups) {
+      ag.stop();
+      animMap.set(ag.name, ag);
+    }
+
+    function playAnim(name, freezeFrame = null) {
+      for (const ag of res.animationGroups) ag.stop();
+      const target = animMap.get(name) || animMap.get('Idle_Loop') || res.animationGroups[0];
+      if (!target) return;
+      target.start(true, 1.0, target.from, target.to, false);
+      if (freezeFrame !== null) {
+        target.goToFrame(target.from + (target.to - target.from) * freezeFrame);
+        target.pause();
+      }
+      document.querySelectorAll('[data-anim]').forEach((b) => b.classList.toggle('active', b.dataset.anim === target.name));
+    }
+
+    function setView(v) {
+      const isIsland = v === 'vagabond' || v === 'forest' || v === 'industrial';
+      root.setEnabled(!isIsland);
+      floor.setEnabled(!isIsland);
+      aircraft.group.setEnabled(v === 'aircraft' || v === 'fleet');
+      fighter.group.setEnabled(v === 'fighter' || v === 'fleet');
+      bomber.group.setEnabled(v === 'bomber' || v === 'fleet');
+      attacker.group.setEnabled(v === 'attacker' || v === 'fleet');
+      vagabondBase.group.setEnabled(v === 'vagabond');
+      forestIsland.group.setEnabled(v === 'forest');
+      industrialIsland.group.setEnabled(v === 'industrial');
+      if (v === 'fleet') {
+        bomber.group.position.set(-11.5, 0.72, -13.0);
+        bomber.group.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(0.32, 0, 0);
+        aircraft.group.position.set(10.5, 0.72, -12.5);
+        aircraft.group.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(-0.35, 0, 0);
+        attacker.group.position.set(-9.5, 0.72, -1.5);
+        attacker.group.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(0.48, 0, 0);
+        fighter.group.position.set(9.2, 0.72, -1.2);
+        fighter.group.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(-0.48, 0, 0);
+      } else {
+        aircraft.group.position.set(3.8, 0.72, -1.8);
+        aircraft.group.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(-0.58, 0, 0);
+        fighter.group.position.set(3.2, 0.72, -1.4);
+        fighter.group.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(-0.58, 0, 0);
+        bomber.group.position.set(4.2, 0.72, -2.0);
+        bomber.group.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(-0.58, 0, 0);
+        attacker.group.position.set(3.4, 0.72, -1.4);
+        attacker.group.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(-0.58, 0, 0);
+      }
+      document.querySelectorAll('[data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === v));
+      const h = charHeight;
+      if (v === 'front') {
+        playAnim('Idle_Loop', 0.25);
+        camera.target.set(0, h * 0.52, 0);
+        camera.alpha = Math.PI * 0.5;
+        camera.beta = 1.42;
+        camera.radius = h * 1.65;
+      } else if (v === 'back') {
+        playAnim('Idle_Loop', 0.25);
+        camera.target.set(0, h * 0.52, 0);
+        camera.alpha = -Math.PI * 0.5;
+        camera.beta = 1.40;
+        camera.radius = h * 1.65;
+      } else if (v === 'side') {
+        playAnim('Idle_Loop', 0.25);
+        camera.target.set(0, h * 0.52, 0);
+        camera.alpha = 0.0;
+        camera.beta = 1.44;
+        camera.radius = h * 1.65;
+      } else if (v === 'closeup') {
+        playAnim('Idle_Loop', 0.25);
+        camera.target.set(0, h * 0.78, 0);
+        camera.alpha = Math.PI * 0.5 + 0.35;
+        camera.beta = 1.38;
+        camera.radius = h * 0.56;
+      } else if (v === 'walk') {
+        playAnim('Walk_Loop', 0.32);
+        camera.target.set(0, h * 0.50, 0);
+        camera.alpha = Math.PI * 0.5 - 0.55;
+        camera.beta = 1.38;
+        camera.radius = h * 1.72;
+      } else if (v === 'aircraft') {
+        playAnim('Idle_Loop', 0.25);
+        camera.target.set(2.0, 1.45, -1.2);
+        camera.alpha = Math.PI * 0.5 + 0.14;
+        camera.beta = 1.40;
+        camera.radius = 10.8;
+      } else if (v === 'fighter') {
+        playAnim('Idle_Loop', 0.25);
+        camera.target.set(1.8, 1.35, -0.9);
+        camera.alpha = Math.PI * 0.5 + 0.14;
+        camera.beta = 1.40;
+        camera.radius = 8.8;
+      } else if (v === 'bomber') {
+        playAnim('Idle_Loop', 0.25);
+        camera.target.set(2.2, 1.55, -1.4);
+        camera.alpha = Math.PI * 0.5 + 0.14;
+        camera.beta = 1.38;
+        camera.radius = 12.6;
+      } else if (v === 'attacker') {
+        playAnim('Idle_Loop', 0.25);
+        camera.target.set(1.9, 1.35, -0.9);
+        camera.alpha = Math.PI * 0.5 + 0.14;
+        camera.beta = 1.40;
+        camera.radius = 9.2;
+      } else if (v === 'fleet') {
+        playAnim('Idle_Loop', 0.25);
+        camera.target.set(0.0, 2.0, -5.5);
+        camera.alpha = Math.PI * 0.5;
+        camera.beta = 1.18;
+        camera.radius = 29.5;
+      } else if (v === 'vagabond') {
+        camera.target.set(6.0, 23.0, 0.0);
+        camera.alpha = -0.62;
+        camera.beta = 1.18;
+        camera.radius = 128.0;
+      } else if (v === 'forest') {
+        camera.target.set(0.0, 14.0, 0.0);
+        camera.alpha = Math.PI * 0.5 + 0.65;
+        camera.beta = 1.18;
+        camera.radius = 125.0;
+      } else if (v === 'industrial') {
+        camera.target.set(0.0, 16.0, 0.0);
+        camera.alpha = Math.PI * 0.5 - 0.55;
+        camera.beta = 1.18;
+        camera.radius = 110.0;
+      }
+    }
+
+    document.querySelectorAll('[data-view]').forEach((btn) => btn.addEventListener('click', () => setView(btn.dataset.view)));
+    document.querySelectorAll('[data-anim]').forEach((btn) => btn.addEventListener('click', () => playAnim(btn.dataset.anim)));
+
+    setView(viewMode);
+    window.__charReady = true;
+    document.body.setAttribute('data-char-ready', '1');
+
+    engine.runRenderLoop(() => scene.render());
+    window.addEventListener('resize', () => engine.resize());
+  </script>
+</body>
+</html>

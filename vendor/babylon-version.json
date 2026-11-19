@@ -1,0 +1,20 @@
+[
+  {
+    "package": "babylonjs",
+    "version": "8.56.2",
+    "registry": "https://registry.npmjs.org/babylonjs/8.56.2",
+    "source": "https://registry.npmjs.org/babylonjs/-/babylonjs-8.56.2.tgz",
+    "npmIntegrity": "sha512-fQdVZfjccdlbQqrRH0nZMJuLnFtIW2wUVIjRaUqXSNLSlq/OgFKG+dDODHGpZqmJHO6WIOJB/mWxIUCKQrjV8Q==",
+    "file": "babylon.js",
+    "sha256": "37c77bf920c0d7a3912c28a6120479f3d08fccd87a75e1f7558f76bd124cc6c4"
+  },
+  {
+    "package": "babylonjs-loaders",
+    "version": "8.56.2",
+    "registry": "https://registry.npmjs.org/babylonjs-loaders/8.56.2",
+    "source": "https://registry.npmjs.org/babylonjs-loaders/-/babylonjs-loaders-8.56.2.tgz",
+    "npmIntegrity": "sha512-etSDzgChx6of2U9V1WydK2KUBp3NdSbXIH3GC+iCjfguOemrsh50nlyC9guw1XkElr3IwHrN30lc+wgXQySq4A==",
+    "file": "babylonjs.loaders.min.js",
+    "sha256": "fb6e975962c8ed333e6ccefc4fe46eac9c5f989419e3347198e795b96e86c5b3"
+  }
+]
