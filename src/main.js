@@ -23,14 +23,13 @@ import { BenchmarkCoast } from './benchmarkCoast.js?v=mission1';
 import { SkyArchipelagoWorld } from './skyArchipelago.js?v=mission1';
 import { EnemyDreadnought } from './dreadnought.js?v=mission1';
 import { EnemyFortressIsland } from './enemyFortressIsland.js?v=mission1';
+import { LEVEL_REGISTRY, getLevel } from './levels/levelRegistry.js?v=mission1';
+import { CombatHUD } from './combatHud.js?v=mission1';
+import { createDetailedMissile as buildDetailedMissile, attachSafeTrail } from './weapons/missileFactory.js?v=mission1';
+import { getMissionRecord, saveMissionRecord, loadUserSettings, saveUserSettings } from './storage/records.js?v=mission1';
 
-const MISSION_CONFIGS = Object.freeze({
-  prologue:    { seed: 'AETHER-742',  theme: 'sunset', title: 'Пролог · Закатный архипелаг', startVariant: 'cargo' },
-  dreadnought: { seed: 'STORM-808',   theme: 'storm',  title: 'Охота на Дредноут · Штормовой архипелаг', startVariant: 'attacker' },
-  night:       { seed: 'LUNA-309',    theme: 'night',  title: 'Ночной перехват · Лунный архипелаг', startVariant: 'fighter' },
-  convoy:      { seed: 'DAWN-512',    theme: 'dawn',   title: 'Перехват конвоя · Рассветный архипелаг', startVariant: 'bomber' },
-  bastion:     { seed: 'BASTION-999', theme: 'sunset', title: 'Оборона бастиона · Зенитная пушка', startVariant: 'fighter' },
-});
+const MISSION_CONFIGS = LEVEL_REGISTRY;
+const savedSettings = loadUserSettings();
 let activeMissionTheme = 'sunset';
 let activeMissionId = null;
 let activeFlakRig = null;
@@ -44,7 +43,7 @@ function wrapAngle(a) {
 
 const urlParams = new URLSearchParams(window.location.search);
 const shotMode = urlParams.get('shot');
-let selectedQuality=urlParams.get('quality')||'medium';
+let selectedQuality = urlParams.get('quality') || savedSettings.quality || 'medium';
 const LEGACY_SPACE_SHOTS = new Set([
   'space', 'orbit', 'shore', 'before_forest', 'water', 'closeup',
   'base', 'base_night', 'map', 'pause', 'pad', 'street', 'complex',
@@ -70,188 +69,13 @@ window.addEventListener('resize', () => {
   hudViewport.height = canvasH;
 });
 
-const hudEls = {
-  leadPipper: document.getElementById('lead-pipper'),
-  targetBox: document.getElementById('target-box'),
-  targetHpFill: document.getElementById('target-hp-fill'),
-  targetDist: document.getElementById('target-dist-label'),
-  offscreenChev: document.getElementById('offscreen-chevron'),
-  rwrAlert: document.getElementById('rwr-alert'),
-  combatLead: document.getElementById('combat-lead'),
-  turretBar: document.getElementById('turret-weapon-bar'),
-  btnSam: document.getElementById('btn-turret-sam'),
-  btnHeavyAuto: document.getElementById('btn-turret-heavy-auto'),
-  btnHeavyFpv: document.getElementById('btn-turret-heavy-fpv'),
-  missileCamHud: document.getElementById('missile-cam-hud'),
-  missileTelemetry: document.getElementById('missile-cam-telemetry'),
-  cockpitCanopy: document.getElementById('cockpit-canopy-frame'),
-  turretReticle: document.getElementById('turret-reticle'),
-  hitmarker: document.getElementById('hitmarker'),
-  damageArc: document.getElementById('damage-arc'),
-  bossBar: document.getElementById('boss-hp-bar'),
-  bossEnemyRow: document.getElementById('boss-enemy-row'),
-  bossEnemyName: document.getElementById('boss-enemy-name'),
-  bossEnemyFill: document.getElementById('boss-enemy-fill'),
-  bossEnemyPct: document.getElementById('boss-enemy-pct'),
-  bossBaseRow: document.getElementById('boss-base-row'),
-  bossBaseFill: document.getElementById('boss-base-fill'),
-  bossBasePct: document.getElementById('boss-base-pct'),
-  radarWrap: document.getElementById('tactical-radar-wrap'),
-  radarCanvas: document.getElementById('tactical-radar'),
-  victoryTitle: document.getElementById('victory-title'),
-};
-
-let hitmarkerTimer = 0;
-let damageArcTimer = 0;
-function flashHitmarker(isKill = false) {
-  if (!hudEls.hitmarker) return;
-  hudEls.hitmarker.classList.toggle('kill', Boolean(isKill));
-  hudEls.hitmarker.classList.add('show');
-  hitmarkerTimer = isKill ? 0.28 : 0.14;
-}
-function flashDamageArc(sourceWorldPos) {
-  if (!hudEls.damageArc || !camera) return;
-  let angDeg = 0;
-  if (sourceWorldPos) {
-    const camPos = camera.position;
-    const fwd = camera.getForwardRay().direction;
-    const right = BABYLON.Vector3.Cross(fwd, BABYLON.Axis.Y);
-    if (right.lengthSquared() > 0.001) right.normalize();
-    const toSrc = sourceWorldPos.subtract(camPos);
-    const fx = BABYLON.Vector3.Dot(toSrc, right);
-    const fz = BABYLON.Vector3.Dot(toSrc, fwd);
-    angDeg = Math.atan2(fx, fz) * (180 / Math.PI);
-  }
-  hudEls.damageArc.style.transform = `rotate(${angDeg.toFixed(1)}deg)`;
-  hudEls.damageArc.classList.add('show');
-  damageArcTimer = 0.45;
-}
-
-function getMissionRecord(id) {
-  try {
-    const raw = localStorage.getItem(`nomad_rec_${id}`);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
-}
-function saveMissionRecord(id, timeSec, kills) {
-  if (!id) return;
-  try {
-    const prev = getMissionRecord(id);
-    const bestTime = prev ? Math.min(prev.time, Math.round(timeSec)) : Math.round(timeSec);
-    const bestKills = prev ? Math.max(prev.kills, kills) : kills;
-    localStorage.setItem(`nomad_rec_${id}`, JSON.stringify({ time: bestTime, kills: bestKills }));
-  } catch {}
-}
-
-function createDetailedMissile(name, scale, bodyHex, noseHex, flameMat) {
-  const root = new BABYLON.TransformNode(name, scene);
-  const key = `mslMat_${bodyHex}_${noseHex}`;
-  scene._sharedMissileMats ||= {};
-  if (!scene._sharedMissileMats[key] || scene._sharedMissileMats[key].body.isDisposed) {
-    const body = new BABYLON.PBRMaterial(`${key}_b`, scene);
-    body.albedoColor = BABYLON.Color3.FromHexString(bodyHex);
-    body.metallic = 0.55; body.roughness = 0.36;
-    const nose = new BABYLON.PBRMaterial(`${key}_n`, scene);
-    nose.albedoColor = BABYLON.Color3.FromHexString(noseHex);
-    nose.emissiveColor = BABYLON.Color3.FromHexString(noseHex).scale(0.35);
-    nose.metallic = 0.35; nose.roughness = 0.32;
-    scene._sharedMissileMats[key] = { body, nose };
-  }
-  const { body: bodyMat, nose: noseMat } = scene._sharedMissileMats[key];
-  const cyl = BABYLON.MeshBuilder.CreateCylinder(`${name}_body`, { diameter: 0.42 * scale, height: 2.2 * scale, tessellation: 10 }, scene);
-  cyl.parent = root; cyl.material = bodyMat; cyl.isPickable = false;
-  const cone = BABYLON.MeshBuilder.CreateCylinder(`${name}_nose`, { diameterTop: 0.02 * scale, diameterBottom: 0.42 * scale, height: 0.85 * scale, tessellation: 10 }, scene);
-  cone.parent = root; cone.position.y = 1.52 * scale; cone.material = noseMat; cone.isPickable = false;
-  for (let fi = 0; fi < 2; fi++) {
-    const fin = BABYLON.MeshBuilder.CreateBox(`${name}_fin_${fi}`, { width: 1.05 * scale, height: 0.55 * scale, depth: 0.05 * scale }, scene);
-    fin.parent = root; fin.position.y = -0.82 * scale; fin.rotation.y = fi * Math.PI * 0.5; fin.material = noseMat; fin.isPickable = false;
-  }
-  const plume = BABYLON.MeshBuilder.CreateCylinder(`${name}_plume`, { diameterTop: 0.38 * scale, diameterBottom: 0.04 * scale, height: 1.45 * scale, tessellation: 8 }, scene);
-  plume.parent = root; plume.position.y = -1.78 * scale; plume.material = flameMat; plume.isPickable = false;
-  root._trailAnchor = plume;
-  return root;
-}
-
-const radarCtx = hudEls.radarCanvas ? hudEls.radarCanvas.getContext('2d') : null;
-let radarTicks = 0;
-function updateTacticalRadar(activeEnemies) {
-  if (!hudEls.radarWrap || !radarCtx) return;
-  const show = gameState === 'playing' && (controlMode === 'aircraft' || controlMode === 'turret' || controlMode === 'missile_cam') && worldMode === 'sky';
-  hudEls.radarWrap.style.display = show ? 'block' : 'none';
-  if (!show || (++radarTicks % 2 !== 0)) return;
-  const ctx = radarCtx, w = 136, h = 136, cx = 68, cy = 68, r = 62, range = 520;
-  ctx.clearRect(0, 0, w, h);
-  ctx.strokeStyle = 'rgba(138, 178, 128, 0.28)';
-  ctx.lineWidth = 1;
-  for (const ring of [0.33, 0.66, 1.0]) {
-    ctx.beginPath(); ctx.arc(cx, cy, r * ring, 0, Math.PI * 2); ctx.stroke();
-  }
-  ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy); ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r); ctx.stroke();
-
-  const refPos = controlMode === 'turret' && activeFlakRig?.root ? activeFlakRig.root.getAbsolutePosition() : (ship?.group?.position || BABYLON.Vector3.Zero());
-  const fwd = camera ? camera.getForwardRay().direction : new BABYLON.Vector3(0, 0, -1);
-  const heading = Math.atan2(fwd.x, fwd.z);
-  const cosH = Math.cos(heading), sinH = Math.sin(heading);
-  const sweep = (performance.now() * 0.0022) % (Math.PI * 2);
-  ctx.strokeStyle = 'rgba(138, 224, 170, 0.42)';
-  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.sin(sweep) * r, cy - Math.cos(sweep) * r); ctx.stroke();
-
-  const toRadar = (worldPos) => {
-    const dx = worldPos.x - refPos.x;
-    const dz = worldPos.z - refPos.z;
-    const rx = -(dx * cosH - dz * sinH);
-    const ry = -(dx * sinH + dz * cosH);
-    const d = Math.hypot(rx, ry);
-    const clampScale = d > range ? range / d : 1;
-    return { x: cx + (rx * clampScale / range) * (r - 5), y: cy + (ry * clampScale / range) * (r - 5), dy: worldPos.y - refPos.y };
-  };
-
-  if (asteroidBase) {
-    const bp = toRadar(asteroidBase.group.position);
-    ctx.fillStyle = '#e8c46a';
-    ctx.fillRect(bp.x - 4, bp.y - 4, 8, 8);
-  }
-  for (const en of activeEnemies || []) {
-    if (!en?.root) continue;
-    const p = toRadar(en.root.position);
-    const isIncMissile = demoState?.incomingIslandMissiles?.includes(en);
-    const isBoss = en === demoState?.dreadnought || en === demoState?.enemyIsland;
-    if (isIncMissile) {
-      ctx.strokeStyle = Math.floor(performance.now() / 160) % 2 === 0 ? '#ff6b22' : '#ffe680';
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(p.x - 4, p.y - 4); ctx.lineTo(p.x + 4, p.y + 4); ctx.moveTo(p.x + 4, p.y - 4); ctx.lineTo(p.x - 4, p.y + 4); ctx.stroke();
-    } else if (isBoss) {
-      ctx.fillStyle = '#ff4433';
-      ctx.beginPath(); ctx.moveTo(p.x, p.y - 6); ctx.lineTo(p.x + 6, p.y); ctx.lineTo(p.x, p.y + 6); ctx.lineTo(p.x - 6, p.y); ctx.closePath(); ctx.fill();
-    } else {
-      ctx.fillStyle = '#ff5442';
-      ctx.beginPath();
-      if (p.dy > 20) { ctx.moveTo(p.x, p.y - 4); ctx.lineTo(p.x + 3.5, p.y + 3); ctx.lineTo(p.x - 3.5, p.y + 3); }
-      else if (p.dy < -20) { ctx.moveTo(p.x, p.y + 4); ctx.lineTo(p.x + 3.5, p.y - 3); ctx.lineTo(p.x - 3.5, p.y - 3); }
-      else { ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); }
-      ctx.closePath(); ctx.fill();
-    }
-  }
-  // Center player chevron
-  ctx.fillStyle = '#e8f5d8';
-  ctx.beginPath(); ctx.moveTo(cx, cy - 5); ctx.lineTo(cx + 4, cy + 4); ctx.lineTo(cx, cy + 2); ctx.lineTo(cx - 4, cy + 4); ctx.closePath(); ctx.fill();
-}
-
-function hideCombatOverlays() {
-  if (hudEls.leadPipper) hudEls.leadPipper.style.display = 'none';
-  if (hudEls.targetBox) hudEls.targetBox.style.display = 'none';
-  if (hudEls.offscreenChev) hudEls.offscreenChev.style.display = 'none';
-  if (hudEls.rwrAlert) hudEls.rwrAlert.style.display = 'none';
-  if (hudEls.combatLead) hudEls.combatLead.hidden = true;
-  if (hudEls.turretBar) hudEls.turretBar.style.display = 'none';
-  if (hudEls.missileCamHud) hudEls.missileCamHud.style.display = 'none';
-  if (hudEls.cockpitCanopy) hudEls.cockpitCanopy.style.display = 'none';
-  if (hudEls.turretReticle) hudEls.turretReticle.style.display = 'none';
-  if (hudEls.bossBar) hudEls.bossBar.style.display = 'none';
-  if (hudEls.radarWrap) hudEls.radarWrap.style.display = 'none';
-  if (hudEls.hitmarker) hudEls.hitmarker.classList.remove('show', 'kill');
-  if (hudEls.damageArc) hudEls.damageArc.classList.remove('show');
-}
+const combatHud = new CombatHUD(canvas);
+const hudEls = combatHud.els;
+const flashHitmarker = (isKill = false) => combatHud.flashHitmarker(isKill);
+const flashDamageArc = (sourceWorldPos) => combatHud.flashDamageArc(sourceWorldPos, camera);
+const createDetailedMissile = (name, scale, bodyHex, noseHex, flameMat) => buildDetailedMissile(scene, name, scale, bodyHex, noseHex, flameMat);
+const updateTacticalRadar = (activeEnemies) => combatHud.updateRadar({ activeEnemies, gameState, controlMode, worldMode, activeFlakRig, ship, camera, asteroidBase, demoState });
+const hideCombatOverlays = () => combatHud.hideAll();
 
 const audio = new SoundEngine();
 const ui = new GameUI();
@@ -385,7 +209,7 @@ function initWorld(seedStr, { menuPreview = false } = {}) {
   scene.activeCamera = camera;
 
   if (worldMode === 'sky') {
-    world = new SkyArchipelagoWorld(scene, currentSeed, activeMissionTheme, selectedQuality, { menuPreview });
+    world = new SkyArchipelagoWorld(scene, currentSeed, activeMissionTheme, selectedQuality, { menuPreview, levelId: activeMissionId || 'prologue' });
     asteroidBase = new AsteroidBase(scene, 742);
     world.registerVagabondBase(asteroidBase);
     construction = new IslandConstruction(scene, asteroidBase, world.shadowGenerator);
@@ -1374,40 +1198,51 @@ document.getElementById('chart-canvas').addEventListener('click', (e) => {
   }
 });
 
-// Settings controls
+// Settings controls (persisted via localStorage)
 document.querySelectorAll('#quality-seg .seg-btn').forEach((btn) => {
+  btn.classList.toggle('active', btn.dataset.val === selectedQuality);
   btn.addEventListener('click', () => {
     document.querySelectorAll('#quality-seg .seg-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
-    selectedQuality=btn.dataset.val;
+    selectedQuality = btn.dataset.val;
+    saveUserSettings({ quality: selectedQuality });
     if (world && world.graphics) world.graphics.applyQuality(selectedQuality, world.shadowGenerator);
   });
 });
+if (savedSettings.hudScale && savedSettings.hudScale !== 1) ui.setHudScale(savedSettings.hudScale);
 document.querySelectorAll('#hud-scale-seg .seg-btn').forEach((btn) => {
+  btn.classList.toggle('active', String(btn.dataset.val) === String(savedSettings.hudScale || 1));
   btn.addEventListener('click', () => {
     document.querySelectorAll('#hud-scale-seg .seg-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
-    ui.setHudScale(parseFloat(btn.dataset.val) || 1);
+    const sc = parseFloat(btn.dataset.val) || 1;
+    saveUserSettings({ hudScale: sc });
+    ui.setHudScale(sc);
   });
 });
 const invertPitchBtn = document.getElementById('invert-pitch-btn');
-let invertPitch = false;
+let invertPitch = Boolean(savedSettings.invertPitch);
+window.__invertPitch = invertPitch;
+if (invertPitchBtn) { invertPitchBtn.textContent = invertPitch ? 'Вкл' : 'Выкл'; invertPitchBtn.classList.toggle('active', invertPitch); }
 invertPitchBtn.addEventListener('click', () => {
   invertPitch = !invertPitch;
   invertPitchBtn.textContent = invertPitch ? 'Вкл' : 'Выкл';
   invertPitchBtn.classList.toggle('active', invertPitch);
   window.__invertPitch = invertPitch;
+  saveUserSettings({ invertPitch });
 });
 const mouseAimBtn = document.getElementById('mouse-aim-btn');
-let mouseAimOn = false;
+let mouseAimOn = Boolean(savedSettings.mouseAim);
 function setMouseAim(next) {
   mouseAimOn = Boolean(next);
   window.__mouseAim = mouseAimOn;
+  saveUserSettings({ mouseAim: mouseAimOn });
   if (mouseAimBtn) {
     mouseAimBtn.textContent = mouseAimOn ? 'Вкл' : 'Выкл';
     mouseAimBtn.classList.toggle('active', mouseAimOn);
   }
 }
+setMouseAim(mouseAimOn);
 mouseAimBtn?.addEventListener('click', () => setMouseAim(!mouseAimOn));
 window.addEventListener('mousemove', (e) => {
   window.__mouseNormX = ((e.clientX / Math.max(1, window.innerWidth)) - 0.5) * 2;
@@ -1420,22 +1255,27 @@ window.addEventListener('keydown', (e) => {
   }
 });
 const soundToggleBtn = document.getElementById('sound-toggle-btn');
-let soundOn = true;
+let soundOn = savedSettings.soundOn !== false;
+if (soundToggleBtn) { soundToggleBtn.textContent = soundOn ? 'Вкл' : 'Выкл'; soundToggleBtn.classList.toggle('active', soundOn); }
+audio?.setMuted?.(!soundOn);
 soundToggleBtn.addEventListener('click', () => {
   soundOn = !soundOn;
   soundToggleBtn.textContent = soundOn ? 'Вкл' : 'Выкл';
   soundToggleBtn.classList.toggle('active', soundOn);
   audio?.setMuted?.(!soundOn);
+  saveUserSettings({ soundOn });
 });
 
-const MENU_PREVIEW_INFO = {
-  'start-btn': { id: 'prologue', theme: 'sunset', tag: 'ЗАКАТНЫЙ АРХИПЕЛАГ · СЮЖЕТ', title: 'Пролог: Аварийная посадка', desc: 'Посадите повреждённый борт на «Бродягу», восстановите питание, постройте оборону и отбейте налёт.', role: 'Борт: Грузовой / «Оса»' },
-  'mission-dreadnought-btn': { id: 'dreadnought', theme: 'storm', tag: 'ШТОРМОВОЙ АРХИПЕЛАГ · БОСС', title: 'Охота на Дредноут', desc: 'Прорвитесь сквозь грозу и молнии, уничтожьте двигатели и турели 65-метрового воздушного дредноута.', role: 'Борт: Штурмовик · Ракеты' },
-  'mission-night-btn': { id: 'night', theme: 'night', tag: 'ЛУННЫЙ АРХИПЕЛАГ · НОЧЬ', title: 'Ночной перехват', desc: 'Ночной бой под звёздами в лучах прожекторов ПВО. Перехватите звено вражеских перехватчиков.', role: 'Борт: Истребитель «Оса»' },
-  'mission-convoy-btn': { id: 'convoy', theme: 'dawn', tag: 'РАССВЕТНЫЙ АРХИПЕЛАГ · ШТУРМ', title: 'Перехват конвоя', desc: 'Атакуйте тяжёлый воздушный транспорт и его эскорт на рассвете. Бомбы и прикрытие ЗРК.', role: 'Борт: Бомбардировщик' },
-  'mission-bastion-btn': { id: 'bastion', theme: 'sunset', tag: 'ОБОРОНА «БРОДЯГИ» · 1-Е ЛИЦО', title: 'Оборона бастиона', desc: 'Отбивайтесь из Зенитной пушки, сбивайте вражеские ракеты и разнесите остров-крепость «Монолит» ракетой «Громобой»!', role: 'Орудие: Зенитная пушка + ЗРК' },
-  'hangar-start-btn': { id: null, theme: 'sunset', tag: 'СВОБОДНЫЙ ПОЛЁТ · ЭСКАДРИЛЬЯ', title: 'Ангар «Бродяги»', desc: 'Все 4 самолёта готовы к вылету прямо в ангаре. Выбирайте любой борт, апгрейдите на верстаке и берите задания.', role: 'Все 4 класса самолётов' },
-};
+const MENU_PREVIEW_INFO = Object.fromEntries(
+  Object.values(LEVEL_REGISTRY).map((lvl) => [lvl.menuButtonId, {
+    id: lvl.id === 'hangar' ? null : lvl.id,
+    theme: lvl.theme,
+    tag: lvl.menuTag,
+    title: lvl.menuTitle,
+    desc: lvl.menuDesc,
+    role: lvl.menuRole,
+  }])
+);
 function updateMenuPreview(btnId) {
   const info = MENU_PREVIEW_INFO[btnId];
   const card = document.getElementById('mission-preview-card');
@@ -3426,14 +3266,7 @@ engine.runRenderLoop(() => {
         }
       }
       if (hudEls.turretReticle) hudEls.turretReticle.style.display = controlMode === 'turret' ? 'block' : 'none';
-      if (hitmarkerTimer > 0) {
-        hitmarkerTimer = Math.max(0, hitmarkerTimer - dt);
-        if (hitmarkerTimer <= 0 && hudEls.hitmarker) hudEls.hitmarker.classList.remove('show', 'kill');
-      }
-      if (damageArcTimer > 0) {
-        damageArcTimer = Math.max(0, damageArcTimer - dt);
-        if (damageArcTimer <= 0 && hudEls.damageArc) hudEls.damageArc.classList.remove('show');
-      }
+      combatHud.tickTimers(dt);
       // Boss & Vagabond Base Integrity HUD bar
       if (hudEls.bossBar) {
         const boss = demoState.enemyIsland?.alive ? demoState.enemyIsland : (demoState.dreadnought?.alive ? demoState.dreadnought : null);
@@ -4021,4 +3854,29 @@ if (urlParams.get('qa') === '1') {
   });
   panel.style.left='4px';panel.style.maxWidth='calc(100vw - 8px)';panel.style.flexWrap='wrap';
   document.body.append(panel);
+}
+
+// Developer Level & Performance Inspector (?dev=1)
+if (urlParams.get('dev') === '1') {
+  const devBox = document.createElement('div');
+  devBox.id = 'dev-inspector';
+  devBox.style.cssText = 'position:fixed;top:10px;left:10px;z-index:200;background:rgba(12,18,14,0.92);border:1px solid #d9aa58;color:#efe6cf;font:11px/1.45 "Courier New",monospace;padding:8px 10px;border-radius:4px;min-width:230px;';
+  devBox.innerHTML = `<div style="color:#d9aa58;font-weight:700;margin-bottom:4px;">DEV INSPECTOR</div><div id="dev-stats">...</div><div id="dev-lvls" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;"></div>`;
+  document.body.append(devBox);
+  const lvlWrap = devBox.querySelector('#dev-lvls');
+  for (const lvl of Object.values(LEVEL_REGISTRY)) {
+    if (!lvl.standalone) continue;
+    const b = document.createElement('button');
+    b.textContent = lvl.id;
+    b.style.cssText = 'padding:2px 6px;background:#263628;color:#f2e2b7;border:1px solid #8c9075;font:10px monospace;cursor:pointer;';
+    b.onclick = () => startStandaloneMission(lvl.id);
+    lvlWrap.append(b);
+  }
+  setInterval(() => {
+    const el = devBox.querySelector('#dev-stats');
+    if (!el || !scene) return;
+    const activeLights = scene.lights.filter((l) => l.isEnabled()).length;
+    const draws = scene.metadata?.performanceProbe?.sceneProbe?.drawCallsCounter?.current ?? '-';
+    el.textContent = `FPS:${Math.round(engine.getFps())} (${engine.getDeltaTime().toFixed(1)}ms) | Draws:${draws} | Tris:${Math.round(scene.getActiveIndices() / 3)} | Lights:${activeLights}/${scene.lights.length} | Lvl:${activeMissionId || 'prologue'}`;
+  }, 400);
 }

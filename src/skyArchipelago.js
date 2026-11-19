@@ -10,6 +10,8 @@ import { fbm3 } from './planet.js?v=mission1';
 import { GraphicsManager } from './graphics.js?v=mission1';
 import { createRustedMetalTexture } from './textures.js?v=mission1';
 import { buildFlak88Turret } from './flak88.js?v=mission1';
+import { AssetManager } from './engine/assetManager.js?v=mission1';
+import { getLevel } from './levels/levelRegistry.js?v=mission1';
 
 function c3(hex) {
   return BABYLON.Color3.FromHexString(hex);
@@ -2021,6 +2023,8 @@ export class SkyArchipelagoWorld {
     this.theme = theme || 'sunset';
     this.quality = quality || 'medium';
     this.menuPreview = Boolean(options?.menuPreview);
+    this.levelConfig = options?.levelId ? getLevel(options.levelId) : null;
+    this.assets = new AssetManager(scene);
     this.simTime = 0;
     this.timeOfDay = this.theme === 'night' ? 0.0 : this.theme === 'storm' ? 0.25 : this.theme === 'dawn' ? 0.92 : 0.72;
     this.isSkyWorld = true;
@@ -2280,11 +2284,22 @@ export class SkyArchipelagoWorld {
       dawn:   { forest: [-260, 95, 240], ind: [340, 5, -220] },
     };
     const lay = layouts[this.theme] || layouts.sunset;
-    this.forestIsland = new ForestIsland(this.scene, new BABYLON.Vector3(...lay.forest), seedValue, this.shadowGenerator);
-    this.industrialIsland = new IndustrialIsland(this.scene, new BABYLON.Vector3(...lay.ind), seedValue + 201, this.shadowGenerator);
+    const forestPos = this.levelConfig?.archipelago?.forestPos || lay.forest;
+    const indPos = this.levelConfig?.archipelago?.industrialPos || lay.ind;
+    this.forestIsland = new ForestIsland(this.scene, new BABYLON.Vector3(...forestPos), seedValue, this.shadowGenerator);
+    this.industrialIsland = new IndustrialIsland(this.scene, new BABYLON.Vector3(...indPos), seedValue + 201, this.shadowGenerator);
     this.islands.push(this.forestIsland, this.industrialIsland);
     this.landmarks = new ArchipelagoLandmarks(this.scene, this, this.shadowGenerator);
     this._buildShatteredWorldField(seedValue);
+    // Instantiate declarative custom GLB props for future custom levels
+    for (const prop of this.levelConfig?.archipelago?.customProps || []) {
+      this.assets.instantiate(prop.assetId, {
+        position: prop.pos || [0, 0, 0],
+        rotation: prop.rot || [0, 0, 0],
+        scale: prop.scale ?? 1,
+        shadowGenerator: this.shadowGenerator,
+      });
+    }
     for (const root of [this.forestIsland?.group, this.industrialIsland?.group, this.landmarks?.root]) {
       for (const mesh of root?.getChildMeshes?.() || []) {
         const mat = mesh.material;
