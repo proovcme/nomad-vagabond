@@ -29,7 +29,7 @@ const MISSION_CONFIGS = Object.freeze({
   dreadnought: { seed: 'STORM-808',   theme: 'storm',  title: 'Охота на Дредноут · Штормовой архипелаг', startVariant: 'attacker' },
   night:       { seed: 'LUNA-309',    theme: 'night',  title: 'Ночной перехват · Лунный архипелаг', startVariant: 'fighter' },
   convoy:      { seed: 'DAWN-512',    theme: 'dawn',   title: 'Перехват конвоя · Рассветный архипелаг', startVariant: 'bomber' },
-  bastion:     { seed: 'BASTION-999', theme: 'sunset', title: 'Оборона бастиона · Зенитка Flak 88', startVariant: 'fighter' },
+  bastion:     { seed: 'BASTION-999', theme: 'sunset', title: 'Оборона бастиона · Зенитная пушка', startVariant: 'fighter' },
 });
 let activeMissionTheme = 'sunset';
 let activeFlakRig = null;
@@ -970,13 +970,13 @@ async function startStandaloneMission(missionId) {
     spawnEnemySquadron(vPos, true);
     demoState.totalEnemies = 3;
     ui.showToast('⚡ МИССИЯ: Охота на Дредноут (Штормовой архипелаг)', 4200);
-    ui.showRadio('dispatcher', 'Внимание! В штормовом секторе замечен воздушный линкор «Голиаф» и пара истребителей. Выбей его зенитные башни Flak и энергоблок гондолы!', 7500);
+    ui.showRadio('dispatcher', 'Внимание! В штормовом секторе замечен воздушный линкор «Голиаф» и пара истребителей. Выбей его зенитные пушки и энергоблок гондолы!', 7500);
   } else if (missionId === 'night') {
     spawnEnemySquadron(vPos, false);
     spawnEnemySquadron(vPos, true);
     demoState.totalEnemies = 3;
     ui.showToast('🌙 МИССИЯ: Ночной перехват (Прожекторы ПВО активны)', 4200);
-    ui.showRadio('dispatcher', 'Ночной налёт на «Бродягу»! Прожекторы и Flak 88 уже работают. Ты на «Осе» — перехвати звено в темноте и не подпусти к базе!', 7500);
+    ui.showRadio('dispatcher', 'Ночной налёт на «Бродягу»! Прожекторы и зенитные пушки уже работают. Ты на «Осе» — перехвати звено в темноте и не подпусти к базе!', 7500);
   } else if (missionId === 'convoy') {
     demoState.dreadnought = new EnemyDreadnought(scene, vPos, { isConvoy: true, orbitRadius: 245, altitude: 92 });
     spawnEnemySquadron(vPos, true);
@@ -996,8 +996,8 @@ async function startStandaloneMission(missionId) {
     demoState.totalEnemies = 4; // 3 aircraft + Enemy Fortress Island
     demoState.remoteSamCd = 0;
     demoState.antiIslandCd = 0;
-    ui.showToast('🎯 ОБОРОНА БАСТИОНА: ЛКМ/Space — Flak 88 · [2/F] — ЗРК · [3/R] — Противоостровная ракета!', 5500);
-    ui.showRadio('dispatcher', 'Тревога! Вражеский остров-крепость «Монолит» идёт на таран под прикрытием авиации! Сбивай самолёты из Flak 88 и ЗРК [2/F], а по острову бей противоостровными ракетами «Громобой» [3/R]!', 8500);
+    ui.showToast('🎯 ОБОРОНА БАСТИОНА: ЛКМ/Space — Зенитная пушка · [2/F] — ЗРК · [3/R] — Противоостровная ракета!', 5500);
+    ui.showRadio('dispatcher', 'Тревога! Вражеский остров-крепость «Монолит» идёт на таран под прикрытием авиации! Сбивай самолёты из зенитной пушки и ЗРК [2/F], а по острову бей противоостровными ракетами «Громобой» [3/R]!', 8500);
   }
 }
 
@@ -1327,7 +1327,7 @@ window.addEventListener('keydown', (e) => {
       player.placeOnAsteroid(asteroidBase, new BABYLON.Vector3(-8, 21.73, 6.5));
       controlMode = 'foot';
       ui.setMode('foot');
-      ui.showToast('🧭 Вы вышли из зенитки Flak 88', 2000);
+      ui.showToast('🧭 Вы вышли из зенитной пушки', 2000);
     } else if (controlMode === 'asteroid') {
       player.placeOnAsteroid(asteroidBase, asteroidBase.helmLocalPos.add(new BABYLON.Vector3(0, 0, 1.5)));
       controlMode = 'foot';
@@ -1390,7 +1390,7 @@ function updateInteractions() {
     const hvyTxt = demoState?.enemyIsland?.alive
       ? ((demoState?.antiIslandCd || 0) > 0 ? ` · «Громобой» ${demoState.antiIslandCd.toFixed(0)}с` : ' · [3/R] «Громобой» готов')
       : '';
-    ui.setPrompt(`🎯 Flak 88: ЛКМ/Space — огонь · WASD/Мышь — наводка · ${samTxt}${hvyTxt} · [G] Выход`);
+    ui.setPrompt(`🎯 Зенитная пушка: ЛКМ/Space — огонь · WASD/Мышь — наводка · ${samTxt}${hvyTxt} · [G] Выход`);
     return;
   }
 
@@ -1833,12 +1833,12 @@ function missionInteraction() {
   ];
   for (const rig of allFlaks) {
     if (rig?.root && !rig.root.isDisposed?.() && near(rig.root.getAbsolutePosition(), 7.5)) {
-      return action('[E] Встать за зенитку Flak 88 (ЛКМ/Space — огонь, 2 — ЗРК, G — выход)', () => {
+      return action('[E] Встать за зенитную пушку (ЛКМ/Space — огонь, 2 — ЗРК, G — выход)', () => {
         activeFlakRig = rig;
         player.boardShip();
         controlMode = 'turret';
         ui.setMode('aircraft');
-        ui.showToast('🎯 За зениткой Flak 88! Мышь/WASD — наводка · ЛКМ/Space — выстрел · [2/F] — ЗРК · [G] — выйти', 3600);
+        ui.showToast('🎯 Зенитная пушка! Мышь/WASD — наводка · ЛКМ/Space — выстрел · [2/F] — ЗРК · [G] — выйти', 3600);
       });
     }
   }
