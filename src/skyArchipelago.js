@@ -2100,7 +2100,16 @@ export class SkyArchipelagoWorld {
     this._buildShatteredWorldField(seedValue);
     for (const root of [this.forestIsland?.group, this.industrialIsland?.group, this.landmarks?.root]) {
       for (const mesh of root?.getChildMeshes?.() || []) {
-        if (mesh.isVisible && mesh.visibility > 0.1 && !/Leaf|Vine|Flame|Lamp|Light|Screen|Steam|Rotor|LiftRail|Sign|Glow|Trail|Smoke|Particle|Atmosphere|Lake|River|Waterfall|Mist|Ring|Coil/i.test(mesh.name)) {
+        const mat = mesh.material;
+        const isTransparentEffect = Boolean(
+          mat && (mat.alpha < 0.85 || mat.depthWrite === false || mat.diffuseTexture?.hasAlpha || mat.needAlphaBlending?.())
+        );
+        if (
+          mesh.isVisible &&
+          mesh.visibility > 0.1 &&
+          !isTransparentEffect &&
+          !/Leaf|Vine|Flame|Lamp|Light|Screen|Steam|Smog|Haze|Cloud|Plume|Dust|Vapor|Rotor|LiftRail|Sign|Glow|Trail|Smoke|Particle|Atmosphere|Lake|River|Waterfall|Mist|Ring|Coil|Cable|Wire/i.test(mesh.name)
+        ) {
           makeSolid(mesh);
         }
       }
