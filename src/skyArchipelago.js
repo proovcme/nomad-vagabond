@@ -2417,6 +2417,30 @@ export class SkyArchipelagoWorld {
     if (!this.islands.includes(asteroidBase)) {
       this.islands.unshift(asteroidBase);
     }
+    // Pre-warm materials asynchronously so sharp camera turns never stall on synchronous WebGL shader compilation
+    if (!(this.scene.getEngine() instanceof BABYLON.NullEngine)) {
+      this.scene.autoClear = false;
+      this.scene.executeWhenReady(() => {
+        const seen = new Set();
+        const queue = [];
+        for (const m of this.scene.meshes) {
+          if (!m || m.isDisposed?.() || !m.material || seen.has(m.material)) continue;
+          seen.add(m.material);
+          queue.push(m);
+        }
+        let qi = 0;
+        const warmNext = () => {
+          if (this.scene.isDisposed || qi >= queue.length) return;
+          const mesh = queue[qi++];
+          if (mesh && !mesh.isDisposed() && mesh.material?.forceCompilationAsync) {
+            mesh.material.forceCompilationAsync(mesh).catch(() => {}).finally(() => setTimeout(warmNext, 16));
+          } else {
+            setTimeout(warmNext, 0);
+          }
+        };
+        setTimeout(warmNext, 120);
+      });
+    }
   }
 
   /**
@@ -2471,7 +2495,8 @@ export class SkyArchipelagoWorld {
     light.shadowMinZ = 20; light.shadowMaxZ = 420;
     const map = this.shadowGenerator?.getShadowMap();
     if (!map || this.simTime < (this._shadowFilterAfter || 0)) return;
-    this._shadowFilterAfter = this.simTime + .25;
+    if (map.refreshRate !== 2) map.refreshRate = 2;
+    this._shadowFilterAfter = this.simTime + 0.80;
     this._shadowCasterRegistry ||= new Set();
     // Public addShadowCaster calls, including asynchronous GLB imports, append to renderList.
     // Capture those additions before filtering, and retain distant casters for later revisits.
@@ -2487,7 +2512,6 @@ export class SkyArchipelagoWorld {
           /glow|emissive|lens/i.test(material?.name || '') || (material && material.alpha < .5)) {
         invisible++; continue;
       }
-      mesh.computeWorldMatrix(true);
       const bounds = mesh.getBoundingInfo();
       const radius = bounds.boundingSphere.radiusWorld;
       if (radius < .10) { tiny++; continue; }
@@ -2500,7 +2524,7 @@ export class SkyArchipelagoWorld {
     map.renderList = selected;
     this.scene.metadata.shadowBudget = {
       registered:this._shadowCasterRegistry.size, selected:selected.length,
-      invisible, distant, tiny, radius:200, orthoHalfExtent:140, filterIntervalSeconds:.25,
+      invisible, distant, tiny, radius:200, orthoHalfExtent:140, filterIntervalSeconds:.80,
     };
   }
 

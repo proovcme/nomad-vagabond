@@ -867,12 +867,14 @@ export class ExplorerAircraft {
     flameMat.alpha = 0.38;
     flameMat.alphaMode = BABYLON.Engine.ALPHA_ADD;
 
-    // Subtle local deck-bounce fill so the aircraft silhouette reads cleanly on night side
-    const localRim = new BABYLON.PointLight('acLocalFill', new BABYLON.Vector3(0, 2.2, -0.8), this.scene);
-    localRim.diffuse = c3('#9ab8d4');
-    localRim.intensity = 0.55;
-    localRim.range = 8.5;
-    localRim.parent = this.visual;
+    // Subtle local deck-bounce fill (space mode only; in Sky World extra moving PointLights trigger PBR shader recompiles!)
+    if (!this.scene.metadata?.skyLighting) {
+      const localRim = new BABYLON.PointLight('acLocalFill', new BABYLON.Vector3(0, 2.2, -0.8), this.scene);
+      localRim.diffuse = c3('#9ab8d4');
+      localRim.intensity = 0.55;
+      localRim.range = 8.5;
+      localRim.parent = this.visual;
+    }
 
     // 1. Chunky Scrapyard Cargo Fuselage (nose -Z to tail +Z)
     const stations = [
@@ -2019,10 +2021,6 @@ export class ExplorerAircraft {
     if (this._propBlurMat && !this._propBlurMat.isDisposed) {
       this._propBlurMat.alpha = clamp((this._propRpm - 10) / 30, 0, 1) * 0.42;
     }
-    if (this._muzzleLightTimer > 0) {
-      this._muzzleLightTimer = Math.max(0, this._muzzleLightTimer - dt);
-      if (this._muzzleLight) this._muzzleLight.intensity = this._muzzleLightTimer > 0 ? 5.2 : 0;
-    }
 
     // Aerobatic toggles & pro-flight maneuvers (V = Expert 360°, X = Barrel Roll, C = High-G Cobra Turn, T = Show Smoke)
     if (isPiloted && this._toggleExpertAerobatics) {
@@ -2533,18 +2531,6 @@ export class ExplorerAircraft {
         if (fl.isVisible) fl.rotation.y = Math.random() * Math.PI * 2;
       });
       this._muzzleFlashTimer = 0.055;
-    }
-    if (!(this.scene.getEngine() instanceof BABYLON.NullEngine)) {
-      if (!this._muzzleLight) {
-        this._muzzleLight = new BABYLON.PointLight('acMuzzleFlashLight', new BABYLON.Vector3(0, 0.8, -3.5), this.scene);
-        this._muzzleLight.parent = this.group;
-        this._muzzleLight.diffuse = c3('#ffbe66');
-        this._muzzleLight.specular = c3('#ffdca0');
-        this._muzzleLight.range = 18;
-        this._muzzleLight.intensity = 0;
-      }
-      this._muzzleLight.intensity = 5.2;
-      this._muzzleLightTimer = 0.06;
     }
 
     for (const barrelIdx of barrelsToFire) {

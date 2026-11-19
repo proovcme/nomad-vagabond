@@ -70,24 +70,8 @@ let metricsFrames = 0;
 let introSkipRequested = false;
 let runGeneration = 0;
 
-let blastLight = null;
-let blastLightTimer = 0;
-
 function spawnDemoExplosion(pos,scale=1){
   explosionEffects?.spawn(pos,scale);
-  if (scene && !(scene.getEngine() instanceof BABYLON.NullEngine)) {
-    if (!blastLight || blastLight.isDisposed?.()) {
-      blastLight = new BABYLON.PointLight('combatBlastLight', pos.clone(), scene);
-      blastLight.diffuse = BABYLON.Color3.FromHexString('#ff9c42');
-      blastLight.specular = BABYLON.Color3.FromHexString('#ffe0a8');
-      blastLight.range = 65;
-      blastLight.intensity = 0;
-    }
-    blastLight.position.copyFrom(pos);
-    blastLight.range = 32 + scale * 22;
-    blastLight.intensity = Math.min(18, 6 + scale * 5.5);
-    blastLightTimer = 0.28;
-  }
 }
 
 function spawnEnemySquadron(centerPos, escort = false) {
@@ -247,8 +231,6 @@ function initWorld(seedStr) {
   controlMode = 'foot';
   ui.setMode('foot');
   demoState = null;
-  blastLight = null;
-  blastLightTimer = 0;
 
   // Setup 4-Act Sky Archipelago Demo (Approach damaged cargo -> Land on Vagabond -> Pull Lever -> Fighter Dogfight)
   if (worldMode === 'sky' && asteroidBase) {
@@ -2633,11 +2615,6 @@ engine.runRenderLoop(() => {
           em.mesh.dispose(false, false);
           demoState.enemyMissiles.splice(i, 1);
         }
-      }
-
-      if (blastLightTimer > 0 && blastLight) {
-        blastLightTimer = Math.max(0, blastLightTimer - dt);
-        blastLight.intensity = blastLightTimer > 0 ? blastLight.intensity * Math.exp(-dt * 9.5) : 0;
       }
 
       if (incomingMissileWarning) {
