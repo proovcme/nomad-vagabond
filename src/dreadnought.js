@@ -300,12 +300,12 @@ export class EnemyDreadnought {
 
           t.fireCd -= dt;
           if (t.fireCd <= 0) {
-            t.fireCd = this.isConvoy ? 2.4 : 1.75;
+            t.fireCd = this.isConvoy ? 3.2 : 2.6;
             rig.recoil = 1.0;
             rig.muzzleNode.computeWorldMatrix(true);
             const from = rig.muzzleNode.getAbsolutePosition().clone();
             const lead = playerPos.add((playerVel || BABYLON.Vector3.Zero()).scale(dist / 175)).add(new BABYLON.Vector3(
-              (Math.random() - 0.5) * 6.5, (Math.random() - 0.5) * 5.0, (Math.random() - 0.5) * 6.5
+              (Math.random() - 0.5) * 9.5, (Math.random() - 0.5) * 7.5, (Math.random() - 0.5) * 9.5
             ));
             const shotDir = lead.subtract(from).normalize();
             const es = BABYLON.MeshBuilder.CreateCylinder('dreadFlakShot', { diameter: 0.34, height: 3.6, tessellation: 6 }, this.scene);

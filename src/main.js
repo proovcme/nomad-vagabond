@@ -932,6 +932,7 @@ async function startStandaloneMission(missionId) {
   prologue?.hide();
   document.body.classList.remove('in-prologue');
   demoState.missionId = missionId;
+  demoState.spawnGrace = 2.8;
   demoState.powerOn = true;
   demoState.stage = 'combat';
   demoState.combatWave = 1;
@@ -1681,10 +1682,12 @@ function missionEnemyDown(enemy) {
   }
   if (!demoState._wreckSmokeMat || demoState._wreckSmokeMat.isDisposed) {
     demoState._wreckSmokeMat = new BABYLON.StandardMaterial('wreckSmokeSharedMat', scene);
-    demoState._wreckSmokeMat.emissiveColor = BABYLON.Color3.FromHexString('#3b2c22');
+    demoState._wreckSmokeMat.emissiveColor = BABYLON.Color3.FromHexString('#4a382c');
     demoState._wreckSmokeMat.disableLighting = true;
     demoState._wreckSmokeMat.backFaceCulling = false;
-    demoState._wreckSmokeMat.alpha = 0.72;
+    demoState._wreckSmokeMat.depthWrite = false;
+    demoState._wreckSmokeMat.alpha = 0.48;
+    if (ship?.trailMat?.opacityTexture) demoState._wreckSmokeMat.opacityTexture = ship.trailMat.opacityTexture;
   }
   if (!demoState._debrisMat || demoState._debrisMat.isDisposed) {
     demoState._debrisMat = new BABYLON.StandardMaterial('wreckDebrisSharedMat', scene);
@@ -2467,15 +2470,17 @@ engine.runRenderLoop(() => {
         if (!en.damageTrail && en.hp < en.maxHp * 0.55 && typeof BABYLON.TrailMesh === 'function') {
           if (!demoState._dmgSmokeMat || demoState._dmgSmokeMat.isDisposed) {
             demoState._dmgSmokeMat = new BABYLON.StandardMaterial('enemyDmgSmokeMat', scene);
-            demoState._dmgSmokeMat.emissiveColor = BABYLON.Color3.FromHexString('#5c3824');
+            demoState._dmgSmokeMat.emissiveColor = BABYLON.Color3.FromHexString('#5c3c28');
             demoState._dmgSmokeMat.disableLighting = true;
             demoState._dmgSmokeMat.backFaceCulling = false;
-            demoState._dmgSmokeMat.alpha = 0.55;
+            demoState._dmgSmokeMat.depthWrite = false;
+            demoState._dmgSmokeMat.alpha = 0.40;
+            if (ship?.trailMat?.opacityTexture) demoState._dmgSmokeMat.opacityTexture = ship.trailMat.opacityTexture;
           }
           const smokeAnchor = new BABYLON.TransformNode(`enDmgAnchor_${en.phase}`, scene);
           smokeAnchor.parent = en.root;
           smokeAnchor.position.set(0, 0.2, 1.4);
-          en.damageTrail = new BABYLON.TrailMesh(`enDmgTrail_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`, smokeAnchor, scene, 0.65, 28, true);
+          en.damageTrail = new BABYLON.TrailMesh(`enDmgTrail_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`, smokeAnchor, scene, 0.34, 24, true);
           en.damageTrail.material = demoState._dmgSmokeMat;
           en.damageTrail.isPickable = false;
         }
@@ -2531,17 +2536,16 @@ engine.runRenderLoop(() => {
           en.fireCd -= dt;
           const aimDot = dPl > 0.5 ? BABYLON.Vector3.Dot(en.heading, toPlayer.scale(1 / dPl)) : 0;
 
-          // Trigger a 3–4 round burst when in firing envelope
+          // Trigger a 3-round burst when in firing envelope (fair, dodgeable dogfight cadence)
           if (en.burstLeft <= 0 && en.fireCd <= 0) {
-            if (en.variant === 'fighter' && dPl < 245 && aimDot > 0.62) {
-              en.burstLeft = 4;
-              en.burstTimer = 0;
-              en.fireCd = 2.1 + Math.random() * 1.1;
-            } else if (en.variant === 'bomber' && dPl < 235) {
-              // Bomber defensive dorsal/tail turret fires bursts in any direction
+            if (en.variant === 'fighter' && dPl < 245 && aimDot > 0.65) {
               en.burstLeft = 3;
               en.burstTimer = 0;
-              en.fireCd = 2.5 + Math.random() * 1.2;
+              en.fireCd = 3.2 + Math.random() * 1.4;
+            } else if (en.variant === 'bomber' && dPl < 230) {
+              en.burstLeft = 3;
+              en.burstTimer = 0;
+              en.fireCd = 3.4 + Math.random() * 1.4;
             }
           }
 
@@ -2549,11 +2553,11 @@ engine.runRenderLoop(() => {
             en.burstTimer -= dt;
             if (en.burstTimer <= 0) {
               en.burstLeft--;
-              en.burstTimer = 0.11;
+              en.burstTimer = 0.14;
               const leadAim = ship.group.position.add(ship.velocity.scale(dPl / 170)).add(new BABYLON.Vector3(
-                (Math.random() - 0.5) * 3.8,
-                (Math.random() - 0.5) * 3.0,
-                (Math.random() - 0.5) * 3.8
+                (Math.random() - 0.5) * 6.4,
+                (Math.random() - 0.5) * 5.2,
+                (Math.random() - 0.5) * 6.4
               ));
               const shotDir = leadAim.subtract(en.root.position).normalize();
               const es = BABYLON.MeshBuilder.CreateCylinder('enemyTracer', { diameter: 0.28, height: 3.2, tessellation: 6 }, scene);
@@ -2567,13 +2571,13 @@ engine.runRenderLoop(() => {
                 demoState._enemyTracerMat.disableLighting = true;
               }
               es.material = demoState._enemyTracerMat;
-              demoState.enemyShots.push({ mesh: es, vel: shotDir.scale(172), life: 2.0 });
+              demoState.enemyShots.push({ mesh: es, vel: shotDir.scale(165), life: 2.0 });
             }
           }
 
-          // Fighter homing missile launch
-          if (en.variant === 'fighter' && en.missileCd <= 0 && dPl > 85 && dPl < 340 && aimDot > 0.42 && demoState.enemyMissiles.length < 2) {
-            en.missileCd = 7.0 + Math.random() * 2.8;
+          // Fighter homing missile launch (fair cooldown so player can counter with [H] flares)
+          if (en.variant === 'fighter' && en.missileCd <= 0 && dPl > 95 && dPl < 340 && aimDot > 0.45 && demoState.enemyMissiles.length < 2) {
+            en.missileCd = 11.5 + Math.random() * 3.5;
             launchEnemyMissile(en, toPlayer.scale(1 / Math.max(1, dPl)));
           }
         }
@@ -2685,12 +2689,14 @@ engine.runRenderLoop(() => {
         if (spoofValid && distT < 6.0) {
           spawnDemoExplosion(em.mesh.position, 0.85);
           hit = true;
-        } else if (!spoofValid && playerInAirCombat && distT < 5.5) {
-          ship.hull = Math.max(0, ship.hull - 22);
-          ship.recoilShake = Math.max(ship.recoilShake || 0, 0.85);
-          audio?.playExplosion?.();
-          spawnDemoExplosion(em.mesh.position, 1.35);
-          if (ship.hull <= 0) checkWinLose();
+        } else if (!spoofValid && playerInAirCombat && distT < 5.0) {
+          if ((demoState.spawnGrace || 0) <= 0) {
+            ship.hull = Math.max(0, ship.hull - 14);
+            ship.recoilShake = Math.max(ship.recoilShake || 0, 0.72);
+            audio?.playExplosion?.();
+            spawnDemoExplosion(em.mesh.position, 1.35);
+            if (ship.hull <= 0) checkWinLose();
+          }
           hit = true;
         }
 
@@ -2831,18 +2837,23 @@ engine.runRenderLoop(() => {
         if (chevEl) chevEl.style.display = 'none';
       }
 
-      // Update enemy return tracers
+      // Update enemy return tracers (with brief invulnerability grace so bursts never instant-kill)
+      demoState.spawnGrace = Math.max(0, (demoState.spawnGrace || 0) - dt);
+      demoState.hitGrace = Math.max(0, (demoState.hitGrace || 0) - dt);
       for (let i = demoState.enemyShots.length - 1; i >= 0; i--) {
         const es = demoState.enemyShots[i];
         es.life -= dt;
         es.mesh.position.addInPlace(es.vel.scale(dt));
-        const hitPlayer = BABYLON.Vector3.Distance(es.mesh.position, ship.group.position) < 4.5;
+        const hitPlayer = BABYLON.Vector3.Distance(es.mesh.position, ship.group.position) < 3.2;
         if (hitPlayer) {
-          ship.hull = Math.max(0, ship.hull - 8);
-          ship.recoilShake = Math.max(ship.recoilShake || 0, 0.45);
-          audio?.playImpact?.();
-          spawnDemoExplosion(es.mesh.position, 0.55);
-          if (ship.hull <= 0) checkWinLose();
+          if (demoState.spawnGrace <= 0 && demoState.hitGrace <= 0) {
+            demoState.hitGrace = 0.24;
+            ship.hull = Math.max(0, ship.hull - 4);
+            ship.recoilShake = Math.max(ship.recoilShake || 0, 0.32);
+            audio?.playImpact?.();
+            spawnDemoExplosion(es.mesh.position, 0.45);
+            if (ship.hull <= 0) checkWinLose();
+          }
         }
         if (es.life <= 0 || hitPlayer) {
           es.mesh.dispose(false, false);

@@ -203,7 +203,7 @@ export function deriveAircraftLightSockets(meshes, modelRoot, variant = 'cargo')
 export const AIRCRAFT_SPECS = {
   cargo: {
     name: 'Грузовой «Бродяга»',
-    maxHull: 120,
+    maxHull: 150,
     maxSpeed: 50,
     boostSpeed: 74,
     accel: 36,
@@ -223,7 +223,7 @@ export const AIRCRAFT_SPECS = {
   },
   fighter: {
     name: 'Истребитель «Оса»',
-    maxHull: 90,
+    maxHull: 135,
     maxSpeed: 76,
     boostSpeed: 118,
     accel: 66,
@@ -244,7 +244,7 @@ export const AIRCRAFT_SPECS = {
   },
   bomber: {
     name: 'Бомбардировщик «Молот»',
-    maxHull: 180,
+    maxHull: 215,
     maxSpeed: 42,
     boostSpeed: 62,
     accel: 26,
@@ -264,7 +264,7 @@ export const AIRCRAFT_SPECS = {
   },
   attacker: {
     name: 'Штурмовик «Клык»',
-    maxHull: 140,
+    maxHull: 170,
     maxSpeed: 56,
     boostSpeed: 84,
     accel: 46,
@@ -2219,16 +2219,17 @@ export class ExplorerAircraft {
         if (!this._playerDmgTrail && typeof BABYLON.TrailMesh === 'function' && !(this.scene.getEngine() instanceof BABYLON.NullEngine)) {
           if (!this._playerDmgSmokeMat || this._playerDmgSmokeMat.isDisposed) {
             const sm = new BABYLON.StandardMaterial('acPlayerDmgSmokeMat', this.scene);
-            sm.emissiveColor = c3('#4a3224');
+            sm.emissiveColor = c3('#523a2c');
             sm.diffuseColor = new BABYLON.Color3(0, 0, 0);
             sm.disableLighting = true;
             sm.backFaceCulling = false;
             sm.depthWrite = false;
-            sm.alpha = 0.50;
+            sm.alpha = 0.36;
+            if (this.trailMat?.opacityTexture) sm.opacityTexture = this.trailMat.opacityTexture;
             this._playerDmgSmokeMat = sm;
           }
           const anchor = this.nozzles?.[0] || this.group;
-          this._playerDmgTrail = new BABYLON.TrailMesh('acPlayerDmgTrail', anchor, this.scene, 0.42, 26, true);
+          this._playerDmgTrail = new BABYLON.TrailMesh('acPlayerDmgTrail', anchor, this.scene, 0.26, 22, true);
           this._playerDmgTrail.material = this._playerDmgSmokeMat;
           this._playerDmgTrail.isPickable = false;
         }

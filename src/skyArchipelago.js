@@ -82,11 +82,17 @@ function registerSkyShaders() {
         vec3 d = normalize(vLocalDir);
         float h = d.y;
 
-        // Rich cinematic golden-hour sky palette: deep sapphire zenith, luminous azure mid-sky, warm apricot-gold horizon
-        vec3 zenithCol = mix(vec3(0.05, 0.16, 0.42), vec3(0.09, 0.27, 0.56), uTimeOfDay);
-        vec3 midSkyCol = mix(vec3(0.22, 0.43, 0.69), vec3(0.32, 0.56, 0.80), uTimeOfDay);
-        vec3 horizCol = vec3(0.92, 0.84, 0.72);
-        vec3 abyssCol = vec3(0.74, 0.76, 0.82);
+        // Theme-aware sky palette: Night (uTimeOfDay < 0.1) | Storm (0.25) | Sunset (0.72) | Dawn (0.92)
+        float nightMask = 1.0 - smoothstep(0.02, 0.18, uTimeOfDay);
+        vec3 dayZenith = mix(vec3(0.05, 0.16, 0.42), vec3(0.09, 0.27, 0.56), uTimeOfDay);
+        vec3 dayMid = mix(vec3(0.22, 0.43, 0.69), vec3(0.32, 0.56, 0.80), uTimeOfDay);
+        vec3 dayHoriz = vec3(0.92, 0.84, 0.72);
+        vec3 dayAbyss = vec3(0.74, 0.76, 0.82);
+
+        vec3 zenithCol = mix(dayZenith, vec3(0.008, 0.016, 0.048), nightMask);
+        vec3 midSkyCol = mix(dayMid, vec3(0.022, 0.042, 0.095), nightMask);
+        vec3 horizCol = mix(dayHoriz, vec3(0.055, 0.090, 0.165), nightMask);
+        vec3 abyssCol = mix(dayAbyss, vec3(0.015, 0.025, 0.055), nightMask);
 
         vec3 col;
         if (h >= 0.0) {
@@ -98,18 +104,22 @@ function registerSkyShaders() {
           col = mix(horizCol, abyssCol, smoothstep(0.0, -0.35, h));
         }
 
-        // High altitude wispy cirrus streaks lit by golden sun (fast 2-octave fbm)
+        // High altitude wispy cirrus streaks lit by golden sun (or faint silver moon at night)
         vec3 sunSkyDir = normalize(vec3(uSunDir.x, 0.125, uSunDir.z));
         float sunDot = max(0.0001, dot(d, sunSkyDir));
         if (h > 0.03) {
           vec2 uv = d.xz / (h + 0.20) * 1.35 + vec2(uTime * 0.0035, uTime * 0.0018);
           float c1 = fbm(uv);
           float wisps = smoothstep(0.46, 0.84, c1) * smoothstep(0.03, 0.24, h);
-          vec3 wispCol = mix(vec3(0.62, 0.74, 0.90), vec3(1.00, 0.82, 0.52), pow(sunDot, 1.4));
-          col = mix(col, wispCol, wisps * 0.44);
+          vec3 wispCol = mix(
+            mix(vec3(0.62, 0.74, 0.90), vec3(1.00, 0.82, 0.52), pow(sunDot, 1.4)),
+            vec3(0.10, 0.16, 0.28),
+            nightMask
+          );
+          col = mix(col, wispCol, wisps * mix(0.44, 0.24, nightMask));
         }
 
-        // Painted 360-degree ether-current panorama, with procedural poles/seam blending.
+        // Painted 360-degree ether-current panorama (heavily dimmed at night so night sky stays truly dark)
         vec2 artUv=vec2(fract(atan(d.z,d.x)/6.2831853+.5+uTime*.00008),acos(clamp(d.y,-1.0,1.0))/3.14159265);
         vec3 skyArt=pow(texture2D(uSkyArtwork,artUv).rgb,vec3(1.92)) * vec3(1.08, 1.04, 1.01);
         float seamDistance=min(artUv.x,1.0-artUv.x);
@@ -118,27 +128,38 @@ function registerSkyShaders() {
           skyArt=mix(pow(seamArt,vec3(1.92)) * vec3(1.08, 1.04, 1.01),skyArt,smoothstep(0.0,.035,seamDistance));
         }
         float artWeight=smoothstep(.0,.14,artUv.y)*(1.0-smoothstep(.94,1.0,artUv.y))*smoothstep(-.20,.04,h);
-        col=mix(col,skyArt,artWeight*.74);
+        col=mix(col,skyArt * mix(1.0, 0.08, nightMask), artWeight * mix(0.74, 0.30, nightMask));
 
-        // Luminous Golden Sun Disk + Soft Atmospheric Mie Scattering + Gentle Crepuscular Sunbeams
+        // Crisp twinkling night stars when nightMask > 0.1
+        if (nightMask > 0.05 && h > 0.04) {
+          vec2 starGrid = floor(d.xz / (h + 0.35) * 140.0);
+          float sRand = hash21(starGrid);
+          if (sRand > 0.992) {
+            float twinkle = 0.65 + 0.35 * sin(uTime * 2.5 + sRand * 120.0);
+            col += vec3(0.75, 0.86, 1.0) * twinkle * nightMask * smoothstep(0.04, 0.25, h) * 0.95;
+          }
+        }
+
+        // Luminous Golden Sun Disk (day) OR Cool Silver Moon Halo (night)
         float rayWave = 0.5 + 0.5 * sin((d.x * 16.0 - d.y * 22.0) + uTime * 0.10) * cos((d.z * 14.0 + d.y * 18.0) - uTime * 0.07);
         float godRays = pow(sunDot, 16.0) * smoothstep(0.25, 0.88, rayWave) * (1.0 - smoothstep(0.9965, 0.9985, sunDot)) * 0.38;
 
-        // Warm golden-amber atmospheric Mie scattering + subtle sunset horizon glow
-        col += vec3(1.00, 0.52, 0.16) * pow(sunDot, 4.5) * 0.48 * (1.0 - smoothstep(0.05, 0.68, abs(h - 0.10)));
-        col += vec3(1.00, 0.78, 0.36) * (pow(sunDot, 24.0) * 0.62 + godRays);
-        float horizBand = exp(-abs(h - 0.008) * 9.0);
-        col = mix(col, vec3(0.98, 0.82, 0.60), horizBand * (0.22 + 0.34 * pow(sunDot, 1.8)));
+        vec3 dayMie = vec3(1.00, 0.52, 0.16) * pow(sunDot, 4.5) * 0.48 * (1.0 - smoothstep(0.05, 0.68, abs(h - 0.10)))
+                    + vec3(1.00, 0.78, 0.36) * (pow(sunDot, 24.0) * 0.62 + godRays);
+        vec3 nightMie = vec3(0.22, 0.36, 0.62) * pow(sunDot, 12.0) * 0.35;
+        col += mix(dayMie, nightMie, nightMask);
 
-        // Soft multi-layered solar corona & bright warm-ivory core (avoids harsh cartoon ring)
+        float horizBand = exp(-abs(h - 0.008) * 9.0);
+        col = mix(col, mix(vec3(0.98, 0.82, 0.60), vec3(0.07, 0.11, 0.20), nightMask), horizBand * (0.22 + 0.34 * pow(sunDot, 1.8)) * mix(1.0, 0.45, nightMask));
+
         float coronaSoft = smoothstep(0.9910, 0.9978, sunDot);
         float solarCore = smoothstep(0.9974, 0.9988, sunDot);
-        col = mix(col, vec3(1.00, 0.82, 0.36), coronaSoft * 0.72);
-        col = mix(col, vec3(1.00, 0.98, 0.88), solarCore);
-        col += vec3(0.50, 0.38, 0.18) * solarCore;
+        col = mix(col, mix(vec3(1.00, 0.82, 0.36), vec3(0.45, 0.64, 0.92), nightMask), coronaSoft * mix(0.72, 0.45, nightMask));
+        col = mix(col, mix(vec3(1.00, 0.98, 0.88), vec3(0.84, 0.92, 1.00), nightMask), solarCore);
+        col += mix(vec3(0.50, 0.38, 0.18), vec3(0.18, 0.24, 0.36), nightMask) * solarCore;
 
         vec4 clouds = vec4(0.0);
-        if(uVolumetricClouds>.5)clouds=cloudVolume(uCameraPosition,d)*.58;
+        if(uVolumetricClouds>.5)clouds=cloudVolume(uCameraPosition,d) * mix(0.58, 0.16, nightMask);
         col = col*(1.0-clouds.a)+clouds.rgb;
         gl_FragColor = vec4(col, 1.0);
         #include<imageProcessingCompatibility>
@@ -171,6 +192,7 @@ function registerSkyShaders() {
       uniform float uOpacity;
       uniform vec3 uCamPos;
       uniform vec3 uSunDir;
+      uniform float uTimeOfDay;
 
       float hash21(vec2 p) {
         p = fract(p * vec2(127.1, 311.7));
@@ -210,14 +232,23 @@ function registerSkyShaders() {
         float sunAlign = max(0.0001, dot(toFrag / max(1.0, dist), sunXZ));
         float sunGlint = pow(sunAlign, 5.0) * smoothstep(0.45, 0.92, lit);
 
-        vec3 shadowCol = mix(vec3(0.26, 0.44, 0.72), vec3(0.48, 0.42, 0.56), sunAlign * 0.42);
-        vec3 litCol = vec3(1.00, 0.96, 0.88);
-        vec3 warmRim = vec3(1.00, 0.82, 0.48);
+        float nightMask = 1.0 - smoothstep(0.02, 0.18, uTimeOfDay);
+        vec3 shadowCol = mix(
+          mix(vec3(0.26, 0.44, 0.72), vec3(0.48, 0.42, 0.56), sunAlign * 0.42),
+          vec3(0.015, 0.03, 0.075),
+          nightMask
+        );
+        vec3 litCol = mix(vec3(1.00, 0.96, 0.88), vec3(0.09, 0.15, 0.28), nightMask);
+        vec3 warmRim = mix(vec3(1.00, 0.82, 0.48), vec3(0.24, 0.38, 0.62), nightMask);
         vec3 col = mix(shadowCol, litCol, lit);
         col = mix(col, warmRim, smoothstep(0.42, 0.94, lit) * 0.55 + sunGlint * 0.48);
 
         float horizonBlend = smoothstep(950.0, 2700.0, dist);
-        vec3 horizonHaze = mix(vec3(0.68, 0.82, 0.94), vec3(0.98, 0.82, 0.60), pow(sunAlign, 1.8) * 0.78);
+        vec3 horizonHaze = mix(
+          mix(vec3(0.68, 0.82, 0.94), vec3(0.98, 0.82, 0.60), pow(sunAlign, 1.8) * 0.78),
+          vec3(0.045, 0.075, 0.145),
+          nightMask
+        );
         col = mix(col, horizonHaze, horizonBlend);
         float alpha = density * uOpacity * (1.0-smoothstep(1700.0,6000.0,dist));
         if (alpha < 0.02) discard;
@@ -1987,7 +2018,7 @@ export class SkyArchipelagoWorld {
     this.sunDir = new BABYLON.Vector3(isDawn ? 0.62 : -0.66, isNight ? 0.36 : 0.28, -0.69).normalize();
     this.sunDirLight = new BABYLON.DirectionalLight('archSunLight', this.sunDir.scale(-1), this.scene);
     this.sunDirLight.position = this.sunDir.scale(220);
-    this.sunDirLight.intensity = isNight ? 0.95 : isStorm ? 2.05 : isDawn ? 3.55 : 3.35;
+    this.sunDirLight.intensity = isNight ? 0.52 : isStorm ? 2.05 : isDawn ? 3.55 : 3.35;
     this.sunDirLight.diffuse = c3(isNight ? '#82aef5' : isStorm ? '#ff9c6e' : isDawn ? '#ffd8c4' : '#ffe4b5');
     this.sunDirLight.specular = c3(isNight ? '#9ec0ff' : isStorm ? '#ffb284' : '#ffcb88');
     this._baseSunIntensity = this.sunDirLight.intensity;
@@ -2011,7 +2042,7 @@ export class SkyArchipelagoWorld {
     }
 
     this.graphics.applyQuality('high', this.shadowGenerator);
-    this.scene.environmentIntensity = isNight ? 0.32 : isStorm ? 0.54 : 0.72;
+    this.scene.environmentIntensity = isNight ? 0.16 : isStorm ? 0.54 : 0.72;
     const ipc = this.scene.imageProcessingConfiguration;
     ipc.toneMappingEnabled = true;
     ipc.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
@@ -2068,7 +2099,7 @@ export class SkyArchipelagoWorld {
         {
           defines:['#define IMAGEPROCESSINGPOSTPROCESS'],
         attributes: ['position', 'uv'],
-          uniforms: ['world', 'worldViewProjection', 'uTime', 'uScale', 'uOpacity', 'uCamPos', 'uSunDir'],
+          uniforms: ['world', 'worldViewProjection', 'uTime', 'uScale', 'uOpacity', 'uCamPos', 'uSunDir', 'uTimeOfDay'],
           needAlphaBlending: true,
         }
       );
@@ -2077,6 +2108,7 @@ export class SkyArchipelagoWorld {
       mat.setFloat('uOpacity', sl.opacity);
       mat.setVector3('uCamPos', new BABYLON.Vector3(0, 40, 0));
       mat.setVector3('uSunDir', this.sunDir);
+      mat.setFloat('uTimeOfDay', this.timeOfDay);
       mat.backFaceCulling = false;
       plane.material = mat;
       this.cloudSeaMats.push(mat);
