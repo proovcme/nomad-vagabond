@@ -14,10 +14,10 @@ export const QUALITY_PRESETS = {
   medium: {
     label: 'Среднее',
     shadowSize: 1024,
-    shadowPCF: true,
+    shadowPCF: false,
     ssao: false,
-    bloom: true,
-    msaa: 2,
+    bloom: false,
+    msaa: 1,
     scaleFactor: 1.0,
     envIntensity: 0.78,
   },
@@ -221,7 +221,7 @@ export class GraphicsManager {
       this.pipeline = null;
     }
     try {
-      const pipe = new BABYLON.DefaultRenderingPipeline('nomadPipe', true, this.scene, [this.camera]);
+      const pipe = new BABYLON.DefaultRenderingPipeline('nomadPipe', Boolean(cfg.bloom), this.scene, [this.camera]);
       pipe.samples = cfg.msaa;
       pipe.fxaaEnabled = cfg.msaa <= 1;
       pipe.imageProcessingEnabled = Boolean(this.scene.metadata?.skyLighting); // One final linear→display transform for the entire sky scene

@@ -63,9 +63,7 @@ export class SkyCelestials {
       chip.material=this.primaryMaterial;this._configure(chip);this.chips.push(chip);
     });
 
-    // Colossal Ancient Broken Orbital Megastructure Ring arching across the sky ("Кольцо Предтеч")
-    this._buildOrbitalMegastructure();
-
+    // Kept clean: split shattered moon + debris arc (no orbital ring)
     this.update(0);
     scene.onDisposeObservable.addOnce(()=>this.dispose());
   }
