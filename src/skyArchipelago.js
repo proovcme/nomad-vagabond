@@ -888,6 +888,38 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
     strut.material = pipeMat;
   }
 
+  // Carrier Arrestor Wires across the runway deck (catch landing aircraft smoothly!)
+  for (const ax of [24.0, 30.0, 36.0]) {
+    const wire = BABYLON.MeshBuilder.CreateCylinder(`vagArrestorWire_${ax}`, { diameter: 0.10, height: 18.4, tessellation: 6 }, scene);
+    wire.parent = asteroidBase.group;
+    wire.rotation.x = Math.PI * 0.5;
+    wire.position.set(ax, 3.43, 0.0);
+    wire.material = pipeMat;
+    wire.isPickable = false;
+  }
+
+  // Runway Deck Signal Officer (LSO) with glowing marshaling wands on the port apron
+  const lsoRoot = new BABYLON.TransformNode('vagLsoOfficer', scene);
+  lsoRoot.parent = asteroidBase.group;
+  lsoRoot.position.set(12.5, 3.38, -8.5);
+  lsoRoot.rotation.y = 0.35;
+  const lsoBody = BABYLON.MeshBuilder.CreateCylinder('vagLsoBody', { diameterTop: 0.44, diameterBottom: 0.52, height: 1.35, tessellation: 8 }, scene);
+  lsoBody.parent = lsoRoot; lsoBody.position.y = 0.85; lsoBody.material = hazardMat; lsoBody.isPickable = false;
+  const lsoHead = BABYLON.MeshBuilder.CreateSphere('vagLsoHead', { diameter: 0.36, segments: 6 }, scene);
+  lsoHead.parent = lsoRoot; lsoHead.position.y = 1.72; lsoHead.material = hullMat; lsoHead.isPickable = false;
+  const lsoArms = [];
+  for (const side of [-1, 1]) {
+    const armPiv = new BABYLON.TransformNode(`vagLsoArm_${side}`, scene);
+    armPiv.parent = lsoRoot;
+    armPiv.position.set(side * 0.32, 1.38, 0);
+    const arm = BABYLON.MeshBuilder.CreateCylinder(`vagLsoArmMesh_${side}`, { diameter: 0.13, height: 0.65, tessellation: 6 }, scene);
+    arm.parent = armPiv; arm.position.set(side * 0.18, 0.25, 0); arm.rotation.z = side * -0.55; arm.material = hullMat; arm.isPickable = false;
+    const wand = BABYLON.MeshBuilder.CreateCylinder(`vagLsoWand_${side}`, { diameter: 0.08, height: 0.52, tessellation: 6 }, scene);
+    wand.parent = armPiv; wand.position.set(side * 0.42, 0.58, 0); wand.rotation.z = side * -0.35; wand.material = warmGlowMat; wand.isPickable = false;
+    lsoArms.push(armPiv);
+  }
+  asteroidBase.lsoArms = lsoArms;
+
   // Yellow-black hazard threshold at the runway bow (x = 55) + centerline dashes (well above runway top y = 3.38)
   const endHazard = BABYLON.MeshBuilder.CreateBox('vagRunwayThreshold', { width: 2.2, height: 0.14, depth: 19.5 }, scene);
   endHazard.parent = asteroidBase.group;
@@ -1912,13 +1944,17 @@ function sceneOr(s) {
  * - Keeps SolarWorld / TerrainPlanet completely intact as a separate mode
  */
 export class SkyArchipelagoWorld {
-  constructor(scene, seedStr = 'ARCHIPELAGO-1') {
+  constructor(scene, seedStr = 'ARCHIPELAGO-1', theme = 'sunset') {
     this.scene = scene;
     this.seedStr = seedStr;
+    this.theme = theme || 'sunset';
     this.simTime = 0;
-    this.timeOfDay = 0.72; // 0 = deep twilight, 1 = bright sunlit afternoon
+    this.timeOfDay = this.theme === 'night' ? 0.0 : this.theme === 'storm' ? 0.25 : this.theme === 'dawn' ? 0.92 : 0.72;
     this.isSkyWorld = true;
     this.worldOriginOffset = new BABYLON.Vector3(0, 0, 0);
+    this.searchlights = [];
+    this._lightningCd = 4.0;
+    this._lightningFlash = 0;
 
     // Compatible interface fields expected by GameUI / main loop
     this.planets = [];
@@ -1943,23 +1979,28 @@ export class SkyArchipelagoWorld {
     // Graphics pipeline & twilight IBL probe
     this.graphics = new GraphicsManager(this.scene, this.scene.activeCamera);
 
-    // Rich Golden-Afternoon Raking Sun + Cool Sky Hemisphere + Warm Rim Fill for deep 3D shadow contrast
-    this.sunDir = new BABYLON.Vector3(-0.66, 0.28, -0.69).normalize();
+    // Theme-driven Atmosphere & Lighting (sunset | storm | night | dawn)
+    const isNight = this.theme === 'night';
+    const isStorm = this.theme === 'storm';
+    const isDawn = this.theme === 'dawn';
+
+    this.sunDir = new BABYLON.Vector3(isDawn ? 0.62 : -0.66, isNight ? 0.36 : 0.28, -0.69).normalize();
     this.sunDirLight = new BABYLON.DirectionalLight('archSunLight', this.sunDir.scale(-1), this.scene);
     this.sunDirLight.position = this.sunDir.scale(220);
-    this.sunDirLight.intensity = 3.35;
-    this.sunDirLight.diffuse = c3('#ffe4b5');
-    this.sunDirLight.specular = c3('#ffcb88');
+    this.sunDirLight.intensity = isNight ? 0.95 : isStorm ? 2.05 : isDawn ? 3.55 : 3.35;
+    this.sunDirLight.diffuse = c3(isNight ? '#82aef5' : isStorm ? '#ff9c6e' : isDawn ? '#ffd8c4' : '#ffe4b5');
+    this.sunDirLight.specular = c3(isNight ? '#9ec0ff' : isStorm ? '#ffb284' : '#ffcb88');
+    this._baseSunIntensity = this.sunDirLight.intensity;
 
     this.rimFillLight = new BABYLON.DirectionalLight('archRimFillLight', new BABYLON.Vector3(0.62, -0.52, 0.58).normalize(), this.scene);
-    this.rimFillLight.intensity = 0.42;
-    this.rimFillLight.diffuse = c3('#ffc478');
-    this.rimFillLight.specular = c3('#ffe0b2');
+    this.rimFillLight.intensity = isNight ? 0.24 : isStorm ? 0.34 : 0.42;
+    this.rimFillLight.diffuse = c3(isNight ? '#4d78b8' : isStorm ? '#d47c58' : '#ffc478');
+    this.rimFillLight.specular = c3(isNight ? '#7aa6e0' : '#ffe0b2');
 
     this.hemiLight = new BABYLON.HemisphericLight('archHemiLight', new BABYLON.Vector3(0, 1, 0), this.scene);
-    this.hemiLight.intensity = 0.38;
-    this.hemiLight.diffuse = c3('#a8d0f2');
-    this.hemiLight.groundColor = c3('#5a4432');
+    this.hemiLight.intensity = isNight ? 0.26 : isStorm ? 0.32 : 0.38;
+    this.hemiLight.diffuse = c3(isNight ? '#2c4670' : isStorm ? '#707e96' : isDawn ? '#c2e0f8' : '#a8d0f2');
+    this.hemiLight.groundColor = c3(isNight ? '#151c29' : isStorm ? '#3c3430' : '#5a4432');
     this.scene.environmentIntensity = 1.25;
 
     if (this.scene.getEngine().constructor.name !== 'NullEngine') {
@@ -1970,25 +2011,25 @@ export class SkyArchipelagoWorld {
     }
 
     this.graphics.applyQuality('high', this.shadowGenerator);
-    this.scene.environmentIntensity = 0.72;
+    this.scene.environmentIntensity = isNight ? 0.32 : isStorm ? 0.54 : 0.72;
     const ipc = this.scene.imageProcessingConfiguration;
     ipc.toneMappingEnabled = true;
     ipc.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
-    ipc.exposure = 1.06;
-    ipc.contrast = 1.16;
+    ipc.exposure = isNight ? 0.62 : isStorm ? 0.90 : isDawn ? 1.10 : 1.06;
+    ipc.contrast = isNight ? 1.24 : isStorm ? 1.22 : 1.16;
     ipc.vignetteEnabled = true;
-    ipc.vignetteWeight = 1.45;
+    ipc.vignetteWeight = isNight ? 1.85 : 1.45;
     ipc.vignetteStretch = 0.45;
     ipc.vignetteColor = new BABYLON.Color4(0.04, 0.06, 0.12, 0);
     if (this.graphics.pipeline) {
-      this.graphics.pipeline.bloomWeight = 0.18;
-      this.graphics.pipeline.bloomThreshold = 0.92;
+      this.graphics.pipeline.bloomWeight = isNight ? 0.30 : 0.18;
+      this.graphics.pipeline.bloomThreshold = isNight ? 0.80 : 0.92;
     }
 
-    // Golden-hour aerial perspective haze (gives distant islands dramatic atmospheric depth)
+    // Aerial perspective haze tailored per mission archipelago
     this.scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-    this.scene.fogColor = c3('#d8cec0');
-    this.scene.fogDensity = 0.00042;
+    this.scene.fogColor = c3(isNight ? '#162034' : isStorm ? '#6e5c58' : isDawn ? '#e4d6d2' : '#d8cec0');
+    this.scene.fogDensity = isNight ? 0.00056 : isStorm ? 0.00062 : isDawn ? 0.00038 : 0.00042;
 
     // 1. Sky Dome
     this.skyDome = BABYLON.MeshBuilder.CreateSphere('archSkyDome', { diameter: 7600, segments: 24, sideOrientation: BABYLON.Mesh.BACKSIDE }, this.scene);
@@ -2093,8 +2134,16 @@ export class SkyArchipelagoWorld {
 
   _buildIslands() {
     const seedValue = Array.from(this.seedStr).reduce((h,c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261);
-    this.forestIsland = new ForestIsland(this.scene, new BABYLON.Vector3(340, 85, -260), seedValue, this.shadowGenerator);
-    this.industrialIsland = new IndustrialIsland(this.scene, new BABYLON.Vector3(-290, -10, -340), seedValue + 201, this.shadowGenerator);
+    // Mission-specific archipelago layouts (default sunset keeps exact prologue coordinates)
+    const layouts = {
+      sunset: { forest: [340, 85, -260], ind: [-290, -10, -340] },
+      storm:  { forest: [-330, 62, -290], ind: [310, 20, -310] },
+      night:  { forest: [260, 105, 290], ind: [-310, 15, -240] },
+      dawn:   { forest: [-260, 95, 240], ind: [340, 5, -220] },
+    };
+    const lay = layouts[this.theme] || layouts.sunset;
+    this.forestIsland = new ForestIsland(this.scene, new BABYLON.Vector3(...lay.forest), seedValue, this.shadowGenerator);
+    this.industrialIsland = new IndustrialIsland(this.scene, new BABYLON.Vector3(...lay.ind), seedValue + 201, this.shadowGenerator);
     this.islands.push(this.forestIsland, this.industrialIsland);
     this.landmarks = new ArchipelagoLandmarks(this.scene, this, this.shadowGenerator);
     this._buildShatteredWorldField(seedValue);
@@ -2406,6 +2455,29 @@ export class SkyArchipelagoWorld {
     if (!this.islands.includes(asteroidBase)) {
       this.islands.unshift(asteroidBase);
     }
+    // Sweeping Anti-Aircraft Searchlights on Vagabond during Night Intercept missions!
+    if (this.theme === 'night' && !(this.scene.getEngine() instanceof BABYLON.NullEngine)) {
+      const beamMat = new BABYLON.StandardMaterial('vagSearchlightBeamMat', this.scene);
+      beamMat.emissiveColor = c3('#cfe4ff');
+      beamMat.diffuseColor = new BABYLON.Color3(0, 0, 0);
+      beamMat.disableLighting = true;
+      beamMat.backFaceCulling = false;
+      beamMat.depthWrite = false;
+      beamMat.alpha = 0.14;
+      beamMat.alphaMode = BABYLON.Engine.ALPHA_ADD;
+      for (const [idx, sp] of [[-12, 22.0, -18], [14, 15.8, 25]].entries()) {
+        const piv = new BABYLON.TransformNode(`vagSearchlightPiv_${idx}`, this.scene);
+        piv.parent = asteroidBase.group;
+        piv.position.set(...sp);
+        const cone = BABYLON.MeshBuilder.CreateCylinder(`vagSearchlightBeam_${idx}`, { diameterTop: 26, diameterBottom: 1.2, height: 220, tessellation: 14 }, this.scene);
+        cone.parent = piv;
+        cone.position.y = 110;
+        cone.material = beamMat;
+        cone.isPickable = false;
+        cone.checkCollisions = false;
+        this.searchlights.push({ piv, phase: idx * 2.4 });
+      }
+    }
     // Pre-warm materials asynchronously so sharp camera turns never stall on synchronous WebGL shader compilation
     if (!(this.scene.getEngine() instanceof BABYLON.NullEngine)) {
       this.scene.autoClear = false;
@@ -2562,6 +2634,31 @@ export class SkyArchipelagoWorld {
     }
     if (this.forestIsland) this.forestIsland.update(dt);
     if (this.industrialIsland) this.industrialIsland.update(dt);
+    // Animate LSO officer marshaling wands on the Vagabond runway
+    if (this.vagabondBase?.lsoArms?.length) {
+      const w = Math.sin(this.simTime * 5.2);
+      this.vagabondBase.lsoArms[0].rotation.z = 0.35 + w * 0.55;
+      this.vagabondBase.lsoArms[1].rotation.z = -0.35 - w * 0.55;
+    }
+    // Sweep AA searchlight beams across the night sky
+    for (const sl of this.searchlights || []) {
+      sl.piv.rotation.y = Math.sin(this.simTime * 0.42 + sl.phase) * 1.15;
+      sl.piv.rotation.x = 0.38 + Math.cos(this.simTime * 0.65 + sl.phase) * 0.28;
+    }
+    // Periodic storm lightning flashes illuminating the crimson storm clouds
+    if (this.theme === 'storm' && this.sunDirLight) {
+      this._lightningCd -= dt;
+      if (this._lightningCd <= 0) {
+        this._lightningCd = 5.5 + Math.random() * 6.5;
+        this._lightningFlash = 0.24;
+      }
+      if (this._lightningFlash > 0) {
+        this._lightningFlash = Math.max(0, this._lightningFlash - dt);
+        this.sunDirLight.intensity = this._baseSunIntensity + (this._lightningFlash > 0.14 ? 4.2 : 1.6);
+      } else {
+        this.sunDirLight.intensity = this._baseSunIntensity;
+      }
+    }
     this.updateStreaming(cameraPos);
   }
 }

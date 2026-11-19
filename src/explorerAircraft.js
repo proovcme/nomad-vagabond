@@ -1422,6 +1422,10 @@ export class ExplorerAircraft {
         if (e.code === 'KeyT') this._cycleShowSmoke = true;
         if (e.code === 'KeyL') this._toggleLandingGear = true;
         if (e.code === 'KeyH') this._requestFlares = true;
+        if (e.code === 'Digit1' || e.code === 'Tab') {
+          if (e.code === 'Tab') e.preventDefault();
+          this._toggleCockpitView = true;
+        }
       }
       this.keys[e.code] = true;
     });
@@ -2399,7 +2403,32 @@ export class ExplorerAircraft {
       this.freePitch = 0.14 + (this.freePitch - 0.14) * recenter;
     }
 
+    if (this._toggleCockpitView) {
+      this._toggleCockpitView = false;
+      this.cockpitView = !this.cockpitView;
+      this.camInited = false;
+      if (typeof document !== 'undefined') {
+        const canopyEl = document.getElementById('cockpit-canopy-frame');
+        if (canopyEl) canopyEl.style.display = this.cockpitView ? 'block' : 'none';
+      }
+    }
     const right = BABYLON.Vector3.Cross(up, forward).normalize();
+    if (this.cockpitView && !this.dockedAsteroid && !this.dockedPlanet) {
+      const eyePos = this.group.position.add(forward.scale(1.25)).add(up.scale(1.52));
+      const lookTgt = eyePos.add(forward.scale(48));
+      this.camera.position.copyFrom(eyePos);
+      if (this.recoilShake > 0.001) {
+        this.camera.position.addInPlace(new BABYLON.Vector3(
+          (Math.random() - 0.5) * this.recoilShake * 0.45,
+          (Math.random() - 0.5) * this.recoilShake * 0.45,
+          (Math.random() - 0.5) * this.recoilShake * 0.45
+        ));
+        this.recoilShake *= Math.exp(-12.0 * dt);
+      }
+      this.camera.upVector.copyFrom(up);
+      this.camera.setTarget(lookTgt);
+      return;
+    }
     let camBackDir = forward.scale(-1);
     if (Math.abs(this.freeYaw) > 0.005 || Math.abs(this.freePitch - 0.14) > 0.005) {
       const yawQ = BABYLON.Quaternion.RotationAxis(up, this.freeYaw);

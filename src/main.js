@@ -21,6 +21,15 @@ import { NavigatorPlayer } from './player.js?v=mission1';
 import { GameUI } from './ui.js?v=mission1';
 import { BenchmarkCoast } from './benchmarkCoast.js?v=mission1';
 import { SkyArchipelagoWorld } from './skyArchipelago.js?v=mission1';
+import { EnemyDreadnought } from './dreadnought.js?v=mission1';
+
+const MISSION_CONFIGS = Object.freeze({
+  prologue:    { seed: 'AETHER-742', theme: 'sunset', title: 'Пролог · Закатный архипелаг', startVariant: 'cargo' },
+  dreadnought: { seed: 'STORM-808',  theme: 'storm',  title: 'Охота на Дредноут · Штормовой архипелаг', startVariant: 'attacker' },
+  night:       { seed: 'LUNA-309',   theme: 'night',  title: 'Ночной перехват · Лунный архипелаг', startVariant: 'fighter' },
+  convoy:      { seed: 'DAWN-512',   theme: 'dawn',   title: 'Перехват конвоя · Рассветный архипелаг', startVariant: 'bomber' },
+});
+let activeMissionTheme = 'sunset';
 
 const urlParams = new URLSearchParams(window.location.search);
 const shotMode = urlParams.get('shot');
@@ -171,7 +180,7 @@ function initWorld(seedStr) {
   scene.activeCamera = camera;
 
   if (worldMode === 'sky') {
-    world = new SkyArchipelagoWorld(scene, currentSeed);
+    world = new SkyArchipelagoWorld(scene, currentSeed, activeMissionTheme);
     asteroidBase = new AsteroidBase(scene, 742);
     world.registerVagabondBase(asteroidBase);
     construction = new IslandConstruction(scene, asteroidBase, world.shadowGenerator);
@@ -911,8 +920,79 @@ document.getElementById('tab-map-btn').addEventListener('click', () => switchDev
 document.getElementById('tab-settings-btn').addEventListener('click', () => switchDeviceTab('settings'));
 document.getElementById('tab-controls-btn').addEventListener('click', () => switchDeviceTab('controls'));
 
-document.getElementById('start-btn').addEventListener('click', () => startRun(seedInput.value));
+async function startStandaloneMission(missionId) {
+  const cfg = MISSION_CONFIGS[missionId];
+  if (!cfg) return;
+  activeMissionTheme = cfg.theme;
+  const generation = runGeneration + 1;
+  await startRun(cfg.seed);
+  if (generation !== runGeneration) return;
+  const canopyEl = document.getElementById('cockpit-canopy-frame');
+  if (canopyEl) canopyEl.style.display = 'none';
+  prologue?.hide();
+  document.body.classList.remove('in-prologue');
+  demoState.missionId = missionId;
+  demoState.powerOn = true;
+  demoState.stage = 'combat';
+  demoState.combatWave = 1;
+  construction.stage = null;
+  construction.addSalvage(60);
+  for (const [i, type] of ['generator', 'turret', 'radar'].entries()) construction.build(type, i);
+
+  // Switch to the mission's hero aircraft class & launch directly into airborne combat near Vagabond
+  if (cfg.startVariant && ship.setVariant) {
+    ship.setVariant(cfg.startVariant);
+  }
+  const vPos = asteroidBase.group.position;
+  player.boardShip();
+  ship.undockFromAsteroid({ force: true });
+  ship.hull = ship.maxHull || ship.spec?.maxHull || 120;
+  ship.fuel = 100;
+  ship.throttle = 0.72;
+  const startPos = vPos.add(new BABYLON.Vector3(115, 72, 165));
+  const lookDir = vPos.add(new BABYLON.Vector3(0, 88, -110)).subtract(startPos).normalize();
+  ship.group.position.copyFrom(startPos);
+  ship.group.rotationQuaternion = aircraftHeading(lookDir);
+  ship.velocity.copyFrom(lookDir.scale(42));
+  ship.camInited = false;
+  controlMode = 'aircraft';
+  ui.setMode('aircraft');
+  ui.showHUD(true);
+
+  if (missionId === 'dreadnought') {
+    demoState.dreadnought = new EnemyDreadnought(scene, vPos, { isConvoy: false, orbitRadius: 220, altitude: 105 });
+    spawnEnemySquadron(vPos, true);
+    demoState.totalEnemies = 3;
+    ui.showToast('⚡ МИССИЯ: Охота на Дредноут (Штормовой архипелаг)', 4200);
+    ui.showRadio('dispatcher', 'Внимание! В штормовом секторе замечен воздушный линкор «Голиаф» и пара истребителей. Выбей его зенитные башни Flak и энергоблок гондолы!', 7500);
+  } else if (missionId === 'night') {
+    spawnEnemySquadron(vPos, false);
+    spawnEnemySquadron(vPos, true);
+    demoState.totalEnemies = 3;
+    ui.showToast('🌙 МИССИЯ: Ночной перехват (Прожекторы ПВО активны)', 4200);
+    ui.showRadio('dispatcher', 'Ночной налёт на «Бродягу»! Прожекторы и Flak 88 уже работают. Ты на «Осе» — перехвати звено в темноте и не подпусти к базе!', 7500);
+  } else if (missionId === 'convoy') {
+    demoState.dreadnought = new EnemyDreadnought(scene, vPos, { isConvoy: true, orbitRadius: 245, altitude: 92 });
+    spawnEnemySquadron(vPos, true);
+    demoState.totalEnemies = 3;
+    ui.showToast('🌅 МИССИЯ: Перехват конвоя «Арго» (Рассветный архипелаг)', 4200);
+    ui.showRadio('dispatcher', 'На рассвете через сектор проходит транспортный дирижабль «Арго» под прикрытием истребителей. Разбомби транспортник и сбей охрану!', 7500);
+  }
+}
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  activeMissionTheme = 'sunset';
+  const canopyEl = document.getElementById('cockpit-canopy-frame');
+  if (canopyEl) canopyEl.style.display = 'none';
+  startRun(seedInput.value);
+});
+document.getElementById('mission-dreadnought-btn')?.addEventListener('click', () => startStandaloneMission('dreadnought'));
+document.getElementById('mission-night-btn')?.addEventListener('click', () => startStandaloneMission('night'));
+document.getElementById('mission-convoy-btn')?.addEventListener('click', () => startStandaloneMission('convoy'));
 document.getElementById('hangar-start-btn').addEventListener('click',async()=>{
+  activeMissionTheme = 'sunset';
+  const canopyEl = document.getElementById('cockpit-canopy-frame');
+  if (canopyEl) canopyEl.style.display = 'none';
   const generation=runGeneration+1;await startRun(seedInput.value);if(generation!==runGeneration)return;
   demoState.freeFlight=true;demoState.powerOn=true;demoState.stage='free_flight';prologue?.hide();document.body.classList.remove('in-prologue');
   construction.stage=null;construction.addSalvage(40);for(const [i,type]of ['generator','turret','radar'].entries())construction.build(type,i);
@@ -2139,7 +2219,11 @@ engine.runRenderLoop(() => {
             demoState.onRunwayRollout = true;
             ship.recoilShake = Math.max(ship.recoilShake || 0, 0.35);
             audio?.playDock?.();
-            ui.showToast('🛬 Касание полосы! Удерживайте [S] до остановки (или [E])', 3000);
+            ui.showToast('🛬 Касание полосы! Аэрофинишёр тормозит борт (или [S])', 3000);
+          }
+          // Carrier arrestor wire smooth braking when rolling across x = 18..42
+          if (local.x >= 18 && local.x <= 42 && ship.velocity.length() > 8) {
+            ship.velocity.scaleInPlace(Math.exp(-dt * 2.2));
           }
           if (ship.velocity.length() < 13.5) {
             ship.dockOnAsteroid(asteroidBase);
@@ -2628,6 +2712,48 @@ engine.runRenderLoop(() => {
         }
       }
 
+      // Update Enemy Airship-Dreadnought / Convoy Transport (weak points, AA Flak 88 & epic sinking)
+      if (demoState.dreadnought && !demoState.dreadnought.disposed) {
+        const dr = demoState.dreadnought;
+        if (!demoState._enemyTracerMat || demoState._enemyTracerMat.isDisposed) {
+          demoState._enemyTracerMat = new BABYLON.StandardMaterial('enemyTracerSharedMat', scene);
+          demoState._enemyTracerMat.emissiveColor = BABYLON.Color3.FromHexString('#ff3b30');
+          demoState._enemyTracerMat.disableLighting = true;
+        }
+        dr.update(dt, ship.group.position, ship.velocity, playerInAirCombat, demoState.enemyShots, demoState._enemyTracerMat, spawnDemoExplosion, audio);
+
+        if (dr.alive) {
+          for (let pi = ship.projectiles.length - 1; pi >= 0; pi--) {
+            const pr = ship.projectiles[pi];
+            if (!pr.mesh || pr.mesh.isDisposed()) continue;
+            const dmg = pr.kind === 'bomb' ? 140 : (pr.kind === 'rocket' ? 95 : 16);
+            const res = dr.checkHit(pr.previousPosition, pr.mesh.position, dmg, spawnDemoExplosion);
+            if (res.hit) {
+              audio?.playHitmarker?.();
+              spawnDemoExplosion(res.hitPos || pr.mesh.position, pr.kind === 'bullet' ? 0.55 : 1.6);
+              pr.trail?.dispose();
+              pr.mesh.dispose(false, false);
+              ship.projectiles.splice(pi, 1);
+              if (res.weakPointDestroyed) {
+                audio?.playExplosion?.(0.95);
+                ui.showToast(`💥 Уничтожен узел: ${res.weakPointDestroyed}!`, 2800);
+              }
+              if (res.destroyed) {
+                demoState.kills++;
+                construction.addSalvage(80);
+                audio?.playExplosion?.(1.0);
+                ui.showToast(`🔥 ${dr.name} СБИТ! +80 лома`, 4500);
+                if (demoState.kills >= demoState.totalEnemies) {
+                  demoState.stage = 'return_to_base';
+                  ui.showRadio('dispatcher', 'Блестящая работа! Небо чистое, цель уничтожена. Возвращайся на «Бродягу» или выбирай новую миссию в меню.', 7000);
+                }
+                break;
+              }
+            }
+          }
+        }
+      }
+
       // Combat HUD: Gun Lead Pipper, Target HP Box, Off-screen Enemy Chevron & RWR Alert
       const leadEl = document.getElementById('lead-pipper');
       const boxEl = document.getElementById('target-box');
@@ -2637,6 +2763,7 @@ engine.runRenderLoop(() => {
       const rwrEl = document.getElementById('rwr-alert');
       if (rwrEl) rwrEl.style.display = incomingMissileWarning ? 'block' : 'none';
       const activeEnemies = [
+        ...(demoState.dreadnought?.alive ? [demoState.dreadnought] : []),
         ...(demoState.enemies || []).filter(e => e.alive && e.root && !e.root.isDisposed?.()),
         ...((world.jobs?.entities || []).filter(e => e.alive && e.kind === 'scout' && e.root && !e.root.isDisposed?.())),
       ];
