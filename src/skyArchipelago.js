@@ -9,6 +9,7 @@ import { finishRockHangar } from './hangar.js?v=mission1';
 import { fbm3 } from './planet.js?v=mission1';
 import { GraphicsManager } from './graphics.js?v=mission1';
 import { createRustedMetalTexture } from './textures.js?v=mission1';
+import { buildFlak88Turret } from './flak88.js?v=mission1';
 
 function c3(hex) {
   return BABYLON.Color3.FromHexString(hex);
@@ -1020,9 +1021,9 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
 
   const turretCollar = BABYLON.MeshBuilder.CreateCylinder('vagTurretMountCollar',{diameter:8.8,height:.18,tessellation:16},scene);
   turretCollar.parent=turretPlat;turretCollar.position.y=.89;turretCollar.material=concreteMat;turretCollar.receiveShadows=true;
-  // Real collar separates the imported base from the broad terrace cap.
-  asteroidBase.flakTurrets = [turretPlat];
-  instantiateGLBInto(scene, './assets/buildings/', 'flak_turret.glb', turretPlat, new BABYLON.Vector3(0, 1.06, 0), 1.0, 0.35, shadowGen);
+  // Authentic WWII 8.8cm FlaK 36/37 anti-aircraft battery with animated yaw, skyward elevation & barrel recoil
+  const mainFlak = buildFlak88Turret(scene, 'vagFlak88Main', turretPlat, new BABYLON.Vector3(0, 0.98, 0), 0.35, shadowGen);
+  asteroidBase.flakTurrets = [mainFlak];
 
   // Sculpted Quad-Tube Dieselpunk SAM (Surface-to-Air Missile) Launcher Battery solidly grounded on upper deck rim
   const samBase = new BABYLON.TransformNode('vagSamLauncher', scene);

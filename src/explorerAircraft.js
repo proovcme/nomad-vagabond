@@ -514,6 +514,7 @@ export class ExplorerAircraft {
       this.aircraftLightSockets = deriveAircraftLightSockets(res.meshes, glbRoot, variant);
       this._setupGlbWeaponAndTrailSockets(glbRoot, variant, glbProps);
       this._setupGlbControlSurfaceRig(res.meshes, variant);
+      if (this._upgrades) this.applyVisualUpgrades(this._upgrades);
       this._setLandingGear(Boolean(this.dockedAsteroid || this.dockedPlanet), true);
       if (this.contactShadow) {
         this.contactShadow.isVisible = Boolean(this.dockedAsteroid || this.dockedPlanet);
@@ -1647,6 +1648,119 @@ export class ExplorerAircraft {
     this.throttle = 0.6;
     this.dockedPlanet = null;
     this._setLandingGear(false);
+  }
+
+  /**
+   * Visually modifies the aircraft airframe to reflect installed workbench upgrades
+   * (riveted armor plates, copper turbo exhaust stacks, and extended finned gun barrels).
+   */
+  applyVisualUpgrades(upgrades = {}) {
+    this._upgrades = { armor: upgrades.armor || 0, engine: upgrades.engine || 0, guns: upgrades.guns || 0 };
+    if (this._upgradeVisualRoot && !this._upgradeVisualRoot.isDisposed?.()) {
+      this._upgradeVisualRoot.dispose();
+      this._upgradeVisualRoot = null;
+    }
+    const { armor, engine, guns } = this._upgrades;
+    if (!armor && !engine && !guns) return;
+    const host = this.glbRoot || this.group;
+    if (!host) return;
+    const root = new BABYLON.TransformNode('acVisualUpgradesRoot', this.scene);
+    root.parent = host;
+    this._upgradeVisualRoot = root;
+
+    const steelMat = new BABYLON.PBRMaterial('acUpgSteelMat', this.scene);
+    steelMat.albedoColor = c3('#3b3d3a');
+    steelMat.metallic = 0.78;
+    steelMat.roughness = 0.36;
+
+    const brassMat = new BABYLON.PBRMaterial('acUpgBrassMat', this.scene);
+    brassMat.albedoColor = c3('#cf9b4a');
+    brassMat.metallic = 0.86;
+    brassMat.roughness = 0.28;
+
+    const copperMat = new BABYLON.PBRMaterial('acUpgCopperMat', this.scene);
+    copperMat.albedoColor = c3('#c46d3a');
+    copperMat.metallic = 0.84;
+    copperMat.roughness = 0.32;
+
+    const prep = (m, mat) => {
+      m.parent = root;
+      m.material = mat;
+      m.isPickable = false;
+      m.checkCollisions = false;
+      m.alwaysSelectAsActiveMesh = true;
+      return m;
+    };
+
+    // 1. ARMOR UPGRADE: Riveted fuselage side armor plates + brass rivet strips (+ armored cowl brow at Lv.2)
+    if (armor >= 1) {
+      for (const sx of [-1, 1]) {
+        const plate = prep(BABYLON.MeshBuilder.CreateBox(`upgArmorSide_${sx}`, { width: 0.08, height: 0.42, depth: 1.95 }, this.scene), steelMat);
+        plate.position.set(sx * 0.72, 0.38, -0.35);
+        plate.rotation.z = sx * -0.14;
+        const trim = prep(BABYLON.MeshBuilder.CreateBox(`upgArmorTrim_${sx}`, { width: 0.10, height: 0.06, depth: 1.90 }, this.scene), brassMat);
+        trim.position.set(sx * 0.74, 0.56, -0.35);
+      }
+    }
+    if (armor >= 2) {
+      const brow = prep(BABYLON.MeshBuilder.CreateBox('upgArmorBrow', { width: 0.92, height: 0.12, depth: 0.65 }, this.scene), steelMat);
+      brow.position.set(0, 0.92, -1.55);
+      brow.rotation.x = 0.22;
+      for (const sx of [-1, 1]) {
+        const cowl = prep(BABYLON.MeshBuilder.CreateBox(`upgArmorCowl_${sx}`, { width: 0.10, height: 0.36, depth: 1.25 }, this.scene), steelMat);
+        cowl.position.set(sx * 0.66, 0.50, -2.05);
+      }
+    }
+
+    // 2. ENGINE UPGRADE: Angled copper/brass turbo exhaust stacks & dorsal supercharger intake
+    if (engine >= 1) {
+      const intake = prep(BABYLON.MeshBuilder.CreateCylinder('upgTurboIntake', { diameterTop: 0.28, diameterBottom: 0.36, height: 1.05, tessellation: 10 }, this.scene), brassMat);
+      intake.rotation.x = Math.PI * 0.5;
+      intake.position.set(0, 0.74, -2.15);
+      for (const sx of [-1, 1]) {
+        for (let k = 0; k < 3; k++) {
+          const stack = prep(BABYLON.MeshBuilder.CreateCylinder(`upgExhaustStack_${sx}_${k}`, { diameter: 0.09, height: 0.44, tessellation: 8 }, this.scene), copperMat);
+          stack.position.set(sx * 0.68, 0.42, -1.85 + k * 0.32);
+          stack.rotation.z = sx * -0.72;
+          stack.rotation.x = 0.42;
+        }
+      }
+    }
+    if (engine >= 2) {
+      const cooler = prep(BABYLON.MeshBuilder.CreateBox('upgIntercooler', { width: 0.64, height: 0.28, depth: 0.85 }, this.scene), copperMat);
+      cooler.position.set(0, -0.34, -1.85);
+      const scoop = prep(BABYLON.MeshBuilder.CreateCylinder('upgTurboScoop', { diameterTop: 0.20, diameterBottom: 0.34, height: 0.45, tessellation: 10 }, this.scene), brassMat);
+      scoop.rotation.x = Math.PI * 0.5;
+      scoop.position.set(0, 0.82, -2.65);
+    }
+
+    // 3. GUNS UPGRADE: Extended cooled barrels & brass muzzle compensators mounted on exact gun muzzle sockets
+    if (guns >= 1 && this.gunMuzzleNodes?.length) {
+      this.gunMuzzleNodes.forEach((mNode, idx) => {
+        const extLen = guns >= 2 ? 0.95 : 0.62;
+        const barrel = BABYLON.MeshBuilder.CreateCylinder(`upgGunBarrel_${idx}`, { diameterTop: 0.09, diameterBottom: 0.13, height: extLen, tessellation: 8 }, this.scene);
+        barrel.parent = mNode;
+        barrel.rotation.x = Math.PI * 0.5;
+        barrel.position.set(0, 0, -extLen * 0.35);
+        barrel.material = steelMat;
+        barrel.isPickable = false;
+        barrel.alwaysSelectAsActiveMesh = true;
+
+        const muzzleBrake = BABYLON.MeshBuilder.CreateCylinder(`upgGunBrake_${idx}`, { diameter: guns >= 2 ? 0.16 : 0.13, height: 0.18, tessellation: 8 }, this.scene);
+        muzzleBrake.parent = mNode;
+        muzzleBrake.rotation.x = Math.PI * 0.5;
+        muzzleBrake.position.set(0, 0, -extLen * 0.78);
+        muzzleBrake.material = brassMat;
+        muzzleBrake.isPickable = false;
+        muzzleBrake.alwaysSelectAsActiveMesh = true;
+
+        // Track for cleanup on next upgrade rebuild
+        barrel.parent = root;
+        barrel.position.copyFrom(mNode.position).addInPlace(new BABYLON.Vector3(0, 0, -extLen * 0.35));
+        muzzleBrake.parent = root;
+        muzzleBrake.position.copyFrom(mNode.position).addInPlace(new BABYLON.Vector3(0, 0, -extLen * 0.78));
+      });
+    }
   }
 
   _spinPropellers(angle) {

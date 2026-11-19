@@ -1,4 +1,5 @@
 import { configureBuildingMaterial } from './buildingMaterials.js?v=mission1';
+import { buildFlak88Turret } from './flak88.js?v=mission1';
 export const BUILDING_DEFINITIONS = Object.freeze({
   generator: { name: 'Эфирный генератор', file: 'ether_generator.glb', cost: 30, output: 4, demand: 0, width: 5.42, height: 4.84, depth: 7, detail: '+4 энергии · ремонт острова' },
   turret: { name: 'Зенитная установка', file: 'flak_turret.glb', cost: 35, output: 0, demand: 2, width: 7, height: 3.1, depth: 4.37, detail: '−2 энергии · защита острова' },
@@ -243,6 +244,12 @@ export class IslandConstruction {
   }
 
   async _loadModel(building,fallback,fallbackMat) {
+    if (building.type === 'turret') {
+      const rig = buildFlak88Turret(this.scene, `builtFlak88_${this.buildings.indexOf(building)}`, building.node, new BABYLON.Vector3(0, 0.32, 0), 0, this.shadowGenerator);
+      building.flakRig = rig;
+      fallback.dispose(); fallbackMat.dispose(); building.loaded = true;
+      return;
+    }
     try {
       const result=await BABYLON.SceneLoader.ImportMeshAsync('','./assets/buildings/',DEFINITIONS[building.type].file,this.scene);
       if(this.disposed||building.node.isDisposed()){result.meshes.forEach(m=>m.dispose());return;}

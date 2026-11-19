@@ -1568,6 +1568,7 @@ function missionInteraction() {
           ship.spec = { ...ship.spec, gunCd: Math.max(0.06, ship.spec.gunCd * 0.82), gunSpeed: ship.spec.gunSpeed * 1.12 };
         }
         audio?.playUpgrade?.();
+        ship.applyVisualUpgrades?.(u);
         ui.showToast(`🔧 Установлено: ${nextUpg.name}!`, 2800);
       });
     } else {
@@ -1727,34 +1728,58 @@ function updateMission(dt) {
   ];
   const basePos = asteroidBase?.group?.position || BABYLON.Vector3.Zero();
 
-  // 1. Flak Turrets (terrace flak + built turrets — active once base power is on; softens story enemies without stealing player kills)
+  // 1. Authentic WWII Flak 88 Turrets (yaw/pitch tracking + barrel recoil + muzzle fire; softens story enemies without stealing player kills)
   demoState.turretTimer = (demoState.turretTimer || 0) - dt;
-  const flakSources = [
+  const flakRigs = [
     ...(asteroidBase?.flakTurrets || []),
-    ...(construction?.buildings || []).filter(b => b.type === 'turret').map(b => b.node),
+    ...(construction?.buildings || []).filter(b => b.type === 'turret').map(b => b.flakRig || b.node),
   ];
-  if (demoState.powerOn && flakSources.length && hostilePool.length && demoState.turretTimer <= 0) {
-    const enemy = hostilePool.find(e => BABYLON.Vector3.Distance(e.root.position, basePos) < 280);
-    if (enemy) {
-      demoState.turretTimer = 1.45;
-      demoState.tracers ||= [];
-      for (const srcNode of flakSources) {
-        if (!srcNode || srcNode.isDisposed?.()) continue;
-        const from = srcNode.getAbsolutePosition().add(new BABYLON.Vector3(0, 3.2, 0));
-        const to = enemy.root.position.add(new BABYLON.Vector3((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 6));
-        const line = BABYLON.MeshBuilder.CreateLines('defenseFlakTracer', { points: [from, to] }, scene);
-        line.color = BABYLON.Color3.FromHexString('#ffda74');
-        line.isPickable = false;
-        demoState.tracers.push({ mesh: line, life: 0.22 });
-        spawnDemoExplosion(to, 0.55);
+  const flakTarget = demoState.powerOn ? hostilePool.find(e => BABYLON.Vector3.Distance(e.root.position, basePos) < 280) : null;
+  for (const rig of flakRigs) {
+    if (!rig) continue;
+    const baseNode = rig.root || rig;
+    if (!baseNode || baseNode.isDisposed?.()) continue;
+    if (rig.recoil > 0 && rig.recoilNode) {
+      rig.recoil = Math.max(0, rig.recoil - dt * 2.2);
+      rig.recoilNode.position.z = rig.recoil * 0.68;
+    }
+    if (flakTarget && rig.yawNode && rig.pitchNode) {
+      const gunWorld = baseNode.getAbsolutePosition();
+      const delta = flakTarget.root.position.subtract(gunWorld);
+      const targetYaw = Math.atan2(-delta.x, -delta.z) - (asteroidBase.group.rotation.y || 0) - (baseNode.rotation.y || 0);
+      rig.yawNode.rotation.y += (targetYaw - rig.yawNode.rotation.y) * (1 - Math.exp(-4.5 * dt));
+      const horiz = Math.max(1, Math.hypot(delta.x, delta.z));
+      const targetPitch = Math.max(0.08, Math.min(1.32, Math.atan2(delta.y, horiz)));
+      rig.pitchNode.rotation.x += (targetPitch - rig.pitchNode.rotation.x) * (1 - Math.exp(-4.5 * dt));
+    }
+  }
+  if (flakTarget && flakRigs.length && demoState.turretTimer <= 0) {
+    demoState.turretTimer = 1.45;
+    demoState.tracers ||= [];
+    for (const rig of flakRigs) {
+      const baseNode = rig?.root || rig;
+      if (!baseNode || baseNode.isDisposed?.()) continue;
+      let from;
+      if (rig.muzzleNode) {
+        rig.muzzleNode.computeWorldMatrix(true);
+        from = rig.muzzleNode.getAbsolutePosition().clone();
+        rig.recoil = 1.0;
+      } else {
+        from = baseNode.getAbsolutePosition().add(new BABYLON.Vector3(0, 3.2, 0));
       }
-      audio?.playGunshot?.('attacker');
-      const isStoryEnemy = demoState.enemies.includes(enemy);
-      const minFloor = isStoryEnemy ? Math.ceil((enemy.maxHp || 70) * 0.30) : 0;
-      enemy.hp = Math.max(minFloor, enemy.hp - 3 * flakSources.length);
-      if (enemy.hp <= 0 && !isStoryEnemy) {
-        world.jobs?._destroy?.(enemy);
-      }
+      const to = flakTarget.root.position.add(new BABYLON.Vector3((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 6));
+      const line = BABYLON.MeshBuilder.CreateLines('defenseFlakTracer', { points: [from, to] }, scene);
+      line.color = BABYLON.Color3.FromHexString('#ffda74');
+      line.isPickable = false;
+      demoState.tracers.push({ mesh: line, life: 0.22 });
+      spawnDemoExplosion(to, 0.55);
+    }
+    audio?.playGunshot?.('attacker');
+    const isStoryEnemy = demoState.enemies.includes(flakTarget);
+    const minFloor = isStoryEnemy ? Math.ceil((flakTarget.maxHp || 70) * 0.30) : 0;
+    flakTarget.hp = Math.max(minFloor, flakTarget.hp - 3 * flakRigs.length);
+    if (flakTarget.hp <= 0 && !isStoryEnemy) {
+      world.jobs?._destroy?.(flakTarget);
     }
   }
 
