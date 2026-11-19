@@ -28,13 +28,13 @@ export class SkyCelestials {
 
     // Glowing exposed planetary core & magma-ether fissure drifting in the chasm between the two halves
     const coreMat=new BABYLON.StandardMaterial('shatteredMoonCoreMat',scene);
-    coreMat.emissiveColor=BABYLON.Color3.FromHexString('#ff9c42');
-    coreMat.disableLighting=true;coreMat.alpha=0.58;coreMat.alphaMode=BABYLON.Engine.ALPHA_ADD;coreMat.disableDepthWrite=true;
+    coreMat.emissiveColor=BABYLON.Color3.FromHexString('#ff7824');
+    coreMat.disableLighting=true;coreMat.alpha=0.88;coreMat.alphaMode=BABYLON.Engine.ALPHA_ADD;coreMat.disableDepthWrite=true;
     this.materials.push(coreMat);
-    this.coreGlow=BABYLON.MeshBuilder.CreateSphere('shatteredMoonCore', { diameter: 140, segments: 12 }, scene);
-    this.coreGlow.position.copyFrom(moonCenter).addInPlace(splitAxis.scale(-4));
-    this.coreGlow.scaling.set(0.55, 1.45, 0.55);
-    this.coreGlow.rotation.z=0.68;
+    this.coreGlow=BABYLON.MeshBuilder.CreateSphere('shatteredMoonCore', { diameter: 155, segments: 12 }, scene);
+    this.coreGlow.position.copyFrom(moonCenter).addInPlace(splitAxis.scale(-2));
+    this.coreGlow.scaling.set(0.42, 1.55, 0.42);
+    this.coreGlow.rotation.z=0.72;
     this.coreGlow.material=coreMat;
     this._configure(this.coreGlow);
 
@@ -73,18 +73,18 @@ export class SkyCelestials {
   _buildOrbitalMegastructure() {
     const B = BABYLON, scene = this.scene;
     const ringMat = new B.StandardMaterial('ancientSkyRingMat', scene);
-    ringMat.emissiveColor = B.Color3.FromHexString('#586c74');
-    ringMat.diffuseColor = B.Color3.FromHexString('#1e282d');
+    ringMat.emissiveColor = B.Color3.FromHexString('#364954');
+    ringMat.diffuseColor = B.Color3.FromHexString('#1a242a');
     ringMat.disableLighting = true;
-    ringMat.alpha = 0.42;
+    ringMat.alpha = 0.72;
     ringMat.backFaceCulling = false;
     ringMat.disableDepthWrite = true;
     this.materials.push(ringMat);
 
     const veinMat = new B.StandardMaterial('ancientSkyRingVeinMat', scene);
-    veinMat.emissiveColor = B.Color3.FromHexString('#e8a848');
+    veinMat.emissiveColor = B.Color3.FromHexString('#ffb84d');
     veinMat.disableLighting = true;
-    veinMat.alpha = 0.55;
+    veinMat.alpha = 0.78;
     veinMat.alphaMode = B.Engine.ALPHA_ADD;
     veinMat.backFaceCulling = false;
     veinMat.disableDepthWrite = true;
@@ -93,13 +93,14 @@ export class SkyCelestials {
 
     const ringRoot = new B.TransformNode('ancientOrbitalRingRoot', scene);
     ringRoot.parent = this.root;
-    ringRoot.rotation.set(0.54, 0.42, -0.32);
+    // Tilted monumentally so a colossal broken ring sweeps right across the upper-right sky behind the split moon!
+    ringRoot.rotation.set(0.46, 0.25, -0.52);
 
-    // 3 fractured monumental ring arcs with dramatic broken gaps
+    // 3 fractured monumental ring arcs covering the full sky dome with dramatic broken gaps
     const arcs = [
-      { start: -0.95, end: 0.72, radius: 2480, width: 58 },
-      { start: 0.92, end: 2.35, radius: 2480, width: 52 },
-      { start: 2.68, end: 4.15, radius: 2480, width: 46 },
+      { start: -2.45, end: -0.78, radius: 2460, width: 72 },
+      { start: -0.45, end: 1.35,  radius: 2460, width: 66 },
+      { start: 1.85,  end: 3.55,  radius: 2460, width: 62 },
     ];
     arcs.forEach((arc, aIdx) => {
       const steps = 28;

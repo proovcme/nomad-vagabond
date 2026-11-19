@@ -1483,6 +1483,7 @@ document.getElementById('new-seed-victory-btn').addEventListener('click', () => 
 });
 document.getElementById('menu-victory-btn').addEventListener('click', () => {
   victoryModal.style.display = 'none';
+  if (document.pointerLockElement) document.exitPointerLock?.();
   ui.showHUD(false);
   hideCombatOverlays();
   menuOverlay.style.display = 'flex';
@@ -1492,6 +1493,7 @@ document.getElementById('menu-victory-btn').addEventListener('click', () => {
 function togglePause() {
   if (gameState === 'playing') {
     gameState = 'paused';
+    if (document.pointerLockElement) document.exitPointerLock?.();
     ui.showHUD(false);
     pauseModal.style.display = 'flex';
   } else if (gameState === 'paused') {
@@ -1517,6 +1519,7 @@ document.getElementById('pause-restart-btn').addEventListener('click', () => {
 });
 document.getElementById('pause-menu-btn').addEventListener('click', () => {
   pauseModal.style.display = 'none';
+  if (document.pointerLockElement) document.exitPointerLock?.();
   ui.showHUD(false);
   hideCombatOverlays();
   menuOverlay.style.display = 'flex';
@@ -3920,16 +3923,16 @@ engine.runRenderLoop(() => {
     world.update(dt * 0.35, null, camera.position);
     const basePos = asteroidBase ? asteroidBase.group.position : ship.group.position;
     world.updateShadowFocus?.(basePos);
-    const angle = 0.58 + Math.sin(world.simTime * .035) * .18;
+    const angle = 0.78 + Math.sin(world.simTime * .035) * .16;
     const framing=Math.max(1,1.1/engine.getAspectRatio(camera));
-    // Frame the AsteroidBase on the right side of the screen while left menu sits cleanly over dark space
+    // Heroic low-angle framing: Vagabond in lower-right foreground, split moon + orbital megastructure ring + cloud abyss in vista!
     camera.position.set(
-      basePos.x + Math.cos(angle) * 115 * framing,
-      basePos.y + 52 * framing,
-      basePos.z + Math.sin(angle) * 115 * framing
+      basePos.x + Math.cos(angle) * 112 * framing,
+      basePos.y + 16 * framing,
+      basePos.z + Math.sin(angle) * 112 * framing
     );
     camera.upVector.set(0, 1, 0);
-    camera.setTarget(basePos.add(new BABYLON.Vector3(-8.0, 10.0, 0)));
+    camera.setTarget(basePos.add(new BABYLON.Vector3(-14.0, 26.0, -24.0)));
   }
 
   const drawTotal=engine._drawCalls?.current||0;
