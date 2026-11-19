@@ -177,9 +177,7 @@ export class EnemyDreadnought {
       this.weakPoints.push(wp);
     });
 
-    // Beacon marker above hull
-    this.marker = reg(B.MeshBuilder.CreateSphere(`${this.root.name}_marker`, { diameter: 3.8, segments: 8 }, scene), markerMat);
-    this.marker.position.set(0, 15.5 * lenScale, 0);
+    this.marker = null;
 
     this._ownedMaterials = [envelopeMat, armorMat, crimsonMat, coreMat, markerMat];
     this._ownedTextures = hullTex ? [hullTex.albedoTex, hullTex.bumpTex] : [];

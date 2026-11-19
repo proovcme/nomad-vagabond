@@ -168,6 +168,7 @@ function createDetailedMissile(name, scale, bodyHex, noseHex, flameMat) {
   }
   const plume = BABYLON.MeshBuilder.CreateCylinder(`${name}_plume`, { diameterTop: 0.38 * scale, diameterBottom: 0.04 * scale, height: 1.45 * scale, tessellation: 8 }, scene);
   plume.parent = root; plume.position.y = -1.78 * scale; plume.material = flameMat; plume.isPickable = false;
+  root._trailAnchor = plume;
   return root;
 }
 
@@ -298,18 +299,9 @@ function spawnEnemySquadron(centerPos, escort = false) {
     root.position.copyFrom(centerPos).addInPlace(new BABYLON.Vector3(...d.off));
     root.scaling.setAll(d.scale);
 
-    // Beacon marker sphere so targets are easy to spot in the sunset sky
-    const marker = BABYLON.MeshBuilder.CreateSphere(`demoEnemyMarker_${idx}`, { diameter: 2.2, segments: 8 }, scene);
-    marker.parent = root;
-    marker.position.y = 4.2;
-    const mMat = new BABYLON.StandardMaterial(`demoEnemyMat_${idx}`, scene);
-    mMat.emissiveColor = BABYLON.Color3.FromHexString('#ff3b30');
-    mMat.disableLighting = true;
-    marker.material = mMat;
-
     const enemy = {
       root,
-      marker,
+      marker: null,
       hp: d.hp,
       maxHp: d.hp,
       speed: d.speed,
@@ -388,7 +380,7 @@ function initWorld(seedStr) {
   scene.activeCamera = camera;
 
   if (worldMode === 'sky') {
-    world = new SkyArchipelagoWorld(scene, currentSeed, activeMissionTheme);
+    world = new SkyArchipelagoWorld(scene, currentSeed, activeMissionTheme, selectedQuality);
     asteroidBase = new AsteroidBase(scene, 742);
     world.registerVagabondBase(asteroidBase);
     construction = new IslandConstruction(scene, asteroidBase, world.shadowGenerator);
@@ -1247,17 +1239,15 @@ function launchIslandSamSalvo(count = 2) {
       demoState._samTrailMat.alpha = 0.62;
       if (ship?.trailMat?.opacityTexture) demoState._samTrailMat.opacityTexture = ship.trailMat.opacityTexture;
     }
-    const mMesh = BABYLON.MeshBuilder.CreateCylinder('samMissileRemote', { diameterTop: 0.18, diameterBottom: 0.34, height: 2.4, tessellation: 8 }, scene);
+    const mMesh = createDetailedMissile('samMissileRemote', 1.0, '#d2d4cc', '#ff8c28', demoState._samMat);
     mMesh.position.copyFrom(startPos);
     mMesh.lookAt(startPos.add(initDir));
     mMesh.rotate(BABYLON.Axis.X, Math.PI * 0.5, BABYLON.Space.LOCAL);
-    mMesh.material = demoState._samMat;
-    mMesh.isPickable = false;
-    const plume = BABYLON.MeshBuilder.CreateCylinder('samRemotePlume', { diameterTop: 0.36, diameterBottom: 0.02, height: 1.7, tessellation: 6 }, scene);
-    plume.parent = mMesh; plume.position.set(0, -1.75, 0); plume.material = demoState._samMat; plume.isPickable = false;
+    mMesh.computeWorldMatrix(true);
+    mMesh._trailAnchor.computeWorldMatrix(true);
     let trail = null;
     if (typeof BABYLON.TrailMesh === 'function') {
-      trail = new BABYLON.TrailMesh(`samRemoteTrail_${Date.now()}_${k}`, mMesh, scene, 0.44, 40, true);
+      trail = new BABYLON.TrailMesh(`samRemoteTrail_${Date.now()}_${k}`, mMesh._trailAnchor, scene, 0.44, 40, true);
       trail.material = demoState._samTrailMat;
       trail.isPickable = false;
     }
@@ -1302,9 +1292,11 @@ function launchAntiIslandMissile(firstPerson = false) {
   mMesh.position.copyFrom(startPos);
   mMesh.lookAt(startPos.add(initDir));
   mMesh.rotate(BABYLON.Axis.X, Math.PI * 0.5, BABYLON.Space.LOCAL);
+  mMesh.computeWorldMatrix(true);
+  mMesh._trailAnchor.computeWorldMatrix(true);
   let trail = null;
   if (typeof BABYLON.TrailMesh === 'function') {
-    trail = new BABYLON.TrailMesh(`heavyTrail_${Date.now()}`, mMesh, scene, 1.15, 55, true);
+    trail = new BABYLON.TrailMesh(`heavyTrail_${Date.now()}`, mMesh._trailAnchor, scene, 1.15, 55, true);
     trail.material = demoState._heavyTrailMat;
     trail.isPickable = false;
   }
@@ -2202,6 +2194,7 @@ function missionEnemyDown(enemy) {
     chunk.isPickable = false;
     let dTrail = null;
     if (ci < 3 && typeof BABYLON.TrailMesh === 'function') {
+      chunk.computeWorldMatrix(true);
       dTrail = new BABYLON.TrailMesh(`debrisTrail_${Date.now()}_${ci}`, chunk, scene, 0.35, 18, true);
       dTrail.material = demoState._wreckSmokeMat;
       dTrail.isPickable = false;
@@ -2224,6 +2217,8 @@ function missionEnemyDown(enemy) {
   fireCore.isPickable = false;
   let wreckTrail = null;
   if (typeof BABYLON.TrailMesh === 'function') {
+    enemy.root.computeWorldMatrix(true);
+    fireCore.computeWorldMatrix(true);
     wreckTrail = new BABYLON.TrailMesh(`wreckTrail_${Date.now()}`, fireCore, scene, enemy.variant === 'bomber' ? 1.35 : 0.95, 42, true);
     wreckTrail.material = demoState._wreckSmokeMat;
     wreckTrail.isPickable = false;
@@ -2409,9 +2404,11 @@ function updateMission(dt) {
         mMesh.position.copyFrom(startPos);
         mMesh.lookAt(startPos.add(initDir));
         mMesh.rotate(BABYLON.Axis.X, Math.PI * 0.5, BABYLON.Space.LOCAL);
+        mMesh.computeWorldMatrix(true);
+        mMesh._trailAnchor.computeWorldMatrix(true);
         let trail = null;
         if (typeof BABYLON.TrailMesh === 'function') {
-          trail = new BABYLON.TrailMesh(`samTrail_${Date.now()}`, mMesh, scene, 0.42, 38, true);
+          trail = new BABYLON.TrailMesh(`samTrail_${Date.now()}`, mMesh._trailAnchor, scene, 0.42, 38, true);
           trail.material = demoState._samTrailMat;
           trail.isPickable = false;
         }
@@ -2928,17 +2925,15 @@ engine.runRenderLoop(() => {
           demoState._enemyMissileTrailMat.alpha = 0.62;
           if (ship?.trailMat?.opacityTexture) demoState._enemyMissileTrailMat.opacityTexture = ship.trailMat.opacityTexture;
         }
-        const mm = BABYLON.MeshBuilder.CreateCylinder('enemyHomingMissile', { diameterTop: 0.14, diameterBottom: 0.36, height: 2.4, tessellation: 6 }, scene);
+        const mm = createDetailedMissile('enemyHomingMissile', 0.95, '#3b3532', '#ff4a26', demoState._enemyMissileMat);
         mm.position.copyFrom(en.root.position).addInPlace(launchDir.scale(4.5));
         mm.lookAt(mm.position.add(launchDir));
         mm.rotate(BABYLON.Axis.X, Math.PI * 0.5, BABYLON.Space.LOCAL);
-        mm.material = demoState._enemyMissileMat;
-        mm.isPickable = false;
-        const emPlume = BABYLON.MeshBuilder.CreateCylinder('enemyMissilePlume', { diameterTop: 0.36, diameterBottom: 0.02, height: 1.65, tessellation: 6 }, scene);
-        emPlume.parent = mm; emPlume.position.set(0, -1.8, 0); emPlume.material = demoState._enemyMissileMat; emPlume.isPickable = false;
+        mm.computeWorldMatrix(true);
+        mm._trailAnchor.computeWorldMatrix(true);
         let trail = null;
         if (typeof BABYLON.TrailMesh === 'function') {
-          trail = new BABYLON.TrailMesh(`enemyMissileTrail_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, mm, scene, 0.48, 38, true);
+          trail = new BABYLON.TrailMesh(`enemyMissileTrail_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, mm._trailAnchor, scene, 0.48, 38, true);
           trail.material = demoState._enemyMissileTrailMat;
           trail.isPickable = false;
         }
@@ -3090,9 +3085,13 @@ engine.runRenderLoop(() => {
             demoState._dmgSmokeMat.alpha = 0.40;
             if (ship?.trailMat?.opacityTexture) demoState._dmgSmokeMat.opacityTexture = ship.trailMat.opacityTexture;
           }
-          const smokeAnchor = new BABYLON.TransformNode(`enDmgAnchor_${en.phase}`, scene);
+          const smokeAnchor = BABYLON.MeshBuilder.CreateBox(`enDmgAnchor_${en.phase}`, { size: 0.1 }, scene);
           smokeAnchor.parent = en.root;
           smokeAnchor.position.set(0, 0.2, 1.4);
+          smokeAnchor.isVisible = false;
+          smokeAnchor.isPickable = false;
+          en.root.computeWorldMatrix(true);
+          smokeAnchor.computeWorldMatrix(true);
           en.damageTrail = new BABYLON.TrailMesh(`enDmgTrail_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`, smokeAnchor, scene, 0.34, 24, true);
           en.damageTrail.material = demoState._dmgSmokeMat;
           en.damageTrail.isPickable = false;
@@ -3501,9 +3500,11 @@ engine.runRenderLoop(() => {
             mm.position.copyFrom(startPos);
             mm.lookAt(startPos.add(initDir));
             mm.rotate(BABYLON.Axis.X, Math.PI * 0.5, BABYLON.Space.LOCAL);
+            mm.computeWorldMatrix(true);
+            mm._trailAnchor.computeWorldMatrix(true);
             let trail = null;
             if (typeof BABYLON.TrailMesh === 'function') {
-              trail = new BABYLON.TrailMesh(`incMissileTrail_${Date.now()}`, mm, scene, 0.85, 45, true);
+              trail = new BABYLON.TrailMesh(`incMissileTrail_${Date.now()}`, mm._trailAnchor, scene, 0.85, 45, true);
               trail.material = demoState._incTrailMat;
               trail.isPickable = false;
             }
@@ -3911,6 +3912,7 @@ engine.runRenderLoop(() => {
     world.industrialCranes?.update(dt);
     world.update(dt * 0.35, null, camera.position);
     const basePos = asteroidBase ? asteroidBase.group.position : ship.group.position;
+    world.updateShadowFocus?.(basePos);
     const angle = 0.58 + Math.sin(world.simTime * .035) * .18;
     const framing=Math.max(1,1.1/engine.getAspectRatio(camera));
     // Frame the AsteroidBase on the right side of the screen while left menu sits cleanly over dark space

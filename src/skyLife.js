@@ -25,16 +25,14 @@ export class SkyLife {
 
     // 5 distinct flocks across the archipelago so the sky feels alive everywhere
     const flocks = [
-      // Flock 0: Circling Vagabond Bastion & runway approach (highly visible from start & takeoff!)
-      { center: basePos.add(new B.Vector3(12, 34, -28)), count: 10, rMin: 38, rMax: 78, speed: 0.22, scale: 1.35, dir: 1 },
+      // Flock 0: Circling Vagabond Bastion & runway approach
+      { center: basePos.add(new B.Vector3(12, 34, -28)), count: 5, rMin: 38, rMax: 78, speed: 0.22, scale: 1.35, dir: 1 },
       // Flock 1: Wheeling thermal flock along the flight corridor between Vagabond & Forest Island
-      { center: new B.Vector3(165, 82, -135), count: 9, rMin: 55, rMax: 105, speed: 0.18, scale: 1.55, dir: -1 },
+      { center: new B.Vector3(165, 82, -135), count: 4, rMin: 55, rMax: 105, speed: 0.18, scale: 1.55, dir: -1 },
       // Flock 2: Soaring over Emerald Cliff (Forest Island) waterfall & ancient ruins
-      { center: forestPos.add(new B.Vector3(0, 48, 0)), count: 10, rMin: 46, rMax: 88, speed: 0.20, scale: 1.40, dir: 1 },
-      // Flock 3: Central canyon & satellite islands flock
-      { center: new B.Vector3(-85, 74, -185), count: 7, rMin: 52, rMax: 96, speed: 0.19, scale: 1.50, dir: -1 },
-      // Flock 4: High-altitude albatrosses gliding above the archipelago
-      { center: new B.Vector3(55, 118, -75), count: 6, rMin: 75, rMax: 135, speed: 0.15, scale: 1.85, dir: 1 },
+      { center: forestPos.add(new B.Vector3(0, 48, 0)), count: 4, rMin: 46, rMax: 88, speed: 0.20, scale: 1.40, dir: 1 },
+      // Flock 3: High-altitude albatrosses gliding above the archipelago
+      { center: new B.Vector3(55, 118, -75), count: 3, rMin: 75, rMax: 135, speed: 0.15, scale: 1.85, dir: 1 },
     ];
 
     let birdIdx = 0;

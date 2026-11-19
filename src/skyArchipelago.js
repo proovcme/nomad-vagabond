@@ -369,10 +369,11 @@ async function instantiateGLBInto(scene, rootUrl, file, parent, pos, scale, rotY
       rootNode.parent = holder;
     }
     const childMeshes = holder.getChildMeshes();
+    const skipShadow = /\/(fern_|Lantern_|boulder_|grass_)/i.test(rootUrl) || /fern_|Lantern_|boulder_|grass_/i.test(fileName);
     for (const m of childMeshes) {
       m.receiveShadows = true;
       if (!rootUrl.includes('/trees/') && !rootUrl.includes('/fern_')) makeSolid(m);
-      if (shadowGen && m.getTotalVertices() > 0) shadowGen.addShadowCaster(m, false);
+      if (shadowGen && !skipShadow && m.getTotalVertices() > 0) shadowGen.addShadowCaster(m, false);
     }
     return holder;
   } catch (_) {
@@ -1520,12 +1521,12 @@ export class ForestIsland {
     if (this.scene.getEngine().constructor.name === 'NullEngine' || !BABYLON.SceneLoader) return;
 
     const specs = [
-      { dir: './assets/benchmark/models/trees/', file: 'pine_hero.glb', count: 34, scaleMin: 0.9, scaleMax: 1.45, minR: 0.0, maxR: 0.86 },
-      { dir: './assets/benchmark/models/trees/', file: 'fir_medium.glb', count: 42, scaleMin: 0.85, scaleMax: 1.35, minR: 0.0, maxR: 0.88 },
-      { dir: './assets/benchmark/models/trees/', file: 'coastal_alder.glb', count: 28, scaleMin: 0.85, scaleMax: 1.25, minR: 0.08, maxR: 0.84 },
-      { dir: './assets/benchmark/models/fern_02/', file: 'fern_02_1k.gltf', count: 64, scaleMin: 1.6, scaleMax: 2.6, minR: 0.0, maxR: 0.86 },
-      { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb', count: 96, scaleMin: 1.3, scaleMax: 2.4, minR: 0.0, maxR: 0.88 },
-      { dir: './assets/benchmark/models/boulder_01/', file: 'boulder_01_1k.gltf', count: 28, scaleMin: 1.2, scaleMax: 2.8, minR: 0.45, maxR: 0.90 },
+      { dir: './assets/benchmark/models/trees/', file: 'pine_hero.glb', count: 20, scaleMin: 0.9, scaleMax: 1.45, minR: 0.0, maxR: 0.86 },
+      { dir: './assets/benchmark/models/trees/', file: 'fir_medium.glb', count: 24, scaleMin: 0.85, scaleMax: 1.35, minR: 0.0, maxR: 0.88 },
+      { dir: './assets/benchmark/models/trees/', file: 'coastal_alder.glb', count: 16, scaleMin: 0.85, scaleMax: 1.25, minR: 0.08, maxR: 0.84 },
+      { dir: './assets/benchmark/models/fern_02/', file: 'fern_02_1k.gltf', count: 12, scaleMin: 1.6, scaleMax: 2.5, minR: 0.0, maxR: 0.86 },
+      { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb', count: 36, scaleMin: 1.3, scaleMax: 2.3, minR: 0.0, maxR: 0.88 },
+      { dir: './assets/benchmark/models/boulder_01/', file: 'boulder_01_1k.gltf', count: 8, scaleMin: 1.3, scaleMax: 2.7, minR: 0.45, maxR: 0.90 },
     ];
 
     let s = this.seedNum + 404;
@@ -1975,10 +1976,11 @@ function sceneOr(s) {
  * - Keeps SolarWorld / TerrainPlanet completely intact as a separate mode
  */
 export class SkyArchipelagoWorld {
-  constructor(scene, seedStr = 'ARCHIPELAGO-1', theme = 'sunset') {
+  constructor(scene, seedStr = 'ARCHIPELAGO-1', theme = 'sunset', quality = 'medium') {
     this.scene = scene;
     this.seedStr = seedStr;
     this.theme = theme || 'sunset';
+    this.quality = quality || 'medium';
     this.simTime = 0;
     this.timeOfDay = this.theme === 'night' ? 0.0 : this.theme === 'storm' ? 0.25 : this.theme === 'dawn' ? 0.92 : 0.72;
     this.isSkyWorld = true;
@@ -2035,13 +2037,15 @@ export class SkyArchipelagoWorld {
     this.scene.environmentIntensity = 1.25;
 
     if (this.scene.getEngine().constructor.name !== 'NullEngine') {
-      this.shadowGenerator = new BABYLON.ShadowGenerator(2048, this.sunDirLight);
+      this.shadowGenerator = new BABYLON.ShadowGenerator(1024, this.sunDirLight);
       this.shadowGenerator.usePercentageCloserFiltering = true;
       this.shadowGenerator.bias = 0.0006;
       this.shadowGenerator.normalBias = 0.025;
+      const sm = this.shadowGenerator.getShadowMap();
+      if (sm) sm.refreshRate = 2;
     }
 
-    this.graphics.applyQuality('high', this.shadowGenerator);
+    this.graphics.applyQuality(this.quality || 'medium', this.shadowGenerator);
     this.scene.environmentIntensity = isNight ? 0.16 : isStorm ? 0.54 : 0.72;
     const ipc = this.scene.imageProcessingConfiguration;
     ipc.toneMappingEnabled = true;
@@ -2204,23 +2208,13 @@ export class SkyArchipelagoWorld {
   _buildShatteredWorldField(seedValue = 101) {
     this.shatteredFieldRoot = new BABYLON.TransformNode('shatteredWorldFieldRoot', this.scene);
 
-    // 1. Scenic Satellite Islands across the sky vistas (kept outside camera foreground zones)
+    // 1. Scenic Satellite Islands across the sky vistas (trimmed for fast startup & high FPS, no distant shadow casting)
     const satelliteIslands = [
-      // Vista behind & flanking Vagabond (0, 35, 0)
       { id: 'sky_sat_0', style: 'forest',     x: -175, y: 58,  z: -155, rx: 24, rz: 19, depth: 30, scaleY: 1.35, rot: [0.11, 0.6, -0.10], tree: 'pine_hero.glb' },
       { id: 'sky_sat_1', style: 'military',   x: 135,  y: 52,  z: -175, rx: 20, rz: 16, depth: 26, scaleY: 1.30, rot: [-0.10, 2.1, 0.11], tree: 'coastal_alder.glb' },
-      // Vista between Vagabond & ForestIsland (340, 85, -260)
       { id: 'sky_sat_2', style: 'forest',     x: 195,  y: 68,  z: -285, rx: 22, rz: 18, depth: 28, scaleY: 1.38, rot: [0.12, 1.4, -0.11], tree: 'pine_hero.glb' },
-      { id: 'sky_sat_3', style: 'forest',     x: 475,  y: 112, z: -325, rx: 25, rz: 20, depth: 32, scaleY: 1.42, rot: [-0.11, 0.5, -0.10], tree: 'coastal_alder.glb' },
-      { id: 'sky_sat_4', style: 'forest',     x: 285,  y: 122, z: -415, rx: 21, rz: 17, depth: 27, scaleY: 1.34, rot: [0.10, 2.7, 0.11], tree: 'fir_medium.glb' },
-      // Vista around & behind IndustrialIsland (-290, -10, -340)
       { id: 'sky_sat_5', style: 'industrial', x: -425, y: 24,  z: -425, rx: 24, rz: 19, depth: 30, scaleY: 1.38, rot: [-0.12, 0.4, 0.10], tree: null },
-      { id: 'sky_sat_6', style: 'industrial', x: -165, y: 18,  z: -435, rx: 20, rz: 16, depth: 26, scaleY: 1.32, rot: [0.11, 1.8, -0.11], tree: null },
-      // Central fault canyon between ForestIsland and IndustrialIsland
       { id: 'sky_sat_7', style: 'military',   x: -55,  y: 44,  z: -335, rx: 23, rz: 18, depth: 29, scaleY: 1.36, rot: [-0.11, 1.1, 0.10], tree: 'pine_hero.glb' },
-      { id: 'sky_sat_8', style: 'forest',     x: 85,   y: 62,  z: -365, rx: 21, rz: 17, depth: 27, scaleY: 1.32, rot: [0.10, 0.7, -0.11], tree: 'fir_medium.glb' },
-      // Towards SplitShipyard (650, 75, -400)
-      { id: 'sky_sat_9', style: 'industrial', x: 535,  y: 88,  z: -365, rx: 22, rz: 18, depth: 28, scaleY: 1.34, rot: [0.11, 1.5, -0.10], tree: null },
     ];
 
     for (let sIdx = 0; sIdx < satelliteIslands.length; sIdx++) {
@@ -2228,7 +2222,6 @@ export class SkyArchipelagoWorld {
       const satTrees = sat.tree ? [
         { file: sat.tree, x: 0, z: 0, s: 1.25, r: 0.8 },
         { file: 'fir_medium.glb', x: -sat.rx * 0.34, z: sat.rz * 0.24, s: 1.05, r: 1.9 },
-        { file: 'coastal_alder.glb', x: sat.rx * 0.32, z: -sat.rz * 0.22, s: 1.0, r: 2.6 },
       ] : [];
       const builtSat = buildSatelliteIsland(this.scene, {
         id: sat.id,
@@ -2242,7 +2235,7 @@ export class SkyArchipelagoWorld {
         pos: [sat.x, sat.y, sat.z],
         rot: sat.rot,
         trees: satTrees,
-        shadowGen: this.shadowGenerator,
+        shadowGen: null,
       });
       this.satelliteNodes ||= new Map();
       this.satelliteNodes.set(sat.id, builtSat);
@@ -2285,33 +2278,23 @@ export class SkyArchipelagoWorld {
     ];
 
     const rockPlacements = [
-      // Around & behind Vagabond
       { type: 'spire', pos: [-210, 32, -65],  rot: [0.10, 0.8, -0.09], scale: [1.15, 1.25, 1.10], mat: milRockMat, seed: 401 },
       { type: 'crag',  pos: [-115, 18, -195], rot: [-0.09, 1.9, 0.11], scale: [1.20, 1.15, 1.15], mat: milRockMat, seed: 409 },
       { type: 'spire', pos: [175,  26, -125], rot: [0.11, 2.4, -0.08], scale: [1.10, 1.20, 1.05], mat: forestRockMat, seed: 419 },
-      // Between Vagabond & ForestIsland
       { type: 'spire', pos: [255,  52, -355], rot: [-0.10, 1.2, 0.09], scale: [1.25, 1.35, 1.18], mat: forestRockMat, seed: 431 },
-      { type: 'crag',  pos: [395,  44, -405], rot: [0.09, 0.5, -0.11], scale: [1.30, 1.25, 1.22], mat: forestRockMat, seed: 443 },
-      { type: 'spire', pos: [445,  64, -185], rot: [-0.11, 2.1, 0.10], scale: [1.15, 1.22, 1.12], mat: forestRockMat, seed: 457 },
-      // Around & behind IndustrialIsland
-      { type: 'spire', pos: [-225, -14, -455],rot: [0.10, 1.6, -0.10], scale: [1.22, 1.30, 1.16], mat: indRockMat, seed: 467 },
       { type: 'crag',  pos: [-385, 14, -295], rot: [-0.11, 0.7, 0.09], scale: [1.25, 1.18, 1.20], mat: indRockMat, seed: 479 },
-      // Central fault canyon & horizon
-      { type: 'spire', pos: [35,   30, -375], rot: [0.09, 2.6, -0.10], scale: [1.20, 1.32, 1.15], mat: milRockMat, seed: 491 },
-      { type: 'crag',  pos: [135,  56, -325], rot: [-0.10, 1.1, 0.09], scale: [1.18, 1.15, 1.14], mat: forestRockMat, seed: 503 },
-      { type: 'spire', pos: [565,  54, -275], rot: [0.11, 0.4, -0.09], scale: [1.22, 1.28, 1.16], mat: forestRockMat, seed: 521 },
     ];
 
     rockPlacements.forEach((rp, idx) => {
       const masses = rp.type === 'spire' ? spireTemplateMasses : cragTemplateMasses;
       const mesh = buildMarchingRockCluster(this.scene, `shatteredMarchingRock_${idx}`, masses, {
-        step: 2.2,
+        step: 2.8,
         seed: seedValue + rp.seed,
         material: rp.mat,
         parent: this.shatteredFieldRoot,
         pos: rp.pos,
         rot: rp.rot,
-        shadowGen: this.shadowGenerator,
+        shadowGen: null,
       });
       mesh.scaling.set(...rp.scale);
       makeSolid(mesh);
@@ -2601,15 +2584,15 @@ export class SkyArchipelagoWorld {
       const material = mesh.material;
       if (!mesh.isVisible || mesh.visibility <= .01 || !mesh.isEnabled() ||
           mesh.metadata?.collisionProxy || mesh.metadata?.celestial ||
-          /Flame|Glow|Lamp|Light|Beacon|Lens|Trail|Smoke|Particle|Preview|Shadow/i.test(mesh.name) ||
+          /Flame|Glow|Lamp|Light|Beacon|Lens|Trail|Smoke|Particle|Preview|Shadow|Step|Stripe|Post|Rivet|Bolt|Cable|Wire|Fern|Lantern/i.test(mesh.name) ||
           /glow|emissive|lens/i.test(material?.name || '') || (material && material.alpha < .5)) {
         invisible++; continue;
       }
       const bounds = mesh.getBoundingInfo();
       const radius = bounds.boundingSphere.radiusWorld;
-      if (radius < .10) { tiny++; continue; }
+      if (radius < .75) { tiny++; continue; }
       // Sphere intersection, not pivot distance: broad terrain/instanced trees keep their edge shadows.
-      if (BABYLON.Vector3.DistanceSquared(bounds.boundingSphere.centerWorld, focusPos) > (200 + radius) ** 2) {
+      if (BABYLON.Vector3.DistanceSquared(bounds.boundingSphere.centerWorld, focusPos) > (150 + radius) ** 2) {
         distant++; continue;
       }
       selected.push(mesh);

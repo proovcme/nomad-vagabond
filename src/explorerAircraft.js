@@ -2575,6 +2575,7 @@ export class ExplorerAircraft {
       mesh.isPickable = false;
       let trail = null;
       if (typeof BABYLON.TrailMesh === 'function') {
+        mesh.computeWorldMatrix(true);
         trail = new BABYLON.TrailMesh(`acFlareTrail_${Date.now()}_${i}`, mesh, this.scene, 0.22, 18, true);
         trail.material = this._rocketTrailMat || this._getSharedProjectileMaterial('flareTrail', '#ffe5a0');
         trail.isPickable = false;
@@ -2725,6 +2726,7 @@ export class ExplorerAircraft {
         plume.material = this._getSharedProjectileMaterial('rocketPlume', '#fff0a8');
         plume.isPickable = false;
         if (typeof BABYLON.TrailMesh === 'function') {
+          ord.computeWorldMatrix(true);
           trail = new BABYLON.TrailMesh(`acRocketTrail_${Date.now()}_${i}`, ord, this.scene, 0.36, 36, true);
           trail.material = this._rocketTrailMat;
           trail.isPickable = false;
