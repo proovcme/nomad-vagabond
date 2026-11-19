@@ -130,13 +130,27 @@ function registerSkyShaders() {
         float artWeight=smoothstep(.0,.14,artUv.y)*(1.0-smoothstep(.94,1.0,artUv.y))*smoothstep(-.20,.04,h);
         col=mix(col,skyArt * mix(1.0, 0.08, nightMask), artWeight * mix(0.74, 0.30, nightMask));
 
-        // Crisp twinkling night stars when nightMask > 0.1
-        if (nightMask > 0.05 && h > 0.04) {
-          vec2 starGrid = floor(d.xz / (h + 0.35) * 140.0);
-          float sRand = hash21(starGrid);
-          if (sRand > 0.992) {
-            float twinkle = 0.65 + 0.35 * sin(uTime * 2.5 + sRand * 120.0);
-            col += vec3(0.75, 0.86, 1.0) * twinkle * nightMask * smoothstep(0.04, 0.25, h) * 0.95;
+        // Rich bright twinkling night stars (2 layered starfields: bright hero stars + dense faint star dust)
+        if (nightMask > 0.05 && h > 0.01) {
+          float starFade = nightMask * smoothstep(0.01, 0.16, h);
+          vec2 sUv1 = d.xz / (h + 0.32) * 115.0;
+          vec2 sCell1 = floor(sUv1);
+          vec2 sFrac1 = fract(sUv1) - 0.5;
+          float sRand1 = hash21(sCell1);
+          if (sRand1 > 0.968) {
+            float dist1 = length(sFrac1);
+            float dot1 = smoothstep(0.36, 0.04, dist1);
+            float twinkle1 = 0.72 + 0.28 * sin(uTime * 3.1 + sRand1 * 180.0);
+            vec3 starTint = mix(vec3(0.76, 0.88, 1.0), vec3(1.0, 0.92, 0.74), fract(sRand1 * 37.0));
+            col += starTint * dot1 * twinkle1 * starFade * 1.95;
+          }
+          vec2 sUv2 = d.xz / (h + 0.26) * 240.0 + vec2(31.7, 17.3);
+          vec2 sCell2 = floor(sUv2);
+          vec2 sFrac2 = fract(sUv2) - 0.5;
+          float sRand2 = hash21(sCell2);
+          if (sRand2 > 0.955) {
+            float dot2 = smoothstep(0.38, 0.06, length(sFrac2));
+            col += vec3(0.72, 0.84, 1.0) * dot2 * starFade * 1.05;
           }
         }
 
@@ -1055,6 +1069,7 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   const samBase = new BABYLON.TransformNode('vagSamLauncher', scene);
   samBase.parent = asteroidBase.group;
   samBase.position.set(-5.0, 21.35, -16.5);
+  samBase.scaling.setAll(1.25);
   const samPedestal = BABYLON.MeshBuilder.CreateCylinder('vagSamPedestal', { diameterTop: 3.4, diameterBottom: 4.2, height: 1.5, tessellation: 12 }, scene);
   samPedestal.parent = samBase; samPedestal.position.y = 0.75; samPedestal.material = hullMat; samPedestal.receiveShadows = true;
   const samYaw = new BABYLON.TransformNode('vagSamYaw', scene);
