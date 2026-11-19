@@ -104,20 +104,9 @@ function registerSkyShaders() {
           col = mix(horizCol, abyssCol, smoothstep(0.0, -0.35, h));
         }
 
-        // High altitude wispy cirrus streaks lit by golden sun (or faint silver moon at night)
+        // High altitude wispy cirrus streaks (removed heavy per-pixel fbm; painted uSkyArtwork already holds rich clouds!)
         vec3 sunSkyDir = normalize(vec3(uSunDir.x, 0.125, uSunDir.z));
         float sunDot = max(0.0001, dot(d, sunSkyDir));
-        if (h > 0.03) {
-          vec2 uv = d.xz / (h + 0.20) * 1.35 + vec2(uTime * 0.0035, uTime * 0.0018);
-          float c1 = fbm(uv);
-          float wisps = smoothstep(0.46, 0.84, c1) * smoothstep(0.03, 0.24, h);
-          vec3 wispCol = mix(
-            mix(vec3(0.62, 0.74, 0.90), vec3(1.00, 0.82, 0.52), pow(sunDot, 1.4)),
-            vec3(0.10, 0.16, 0.28),
-            nightMask
-          );
-          col = mix(col, wispCol, wisps * mix(0.44, 0.24, nightMask));
-        }
 
         // Painted 360-degree ether-current panorama (heavily dimmed at night so night sky stays truly dark)
         vec2 artUv=vec2(fract(atan(d.z,d.x)/6.2831853+.5+uTime*.00008),acos(clamp(d.y,-1.0,1.0))/3.14159265);
@@ -172,9 +161,6 @@ function registerSkyShaders() {
         col = mix(col, mix(vec3(1.00, 0.98, 0.88), vec3(0.84, 0.92, 1.00), nightMask), solarCore);
         col += mix(vec3(0.50, 0.38, 0.18), vec3(0.18, 0.24, 0.36), nightMask) * solarCore;
 
-        vec4 clouds = vec4(0.0);
-        if(uVolumetricClouds>.5)clouds=cloudVolume(uCameraPosition,d) * mix(0.58, 0.16, nightMask);
-        col = col*(1.0-clouds.a)+clouds.rgb;
         gl_FragColor = vec4(col, 1.0);
         #include<imageProcessingCompatibility>
       }

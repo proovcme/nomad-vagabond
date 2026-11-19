@@ -202,7 +202,7 @@ export class GraphicsManager {
     // Disable implicit per-mouse-move CPU raycasting across 1000+ meshes (eliminates turn stutters!)
     this.scene.skipPointerMovePicking = true;
 
-    const dpr = Math.min(window.devicePixelRatio || 1, key === 'ultra' ? 1.65 : key === 'high' ? 1.35 : key === 'medium' ? 1.15 : 1.0);
+    const dpr = Math.min(window.devicePixelRatio || 1, key === 'ultra' ? 1.5 : key === 'high' ? 1.2 : 1.0);
     engine.setHardwareScalingLevel(cfg.scaleFactor / dpr);
     this.scene.environmentIntensity = this.scene.metadata?.skyLighting ? 0.86 : cfg.envIntensity;
     this.scene.getMaterialByName('archSkyShader')?.setFloat('uVolumetricClouds', key === 'low' ? 0 : 1);

@@ -101,18 +101,17 @@ export class SkyCelestials {
       varying vec3 vSurface; varying vec3 vNormal;
       uniform vec3 uViewDirection; uniform vec3 uRight; uniform vec3 uUp;
       uniform float uWarm; uniform float uFragment;
-      float hash(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}
-      float noise3(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
-        return mix(mix(mix(hash(i),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
-          mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y),f.z);}
-      float fbm(vec3 p){return noise3(p)*.66+noise3(p*2.15+vec3(5.1,2.7,8.4))*.34;}
+      float hash2(vec2 p){p=fract(p*vec2(127.1,311.7));p+=dot(p,p+34.12);return fract(p.x*p.y);}
+      float noise2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
+        return mix(mix(hash2(i),hash2(i+vec2(1,0)),f.x),mix(hash2(i+vec2(0,1)),hash2(i+vec2(1,1)),f.x),f.y);}
+      float fbm(vec2 p){return noise2(p)*.66+noise2(p*2.15+vec2(5.1,2.7))*.34;}
       float basin(vec2 p,vec2 center,float radius){float r=length((p-center)/radius);return exp(-r*r*2.5)*-.13+exp(-pow((r-.93)*8.0,2.0))*.09;}
       void main(){
         vec3 n=normalize(vNormal),p=normalize(vSurface);
         vec2 face=vec2(dot(n,uRight),dot(n,uUp));
         float facing=clamp(dot(n,uViewDirection),0.0,1.0);
-        float land=fbm(p*4.7+vec3(3.0,1.0,7.0));
-        float broad=noise3(p*2.6+vec3(7.1,3.4,1.8));
+        float land=fbm(face*4.2+vec2(3.0,1.0));
+        float broad=noise2(face*2.4+vec2(7.1,3.4));
         float strata=sin(p.y*17.0+land*7.5)*.018;
         vec3 ivory=vec3(.84,.83,.67),turquoise=vec3(.26,.57,.55),slate=vec3(.16,.36,.38);
         vec3 warmFace=vec3(.81,.61,.40),warmShade=vec3(.43,.39,.35);
@@ -124,7 +123,7 @@ export class SkyCelestials {
         float sunlight=smoothstep(-.40,.78,dot(n,light));
         geology=mix(mix(slate,warmShade,uWarm),geology,.38+.62*sunlight);
         // Ancient diagonal fault: dark incision with a thin mineral-lit inner seam, never neon.
-        float bent=face.x*.76+face.y*.65-.035+(noise3(p*12.0)-.5)*.034;
+        float bent=face.x*.76+face.y*.65-.035+(noise2(face*10.0)-.5)*.034;
         float scar=abs(bent);
         float broken=(1.0-smoothstep(.012,.030,scar))*(1.0-uWarm*.75);
         geology=mix(geology,vec3(.075,.23,.245),broken*.82);
