@@ -3,6 +3,8 @@
  * Add new levels with custom islands, themes, enemies, bosses, and GLB props here.
  */
 
+export const BIOME_TYPES = Object.freeze(['volcanic', 'glacier', 'desert', 'ancient']);
+
 export const LEVEL_THEMES = Object.freeze({
   sunset: {
     timeOfDay: 0.72,
@@ -106,6 +108,10 @@ export const LEVEL_REGISTRY = Object.freeze({
     archipelago: {
       forestPos: [340, 85, -260],
       industrialPos: [-290, -10, -340],
+      extraIslands: [
+        { biome: 'desert',  pos: [120, 48, 310],  radiusX: 46, radiusZ: 38, depth: 50 },
+        { biome: 'ancient', pos: [-340, 92, 165], radiusX: 44, radiusZ: 38, depth: 48 },
+      ],
       customProps: [],
     },
   },
@@ -125,6 +131,10 @@ export const LEVEL_REGISTRY = Object.freeze({
     archipelago: {
       forestPos: [-330, 62, -290],
       industrialPos: [310, 20, -310],
+      extraIslands: [
+        { biome: 'volcanic', pos: [260, 52, 235],  radiusX: 50, radiusZ: 42, depth: 56 },
+        { biome: 'glacier',  pos: [-275, 98, 220], radiusX: 46, radiusZ: 38, depth: 52 },
+      ],
       customProps: [],
     },
   },
@@ -144,6 +154,10 @@ export const LEVEL_REGISTRY = Object.freeze({
     archipelago: {
       forestPos: [260, 105, 290],
       industrialPos: [-310, 15, -240],
+      extraIslands: [
+        { biome: 'glacier', pos: [310, 76, -245],  radiusX: 48, radiusZ: 40, depth: 54 },
+        { biome: 'ancient', pos: [-240, 88, 275],  radiusX: 46, radiusZ: 38, depth: 50 },
+      ],
       customProps: [],
     },
   },
@@ -163,6 +177,10 @@ export const LEVEL_REGISTRY = Object.freeze({
     archipelago: {
       forestPos: [-260, 95, 240],
       industrialPos: [340, 5, -220],
+      extraIslands: [
+        { biome: 'desert',   pos: [240, 62, 260],  radiusX: 48, radiusZ: 40, depth: 52 },
+        { biome: 'volcanic', pos: [-320, 44, -260], radiusX: 46, radiusZ: 38, depth: 52 },
+      ],
       customProps: [],
     },
   },
@@ -182,6 +200,9 @@ export const LEVEL_REGISTRY = Object.freeze({
     archipelago: {
       forestPos: [340, 85, -260],
       industrialPos: [-290, -10, -340],
+      extraIslands: [
+        { biome: 'volcanic', pos: [-260, 56, 260], radiusX: 44, radiusZ: 36, depth: 48 },
+      ],
       customProps: [],
     },
   },
@@ -202,6 +223,10 @@ export const LEVEL_REGISTRY = Object.freeze({
     archipelago: {
       forestPos: [280, 72, -300],
       industrialPos: [-260, 28, -280],
+      extraIslands: [
+        { biome: 'desert',  pos: [215, 58, 225],   radiusX: 46, radiusZ: 38, depth: 50 },
+        { biome: 'ancient', pos: [-235, 92, 205],  radiusX: 44, radiusZ: 38, depth: 48 },
+      ],
       customProps: [],
     },
   },
@@ -222,6 +247,10 @@ export const LEVEL_REGISTRY = Object.freeze({
     archipelago: {
       forestPos: [-310, 68, -280],
       industrialPos: [310, 18, -300],
+      extraIslands: [
+        { biome: 'volcanic', pos: [245, 52, 240],  radiusX: 48, radiusZ: 40, depth: 54 },
+        { biome: 'glacier',  pos: [-270, 88, 230], radiusX: 46, radiusZ: 38, depth: 50 },
+      ],
       customProps: [],
     },
   },
@@ -240,6 +269,12 @@ export const LEVEL_REGISTRY = Object.freeze({
     archipelago: {
       forestPos: [340, 85, -260],
       industrialPos: [-290, -10, -340],
+      extraIslands: [
+        { biome: 'volcanic', pos: [280, 46, 260],   radiusX: 46, radiusZ: 38, depth: 52 },
+        { biome: 'glacier',  pos: [-320, 96, 220],  radiusX: 46, radiusZ: 38, depth: 52 },
+        { biome: 'desert',   pos: [30, 58, 360],    radiusX: 46, radiusZ: 38, depth: 50 },
+        { biome: 'ancient',  pos: [-180, 110, -420], radiusX: 44, radiusZ: 38, depth: 48 },
+      ],
       customProps: [],
     },
   },

@@ -8,7 +8,8 @@ class RockProjection extends BABYLON.MaterialPluginBase {
       scene._sharedRockCliffTex = tex;
     }
     this.texture = scene._sharedRockCliffTex;
-    this.styleCode = style === 'industrial' ? 1.0 : style === 'military' ? 2.0 : 0.0;
+    const STYLE_CODES = { forest: 0.0, industrial: 1.0, military: 2.0, volcanic: 3.0, glacier: 4.0, desert: 5.0, ancient: 6.0 };
+    this.styleCode = STYLE_CODES[style] ?? 0.0;
     this._invMatrix = new BABYLON.Matrix();
     this.registerForExtraEvents=true;
     this._enable(true);
@@ -73,7 +74,47 @@ class RockProjection extends BABYLON.MaterialPluginBase {
         vSeamGlowColor = rockStyleParams.x > 0.5 ? vec3(0.18, 0.78, 0.85) : vec3(0.32, 0.92, 0.76);
 
         vec3 rockPaint;
-        if (rockStyleParams.x > 1.5) {
+        if (rockStyleParams.x > 5.5) {
+          // ANCIENT SANCTUARY ('ancient'): Weathered ivory-travertine marble, verdigris bronze crevices & bright golden-teal aether seams
+          vec3 creviceCol = vec3(0.14, 0.28, 0.30);
+          vec3 marbleBody = mix(vec3(0.68, 0.66, 0.58), vec3(0.92, 0.90, 0.80), cliffLuma);
+          rockPaint = mix(creviceCol, marbleBody, crackMask);
+          rockPaint = mix(rockPaint, paintedCliff * vec3(0.96, 0.94, 0.88), 0.25) * strataWave;
+          rockPaint = mix(rockPaint, vec3(0.18, 0.36, 0.34), topLedge * 0.28);
+          rockPaint = mix(rockPaint, vec3(0.12, 0.22, 0.28), overhang * 0.38);
+          vAetherVeinMask = max(vAetherVeinMask, (1.0 - smoothstep(0.10, 0.22, cliffLuma)) * 0.65);
+          vSeamGlowColor = vec3(0.28, 0.94, 0.82);
+        } else if (rockStyleParams.x > 4.5) {
+          // DESERT CANYON ('desert'): Deep terracotta-crimson sandstone, ochre strata & bleached dust ledges
+          vec3 creviceCol = vec3(0.22, 0.11, 0.09);
+          vec3 redBody = mix(vec3(0.58, 0.24, 0.14), vec3(0.88, 0.48, 0.26), cliffLuma);
+          vec3 ochreBand = vec3(0.90, 0.66, 0.36);
+          rockPaint = mix(creviceCol, redBody, crackMask);
+          rockPaint = mix(rockPaint, ochreBand, smoothstep(0.35, 0.85, strataRaw) * 0.38);
+          rockPaint = mix(rockPaint, paintedCliff * vec3(0.96, 0.78, 0.64), 0.26) * strataWave;
+          rockPaint = mix(rockPaint, vec3(0.86, 0.74, 0.56), topLedge * 0.42);
+          rockPaint = mix(rockPaint, vec3(0.20, 0.10, 0.12), overhang * 0.42);
+          vSeamGlowColor = vec3(1.00, 0.64, 0.22);
+        } else if (rockStyleParams.x > 3.5) {
+          // GLACIER ('glacier'): Fractured alpine blue-white ice & frozen slate with bright cyan subsurface crevices
+          vec3 creviceCol = vec3(0.12, 0.38, 0.62);
+          vec3 iceBody = mix(vec3(0.62, 0.80, 0.92), vec3(0.92, 0.97, 1.00), cliffLuma);
+          rockPaint = mix(creviceCol, iceBody, crackMask);
+          rockPaint = mix(rockPaint, paintedCliff * vec3(0.84, 0.94, 1.00), 0.22) * strataWave;
+          rockPaint = mix(rockPaint, vec3(0.95, 0.98, 1.00), topLedge * 0.62);
+          rockPaint = mix(rockPaint, vec3(0.16, 0.42, 0.68), overhang * 0.46);
+          vAetherVeinMask = max(vAetherVeinMask, (1.0 - smoothstep(0.14, 0.30, cliffLuma)) * 0.45);
+          vSeamGlowColor = vec3(0.32, 0.88, 1.00);
+        } else if (rockStyleParams.x > 2.5) {
+          // VOLCANIC OBSIDIAN ('volcanic'): Charred black basalt cliffs with molten magma cracks & ash ledges
+          vec3 creviceCol = vec3(0.06, 0.05, 0.06);
+          vec3 obsidianBody = mix(vec3(0.12, 0.11, 0.13), vec3(0.30, 0.26, 0.26), cliffLuma);
+          rockPaint = mix(creviceCol, obsidianBody, crackMask) * strataWave;
+          rockPaint = mix(rockPaint, vec3(0.38, 0.34, 0.32), topLedge * 0.45);
+          rockPaint = mix(rockPaint, vec3(0.05, 0.04, 0.05), overhang * 0.45);
+          vAetherVeinMask = max(vAetherVeinMask, (1.0 - smoothstep(0.12, 0.26, cliffLuma)) * 0.95);
+          vSeamGlowColor = vec3(1.00, 0.36, 0.06);
+        } else if (rockStyleParams.x > 1.5) {
           // MILITARY BASTION ('military'): Weathered limestone & ochre sandstone with dark slate crevices & dry plateau lichen
           vec3 creviceCol = vec3(0.14, 0.19, 0.26);
           vec3 stoneBody = mix(vec3(0.48, 0.40, 0.32), vec3(0.84, 0.72, 0.55), cliffLuma);

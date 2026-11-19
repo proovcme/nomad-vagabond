@@ -12,6 +12,7 @@ import { createRustedMetalTexture } from './textures.js?v=mission1';
 import { buildFlak88Turret } from './flak88.js?v=mission1';
 import { AssetManager } from './engine/assetManager.js?v=mission1';
 import { getLevel } from './levels/levelRegistry.js?v=mission1';
+import { buildBiomeIsland } from './islands/biomeIslands.js?v=mission1';
 
 function c3(hex) {
   return BABYLON.Color3.FromHexString(hex);
@@ -2431,6 +2432,18 @@ export class SkyArchipelagoWorld {
     this.islands.push(this.forestIsland, this.industrialIsland);
     this.landmarks = new ArchipelagoLandmarks(this.scene, this, this.shadowGenerator);
     this._buildShatteredWorldField(seedValue);
+    this.biomeIslands = [];
+    for (const [bIdx, bSpec] of (this.levelConfig?.archipelago?.extraIslands || []).entries()) {
+      const bi = buildBiomeIsland(this.scene, {
+        ...bSpec,
+        seed: seedValue + 700 + bIdx * 37,
+        shadowGen: null,
+      });
+      this.biomeIslands.push(bi);
+      this.islands.push(bi);
+      if (bi.generated?.rock) makeSolid(bi.generated.rock);
+      if (bi.generated?.terrain) makeSolid(bi.generated.terrain);
+    }
     // Instantiate declarative custom GLB props for future custom levels
     for (const prop of this.levelConfig?.archipelago?.customProps || []) {
       this.assets.instantiate(prop.assetId, {
@@ -2902,6 +2915,9 @@ export class SkyArchipelagoWorld {
     }
     if (this.vagabondBase?._exhaustFans?.length) {
       for (const f of this.vagabondBase._exhaustFans) f.rotation.z += dt * 5.2;
+    }
+    for (const bi of this.biomeIslands || []) {
+      bi.update?.(this.simTime);
     }
     // Distance-cull Vagabond interior PointLights when camera is far (flight/menu) so Vagabond shades against 3 lights instead of 8+!
     if (this.vagabondBase && cameraPos) {

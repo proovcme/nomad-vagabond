@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { LEVEL_REGISTRY, LEVEL_THEMES } from '../src/levels/levelRegistry.js';
+import { LEVEL_REGISTRY, LEVEL_THEMES, BIOME_TYPES } from '../src/levels/levelRegistry.js';
 import { ASSET_MANIFEST } from '../src/engine/assetManager.js';
 
 const ROOT = process.cwd();
@@ -59,6 +59,11 @@ for (const [id, lvl] of Object.entries(LEVEL_REGISTRY)) {
   if (lvl.nextLevelId && !LEVEL_REGISTRY[lvl.nextLevelId]) fail(`Level "${id}" nextLevelId "${lvl.nextLevelId}" not found`);
   for (const prop of lvl.archipelago?.customProps || []) {
     if (!ASSET_MANIFEST[prop.assetId]) fail(`Level "${id}" customProp references unknown assetId "${prop.assetId}"`);
+  }
+  for (const bi of lvl.archipelago?.extraIslands || []) {
+    if (!BIOME_TYPES.includes(bi.biome)) fail(`Level "${id}" extraIsland has unknown biome "${bi.biome}"`);
+    const distFromVag = Math.hypot(bi.pos?.[0] || 0, bi.pos?.[2] || 0);
+    if (distFromVag < 160) fail(`Level "${id}" extraIsland "${bi.biome}" too close to Vagabond (${Math.round(distFromVag)}m < 160m)`);
   }
   const f = lvl.archipelago?.forestPos;
   const ind = lvl.archipelago?.industrialPos;
