@@ -1813,10 +1813,12 @@ function updateMission(dt) {
         }
         if (!demoState._samTrailMat || demoState._samTrailMat.isDisposed) {
           demoState._samTrailMat = new BABYLON.StandardMaterial('samTrailSharedMat', scene);
-          demoState._samTrailMat.emissiveColor = BABYLON.Color3.FromHexString('#fff0cc');
+          demoState._samTrailMat.emissiveColor = BABYLON.Color3.FromHexString('#f5ede0');
           demoState._samTrailMat.disableLighting = true;
           demoState._samTrailMat.backFaceCulling = false;
-          demoState._samTrailMat.alpha = 0.52;
+          demoState._samTrailMat.depthWrite = false;
+          demoState._samTrailMat.alpha = 0.62;
+          if (ship?.trailMat?.opacityTexture) demoState._samTrailMat.opacityTexture = ship.trailMat.opacityTexture;
         }
         const mMesh = BABYLON.MeshBuilder.CreateCylinder('samMissile', { diameterTop: 0.16, diameterBottom: 0.30, height: 2.2, tessellation: 8 }, scene);
         mMesh.position.copyFrom(startPos);
@@ -1824,9 +1826,11 @@ function updateMission(dt) {
         mMesh.rotate(BABYLON.Axis.X, Math.PI * 0.5, BABYLON.Space.LOCAL);
         mMesh.material = demoState._samMat;
         mMesh.isPickable = false;
+        const samPlume = BABYLON.MeshBuilder.CreateCylinder('samPlume', { diameterTop: 0.34, diameterBottom: 0.02, height: 1.6, tessellation: 6 }, scene);
+        samPlume.parent = mMesh; samPlume.position.set(0, -1.7, 0); samPlume.material = demoState._samMat; samPlume.isPickable = false;
         let trail = null;
         if (typeof BABYLON.TrailMesh === 'function') {
-          trail = new BABYLON.TrailMesh(`samTrail_${Date.now()}`, mMesh, scene, 0.24, 30, true);
+          trail = new BABYLON.TrailMesh(`samTrail_${Date.now()}`, mMesh, scene, 0.42, 38, true);
           trail.material = demoState._samTrailMat;
           trail.isPickable = false;
         }
@@ -2258,9 +2262,12 @@ engine.runRenderLoop(() => {
         }
         if (!demoState._enemyMissileTrailMat || demoState._enemyMissileTrailMat.isDisposed) {
           demoState._enemyMissileTrailMat = new BABYLON.StandardMaterial('enemyMissileTrailMat', scene);
-          demoState._enemyMissileTrailMat.emissiveColor = BABYLON.Color3.FromHexString('#ffcf99');
+          demoState._enemyMissileTrailMat.emissiveColor = BABYLON.Color3.FromHexString('#ffe0b8');
           demoState._enemyMissileTrailMat.disableLighting = true;
-          demoState._enemyMissileTrailMat.alpha = 0.52;
+          demoState._enemyMissileTrailMat.backFaceCulling = false;
+          demoState._enemyMissileTrailMat.depthWrite = false;
+          demoState._enemyMissileTrailMat.alpha = 0.62;
+          if (ship?.trailMat?.opacityTexture) demoState._enemyMissileTrailMat.opacityTexture = ship.trailMat.opacityTexture;
         }
         const mm = BABYLON.MeshBuilder.CreateCylinder('enemyHomingMissile', { diameterTop: 0.14, diameterBottom: 0.36, height: 2.4, tessellation: 6 }, scene);
         mm.position.copyFrom(en.root.position).addInPlace(launchDir.scale(4.5));
@@ -2268,9 +2275,11 @@ engine.runRenderLoop(() => {
         mm.rotate(BABYLON.Axis.X, Math.PI * 0.5, BABYLON.Space.LOCAL);
         mm.material = demoState._enemyMissileMat;
         mm.isPickable = false;
+        const emPlume = BABYLON.MeshBuilder.CreateCylinder('enemyMissilePlume', { diameterTop: 0.36, diameterBottom: 0.02, height: 1.65, tessellation: 6 }, scene);
+        emPlume.parent = mm; emPlume.position.set(0, -1.8, 0); emPlume.material = demoState._enemyMissileMat; emPlume.isPickable = false;
         let trail = null;
         if (typeof BABYLON.TrailMesh === 'function') {
-          trail = new BABYLON.TrailMesh(`enemyMissileTrail_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, mm, scene, 0.42, 26, true);
+          trail = new BABYLON.TrailMesh(`enemyMissileTrail_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, mm, scene, 0.48, 38, true);
           trail.material = demoState._enemyMissileTrailMat;
           trail.isPickable = false;
         }

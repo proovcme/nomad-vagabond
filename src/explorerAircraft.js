@@ -2602,11 +2602,13 @@ export class ExplorerAircraft {
 
     if (!isBomb && !this._rocketTrailMat) {
       const rtm = new BABYLON.StandardMaterial('acRocketSmokeTrailMat', this.scene);
-      rtm.emissiveColor = c3('#ffe5b0');
+      rtm.emissiveColor = c3('#f4ece0');
       rtm.diffuseColor = new BABYLON.Color3(0, 0, 0);
       rtm.disableLighting = true;
       rtm.backFaceCulling = false;
-      rtm.alpha = 0.45;
+      rtm.depthWrite = false;
+      rtm.alpha = 0.58;
+      if (this.trailMat?.opacityTexture) rtm.opacityTexture = this.trailMat.opacityTexture;
       this._rocketTrailMat = rtm;
     }
 
@@ -2645,10 +2647,18 @@ export class ExplorerAircraft {
       ord.material = this._getSharedProjectileMaterial(isBomb ? 'bomb' : 'rocket', isBomb ? '#ff6b35' : '#ffbe44');
 
       let trail = null;
-      if (!isBomb && typeof BABYLON.TrailMesh === 'function') {
-        trail = new BABYLON.TrailMesh(`acRocketTrail_${Date.now()}_${i}`, ord, this.scene, 0.20, 26, true);
-        trail.material = this._rocketTrailMat;
-        trail.isPickable = false;
+      if (!isBomb) {
+        // Bright fiery motor exhaust plume on the rocket tail
+        const plume = BABYLON.MeshBuilder.CreateCylinder(`acRocketPlume_${i}`, { diameterTop: 0.34, diameterBottom: 0.02, height: 1.55, tessellation: 6 }, this.scene);
+        plume.parent = ord;
+        plume.position.set(0, -1.65, 0);
+        plume.material = this._getSharedProjectileMaterial('rocketPlume', '#fff0a8');
+        plume.isPickable = false;
+        if (typeof BABYLON.TrailMesh === 'function') {
+          trail = new BABYLON.TrailMesh(`acRocketTrail_${Date.now()}_${i}`, ord, this.scene, 0.36, 36, true);
+          trail.material = this._rocketTrailMat;
+          trail.isPickable = false;
+        }
       }
 
       this.projectiles.push({

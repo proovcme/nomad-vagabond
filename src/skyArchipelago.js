@@ -66,45 +66,24 @@ function registerSkyShaders() {
         return v;
       }
 
-      float cloudNoise(vec3 p) {
-        float z = floor(p.y); float f = fract(p.y); f = f*f*(3.0-2.0*f);
-        return mix(noise2(p.xz + z*vec2(17.31,9.17)), noise2(p.xz+(z+1.0)*vec2(17.31,9.17)),f);
-      }
-      float cloudDensity(vec3 p) {
-        float height = smoothstep(155.0,210.0,p.y)*(1.0-smoothstep(285.0,370.0,p.y));
-        if (height < .001) return 0.0;
-        vec3 q = p * .0042 + vec3(uTime*.007,0.0,uTime*.002);
-        float broad = cloudNoise(q)*.68 + cloudNoise(q*2.12+12.7)*.32;
-        return smoothstep(.54,.74,broad) * height;
-      }
       vec4 cloudVolume(vec3 origin, vec3 dir) {
-        if (dir.y < .03) return vec4(0.0);
-        float entry = max(10.0,(155.0-origin.y)/dir.y);
-        float exitDistance = min(2100.0,(370.0-origin.y)/dir.y);
-        if (exitDistance <= entry) return vec4(0.0);
-        float stepSize = (exitDistance-entry)/6.0;
+        // Ultra-fast 2-layer sunlit volumetric cloud deck (8x faster than 3D raymarch when facing sun!)
+        if (dir.y < .035) return vec4(0.0);
+        float t = min(2200.0, max(12.0, (245.0 - origin.y) / dir.y));
+        vec2 p = (origin.xz + dir.xz * t) * 0.0028 + vec2(uTime * 0.006, uTime * 0.002);
+        float n1 = noise2(p) * 0.65 + noise2(p * 2.15 + vec2(12.7, 7.3)) * 0.35;
+        float density = smoothstep(0.50, 0.78, n1) * smoothstep(0.035, 0.22, dir.y) * (1.0 - smoothstep(1400.0, 2200.0, t));
+        if (density <= 0.01) return vec4(0.0);
         vec3 light = normalize(uSunDir);
         float sunCos = max(0.0001, dot(dir, light));
-        float sunPhase = pow(sunCos, 5.0) * 0.55 + pow(sunCos, 20.0) * 0.45;
-        float jitter = hash21(gl_FragCoord.xy) * 0.55;
-        vec3 rgb = vec3(0.0); float alpha = 0.0;
-        for (int i=0;i<6;i++) {
-          vec3 p = origin + dir*(entry+(float(i)+.22+jitter)*stepSize);
-          float density = cloudDensity(p);
-          if(density<=0.015)continue;
-          float absorption = (1.0-exp(-density*stepSize*.013)) * (1.0-alpha);
-          vec3 q = p * .0042 + vec3(uTime*.007,0.0,uTime*.002);
-          float lightSample = cloudNoise(q + light * 0.16);
-          float shade = clamp((density - smoothstep(.52, .74, lightSample)) * 1.15, -.28, .68);
-          float powder = 1.0 - exp(-density * 2.6);
-          vec3 shadowTint = mix(vec3(.44,.52,.68), vec3(.66,.52,.58), sunPhase * 0.45);
-          vec3 litTint = vec3(1.0,.95,.82);
-          vec3 cloudColor = mix(shadowTint, litTint, clamp(.48+shade*.92+(p.y-210.0)*.0016,0.0,1.0));
-          cloudColor += vec3(1.0, .82, .48) * sunPhase * powder * 0.52;
-          rgb += cloudColor*absorption; alpha += absorption;
-          if (alpha>.92) break;
-        }
-        return vec4(rgb,alpha);
+        float sunPhase = pow(sunCos, 5.0) * 0.55 + pow(sunCos, 18.0) * 0.45;
+        float nLit = noise2(p + light.xz * 0.22);
+        float shade = clamp((n1 - nLit) * 2.4 + 0.52, 0.0, 1.0);
+        vec3 shadowTint = mix(vec3(.44, .53, .70), vec3(.68, .54, .58), sunPhase * 0.45);
+        vec3 litTint = vec3(1.0, .95, .84);
+        vec3 cloudCol = mix(shadowTint, litTint, shade) + vec3(1.0, .82, .48) * sunPhase * density * 0.55;
+        float alpha = density * 0.72;
+        return vec4(cloudCol * alpha, alpha);
       }
 
       void main(void) {

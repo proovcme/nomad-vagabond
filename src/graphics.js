@@ -23,11 +23,11 @@ export const QUALITY_PRESETS = {
   },
   high: {
     label: 'Высокое',
-    shadowSize: 2048,
+    shadowSize: 1024,
     shadowPCF: true,
-    ssao: true,
+    ssao: false,
     bloom: true,
-    msaa: 4,
+    msaa: 2,
     scaleFactor: 1.0,
     envIntensity: 0.88,
   },
@@ -199,16 +199,19 @@ export class GraphicsManager {
 
     if (this.isHeadlessOrNull || !this.camera) return;
 
-    const dpr = Math.min(window.devicePixelRatio || 1, key==='medium'?1.5:key==='low'?1:2);
+    // Disable implicit per-mouse-move CPU raycasting across 1000+ meshes (eliminates turn stutters!)
+    this.scene.skipPointerMovePicking = true;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, key === 'ultra' ? 1.65 : key === 'high' ? 1.35 : key === 'medium' ? 1.15 : 1.0);
     engine.setHardwareScalingLevel(cfg.scaleFactor / dpr);
     this.scene.environmentIntensity = this.scene.metadata?.skyLighting ? 0.86 : cfg.envIntensity;
-    this.scene.getMaterialByName('archSkyShader')?.setFloat('uVolumetricClouds',cfg.ssao?1:0);
+    this.scene.getMaterialByName('archSkyShader')?.setFloat('uVolumetricClouds', key === 'low' ? 0 : 1);
 
     if (shadowGenerator) {
       shadowGenerator.getShadowMap()?.resize(cfg.shadowSize);
       shadowGenerator.usePercentageCloserFiltering = cfg.shadowPCF;
-      shadowGenerator.filteringQuality = cfg.shadowPCF
-        ? BABYLON.ShadowGenerator.QUALITY_HIGH
+      shadowGenerator.filteringQuality = key === 'ultra'
+        ? BABYLON.ShadowGenerator.QUALITY_MEDIUM
         : BABYLON.ShadowGenerator.QUALITY_LOW;
     }
 
@@ -224,15 +227,15 @@ export class GraphicsManager {
       pipe.imageProcessingEnabled = Boolean(this.scene.metadata?.skyLighting); // One final linear→display transform for the entire sky scene
       pipe.bloomEnabled = cfg.bloom;
       if (cfg.bloom) {
-        pipe.bloomThreshold = 0.86;
-        pipe.bloomWeight = 0.22;
-        pipe.bloomKernel = 56;
-        pipe.bloomScale = 0.5;
+        pipe.bloomThreshold = 0.92;
+        pipe.bloomWeight = 0.18;
+        pipe.bloomKernel = 32;
+        pipe.bloomScale = 0.35;
       }
       // A single ACES/PBR-neutral path with subtle sharpening for crisp rock/metal detail
       pipe.sharpenEnabled = true;
       if (pipe.sharpen) {
-        pipe.sharpen.edgeAmount = 0.26;
+        pipe.sharpen.edgeAmount = 0.22;
         pipe.sharpen.colorAmount = 1.0;
       }
       pipe.grainEnabled = false;
@@ -242,7 +245,7 @@ export class GraphicsManager {
       this.pipeline = null;
     }
 
-    // SSAO2 for architectural & rock crevice depth (High / Ultra on WebGL2)
+    // SSAO2 for architectural & rock crevice depth (Ultra only on WebGL2)
     if (this.ssao) {
       this.ssao.dispose();
       this.ssao = null;
@@ -250,12 +253,12 @@ export class GraphicsManager {
     if(!cfg.ssao && this.scene.metadata?.skyLighting)this.scene.disablePrePassRenderer();
     if (cfg.ssao && engine.webGLVersion >= 2) {
       try {
-        const ssao = new BABYLON.SSAO2RenderingPipeline('nomadSSAO', this.scene, { ssaoRatio: 0.5, blurRatio: 0.75 }, [this.camera], false);
-        ssao.radius = 1.6;
-        ssao.totalStrength = 0.62;
+        const ssao = new BABYLON.SSAO2RenderingPipeline('nomadSSAO', this.scene, { ssaoRatio: 0.4, blurRatio: 0.5 }, [this.camera], false);
+        ssao.radius = 1.5;
+        ssao.totalStrength = 0.55;
         ssao.expensiveBlur = false;
-        ssao.samples = 16;
-        ssao.maxZ = 220;
+        ssao.samples = 8;
+        ssao.maxZ = 200;
         // SSAO's pre-pass must not apply a second gamma conversion to PBR output.
         this.scene.enablePrePassRenderer().disableGammaTransform = true;
         this.ssao = ssao;
