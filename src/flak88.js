@@ -52,6 +52,17 @@ export function buildFlak88Turret(scene, name, parent, pos = new BABYLON.Vector3
   brassMat.metallic = 0.84;
   brassMat.roughness = 0.30;
 
+  // Burnished copper hydraulic cylinders & pressure manifold
+  const copperMat = new B.PBRMaterial(`${name}_copperMat`, scene);
+  copperMat.albedoColor = c3('#b8683a');
+  copperMat.metallic = 0.82;
+  copperMat.roughness = 0.34;
+
+  // Warm amber pressure dial & optical glow
+  const gaugeMat = new B.StandardMaterial(`${name}_gaugeMat`, scene);
+  gaugeMat.emissiveColor = c3('#ffb84d');
+  gaugeMat.disableLighting = true;
+
   const reg = (mesh, mat, castShadow = true) => {
     mesh.material = mat;
     mesh.receiveShadows = true;
@@ -140,6 +151,26 @@ export function buildFlak88Turret(scene, name, parent, pos = new BABYLON.Vector3
     wheel.rotation.z = Math.PI * 0.5;
   }
 
+  // Dieselpunk Turntable Accents: Brass Shield Trim, Copper Pressure Tank, Exhaust Stack & Amber Pressure Dial
+  for (const sx of [-0.92, 0.92]) {
+    const trim = reg(B.MeshBuilder.CreateBox(`${name}_shieldTrim_${sx}`, { width: 1.22, height: 0.10, depth: 0.14 }, scene), brassMat, false);
+    trim.parent = yawNode;
+    trim.position.set(sx, 2.48, -0.96);
+    trim.rotation.x = 0.22;
+  }
+  const hydroTank = reg(B.MeshBuilder.CreateCylinder(`${name}_hydroTank`, { diameter: 0.42, height: 1.05, tessellation: 10 }, scene), copperMat, false);
+  hydroTank.parent = yawNode;
+  hydroTank.position.set(-0.82, 1.12, 0.62);
+  hydroTank.rotation.x = Math.PI * 0.5;
+  const exhaustPipe = reg(B.MeshBuilder.CreateCylinder(`${name}_exhaust`, { diameterTop: 0.14, diameterBottom: 0.18, height: 1.45, tessellation: 8 }, scene), barrelMat, false);
+  exhaustPipe.parent = yawNode;
+  exhaustPipe.position.set(-0.98, 1.85, 0.88);
+  exhaustPipe.rotation.x = -0.18;
+  const dialFace = reg(B.MeshBuilder.CreateCylinder(`${name}_dial`, { diameter: 0.22, height: 0.06, tessellation: 10 }, scene), gaugeMat, false);
+  dialFace.parent = yawNode;
+  dialFace.position.set(0.62, 1.65, 0.36);
+  dialFace.rotation.x = Math.PI * 0.5;
+
   // 3. Elevating Cradle (pitchNode: rotates around X to aim skyward up to +80 deg!)
   const pitchNode = new B.TransformNode(`${name}_pitch`, scene);
   pitchNode.parent = yawNode;
@@ -151,13 +182,17 @@ export function buildFlak88Turret(scene, name, parent, pos = new BABYLON.Vector3
   cradle.parent = pitchNode;
   cradle.position.set(0, 0, -0.45);
 
-  // Iconic twin hydraulic recuperator & recoil cylinders (top & bottom of barrel)
+  // Iconic twin copper hydraulic recuperator & recoil cylinders (top & bottom of barrel) + side rotary ammo drum
   for (const cy of [0.34, -0.30]) {
-    const cyl = reg(B.MeshBuilder.CreateCylinder(`${name}_recup_${cy}`, { diameter: 0.24, height: 2.35, tessellation: 10 }, scene), barrelMat);
+    const cyl = reg(B.MeshBuilder.CreateCylinder(`${name}_recup_${cy}`, { diameter: 0.25, height: 2.38, tessellation: 10 }, scene), cy > 0 ? copperMat : barrelMat);
     cyl.parent = pitchNode;
     cyl.rotation.x = Math.PI * 0.5;
     cyl.position.set(0, cy, -0.55);
   }
+  const ammoDrum = reg(B.MeshBuilder.CreateCylinder(`${name}_ammoDrum`, { diameter: 0.62, height: 0.38, tessellation: 12 }, scene), brassMat, false);
+  ammoDrum.parent = pitchNode;
+  ammoDrum.rotation.z = Math.PI * 0.5;
+  ammoDrum.position.set(-0.56, 0.18, 0.32);
 
   // Recoiling barrel assembly (slides back along +Z when firing!)
   const recoilNode = new B.TransformNode(`${name}_recoil`, scene);
@@ -168,25 +203,31 @@ export function buildFlak88Turret(scene, name, parent, pos = new BABYLON.Vector3
   breech.parent = recoilNode;
   breech.position.set(0, 0.02, 0.92);
 
-  // Heavy rear jacket of the 88mm barrel
+  // Heavy rear jacket of the barrel with cooling jacket rings
   const barrelRear = reg(B.MeshBuilder.CreateCylinder(`${name}_barrelRear`, { diameterTop: 0.28, diameterBottom: 0.38, height: 2.1, tessellation: 12 }, scene), barrelMat);
   barrelRear.parent = recoilNode;
   barrelRear.rotation.x = -Math.PI * 0.5;
   barrelRear.position.set(0, 0.02, -1.35);
+  for (const fz of [-1.05, -1.45, -1.85]) {
+    const fin = reg(B.MeshBuilder.CreateCylinder(`${name}_coolFin_${fz}`, { diameter: 0.44, height: 0.08, tessellation: 10 }, scene), copperMat, false);
+    fin.parent = recoilNode;
+    fin.rotation.x = -Math.PI * 0.5;
+    fin.position.set(0, 0.02, fz);
+  }
 
-  // Long slender forward rifled barrel (classic Flak 88 silhouette!)
+  // Long slender forward rifled barrel
   const barrelFront = reg(B.MeshBuilder.CreateCylinder(`${name}_barrelFront`, { diameterTop: 0.19, diameterBottom: 0.27, height: 3.35, tessellation: 12 }, scene), barrelMat);
   barrelFront.parent = recoilNode;
   barrelFront.rotation.x = -Math.PI * 0.5;
   barrelFront.position.set(0, 0.02, -4.05);
 
-  // Brass reinforcement collar & muzzle brake ring
-  const collar = reg(B.MeshBuilder.CreateCylinder(`${name}_collar`, { diameter: 0.31, height: 0.16, tessellation: 12 }, scene), brassMat, false);
+  // Brass reinforcement collar & heavy fluted muzzle brake
+  const collar = reg(B.MeshBuilder.CreateCylinder(`${name}_collar`, { diameter: 0.33, height: 0.18, tessellation: 12 }, scene), brassMat, false);
   collar.parent = recoilNode;
   collar.rotation.x = -Math.PI * 0.5;
   collar.position.set(0, 0.02, -2.42);
 
-  const muzzleRing = reg(B.MeshBuilder.CreateCylinder(`${name}_muzzleBrake`, { diameterTop: 0.26, diameterBottom: 0.24, height: 0.36, tessellation: 12 }, scene), barrelMat, false);
+  const muzzleRing = reg(B.MeshBuilder.CreateCylinder(`${name}_muzzleBrake`, { diameterTop: 0.34, diameterBottom: 0.24, height: 0.44, tessellation: 10 }, scene), brassMat, false);
   muzzleRing.parent = recoilNode;
   muzzleRing.rotation.x = -Math.PI * 0.5;
   muzzleRing.position.set(0, 0.02, -5.75);

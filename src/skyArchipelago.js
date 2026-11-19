@@ -1072,29 +1072,66 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   const mainFlak = buildFlak88Turret(scene, 'vagFlak88Main', turretPlat, new BABYLON.Vector3(0, 0.98, 0), 0.35, shadowGen);
   asteroidBase.flakTurrets = [mainFlak];
 
-  // Sculpted Quad-Tube Dieselpunk SAM (Surface-to-Air Missile) Launcher Battery solidly grounded on upper deck rim
+  // Riveted Dieselpunk Quad-Rail Rocket Battery (ЗРК) with copper hydraulics, blast shield & brass clamping bands
   const samBase = new BABYLON.TransformNode('vagSamLauncher', scene);
   samBase.parent = asteroidBase.group;
   samBase.position.set(-5.0, 21.35, -16.5);
   samBase.scaling.setAll(1.25);
-  const samPedestal = BABYLON.MeshBuilder.CreateCylinder('vagSamPedestal', { diameterTop: 3.4, diameterBottom: 4.2, height: 1.5, tessellation: 12 }, scene);
-  samPedestal.parent = samBase; samPedestal.position.y = 0.75; samPedestal.material = hullMat; samPedestal.receiveShadows = true;
+
+  const samIronMat = new BABYLON.PBRMaterial('vagSamIronMat', scene);
+  samIronMat.albedoColor = c3('#474a42'); samIronMat.metallic = 0.58; samIronMat.roughness = 0.52;
+  const samCopperMat = new BABYLON.PBRMaterial('vagSamCopperMat', scene);
+  samCopperMat.albedoColor = c3('#ba6e3c'); samCopperMat.metallic = 0.82; samCopperMat.roughness = 0.32;
+  const samWarheadMat = new BABYLON.PBRMaterial('vagSamWarheadMat', scene);
+  samWarheadMat.albedoColor = c3('#c84426'); samWarheadMat.emissiveColor = c3('#3a1004'); samWarheadMat.metallic = 0.35; samWarheadMat.roughness = 0.38;
+
+  const samPedestal = BABYLON.MeshBuilder.CreateCylinder('vagSamPedestal', { diameterTop: 3.4, diameterBottom: 4.4, height: 1.5, tessellation: 8 }, scene);
+  samPedestal.parent = samBase; samPedestal.position.y = 0.75; samPedestal.material = samIronMat; samPedestal.receiveShadows = true;
+
   const samYaw = new BABYLON.TransformNode('vagSamYaw', scene);
-  samYaw.parent = samBase; samYaw.position.y = 1.65;
-  const samTurretBox = BABYLON.MeshBuilder.CreateBox('vagSamHousing', { width: 2.2, height: 1.4, depth: 2.6 }, scene);
-  samTurretBox.parent = samYaw; samTurretBox.position.y = 0.7; samTurretBox.material = hullMat;
+  samYaw.parent = samBase; samYaw.position.y = 1.60;
+  const yawIron = [], yawCopper = [];
+  const putSam = (m, arr, px, py, pz, rx = 0, ry = 0, rz = 0) => { m.position.set(px, py, pz); m.rotation.set(rx, ry, rz); m.computeWorldMatrix(true); arr.push(m); return m; };
+  // Riveted octagonal turret hull, side cheeks, sloped rear blast deflector & diesel exhaust chimney
+  putSam(BABYLON.MeshBuilder.CreateBox('samHull', { width: 2.35, height: 1.35, depth: 2.85 }, scene), yawIron, 0, 0.72, 0.05);
+  for (const sx of [-1.25, 1.25]) {
+    putSam(BABYLON.MeshBuilder.CreateBox(`samCheek_${sx}`, { width: 0.24, height: 1.65, depth: 1.5 }, scene), yawIron, sx, 1.15, 0.15);
+    putSam(BABYLON.MeshBuilder.CreateCylinder(`samPiston_${sx}`, { diameter: 0.26, height: 1.55, tessellation: 8 }, scene), yawCopper, sx * 0.92, 1.35, -0.68, -0.45, 0, 0);
+  }
+  putSam(BABYLON.MeshBuilder.CreateBox('samBlastShield', { width: 2.55, height: 1.45, depth: 0.14 }, scene), yawIron, 0, 1.25, 1.65, -0.35, 0, 0);
+  putSam(BABYLON.MeshBuilder.CreateCylinder('samPressureTank', { diameter: 0.52, height: 1.4, tessellation: 10 }, scene), yawCopper, -1.35, 0.78, 0.85, Math.PI * 0.5, 0, 0);
+  putSam(BABYLON.MeshBuilder.CreateCylinder('samExhaust', { diameter: 0.22, height: 1.85, tessellation: 8 }, scene), yawIron, 1.28, 1.55, 1.15, -0.14, 0, 0);
+  const mYawIron = BABYLON.Mesh.MergeMeshes(yawIron, true, true, undefined, false, false);
+  if (mYawIron) { mYawIron.name = 'vagSamTurretIron'; mYawIron.parent = samYaw; mYawIron.material = samIronMat; mYawIron.receiveShadows = true; }
+  const mYawCopper = BABYLON.Mesh.MergeMeshes(yawCopper, true, true, undefined, false, false);
+  if (mYawCopper) { mYawCopper.name = 'vagSamTurretCopper'; mYawCopper.parent = samYaw; mYawCopper.material = samCopperMat; mYawCopper.receiveShadows = true; }
+
   const samRack = new BABYLON.TransformNode('vagSamRack', scene);
-  samRack.parent = samYaw; samRack.position.set(0, 1.55, 0); samRack.rotation.x = -0.48;
+  samRack.parent = samYaw; samRack.position.set(0, 1.68, 0); samRack.rotation.x = -0.48;
+  const rackIron = [], rackCopper = [], rackHeads = [];
   const samMuzzles = [];
+  // Armored launch cage frame + 4 banded iron tubes + red-orange warheads + amber optics pod
+  putSam(BABYLON.MeshBuilder.CreateBox('samCageTop', { width: 2.15, height: 0.14, depth: 3.1 }, scene), rackIron, 0, 0.86, 0);
+  putSam(BABYLON.MeshBuilder.CreateBox('samCageBot', { width: 2.15, height: 0.14, depth: 3.1 }, scene), rackIron, 0, -0.78, 0);
+  for (const bz of [-1.2, 0.0, 1.2]) {
+    putSam(BABYLON.MeshBuilder.CreateBox(`samBand_${bz}`, { width: 2.28, height: 1.72, depth: 0.16 }, scene), rackCopper, 0, 0.04, bz);
+  }
   for (const [rx, ry] of [[-0.65, 0.42], [0.65, 0.42], [-0.65, -0.32], [0.65, -0.32]]) {
-    const tube = BABYLON.MeshBuilder.CreateCylinder(`vagSamTube_${rx}_${ry}`, { diameter: 0.56, height: 3.6, tessellation: 10 }, scene);
-    tube.parent = samRack; tube.rotation.x = Math.PI * 0.5; tube.position.set(rx, ry, 0); tube.material = pipeMat;
-    const tip = BABYLON.MeshBuilder.CreateCylinder(`vagSamMissileTip_${rx}_${ry}`, { diameterTop: 0.06, diameterBottom: 0.42, height: 0.85, tessellation: 8 }, scene);
-    tip.parent = samRack; tip.rotation.x = -Math.PI * 0.5; tip.position.set(rx, ry, -2.05); tip.material = warmGlowMat;
+    putSam(BABYLON.MeshBuilder.CreateCylinder(`vagSamTube_${rx}_${ry}`, { diameter: 0.58, height: 3.7, tessellation: 10 }, scene), rackIron, rx, ry, 0, Math.PI * 0.5, 0, 0);
+    putSam(BABYLON.MeshBuilder.CreateCylinder(`vagSamMissileTip_${rx}_${ry}`, { diameterTop: 0.06, diameterBottom: 0.42, height: 0.88, tessellation: 8 }, scene), rackHeads, rx, ry, -2.12, -Math.PI * 0.5, 0, 0);
     const mNode = new BABYLON.TransformNode(`vagSamMuzzle_${rx}_${ry}`, scene);
-    mNode.parent = samRack; mNode.position.set(rx, ry, -2.4);
+    mNode.parent = samRack; mNode.position.set(rx, ry, -2.45);
     samMuzzles.push(mNode);
   }
+  const mRackIron = BABYLON.Mesh.MergeMeshes(rackIron, true, true, undefined, false, false);
+  if (mRackIron) { mRackIron.name = 'vagSamRackIron'; mRackIron.parent = samRack; mRackIron.material = samIronMat; mRackIron.receiveShadows = true; }
+  const mRackCopper = BABYLON.Mesh.MergeMeshes(rackCopper, true, true, undefined, false, false);
+  if (mRackCopper) { mRackCopper.name = 'vagSamRackCopper'; mRackCopper.parent = samRack; mRackCopper.material = samCopperMat; mRackCopper.receiveShadows = true; }
+  const mRackHeads = BABYLON.Mesh.MergeMeshes(rackHeads, true, true, undefined, false, false);
+  if (mRackHeads) { mRackHeads.name = 'vagSamRackWarheads'; mRackHeads.parent = samRack; mRackHeads.material = samWarheadMat; }
+  const samOptic = BABYLON.MeshBuilder.CreateSphere('vagSamOpticLens', { diameter: 0.34, segments: 8 }, scene);
+  samOptic.parent = samRack; samOptic.position.set(1.24, 0.48, -1.15); samOptic.material = warmGlowMat; samOptic.isPickable = false;
+
   asteroidBase.samLaunchers = [{ base: samBase, yawNode: samYaw, rackNode: samRack, muzzles: samMuzzles, cd: 1.5, tubeIdx: 0 }];
 
   const radarPlat = new BABYLON.TransformNode('vagRadarPlatform', scene);
