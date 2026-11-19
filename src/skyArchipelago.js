@@ -2605,6 +2605,7 @@ export class SkyArchipelagoWorld {
 
   registerVagabondBase(asteroidBase) {
     this.vagabondBase = asteroidBase;
+    this.asteroidBase = asteroidBase;
     asteroidBase.targetPlanet = null;
     asteroidBase.group.position.set(0, 35, 0);
     asteroidBase.prevPos.copyFrom(asteroidBase.group.position);

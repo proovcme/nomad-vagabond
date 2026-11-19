@@ -53,7 +53,17 @@ const loadMs = Date.now() - t0;
 await page.waitForTimeout(1400);
 
 const menu = await page.evaluate(() => window.__perfStats);
-console.log('MENU:', JSON.stringify({ loadMs, frameMs: menu.frameMs, draws: menu.drawCalls, tris: Math.round(menu.triangles) }));
+// Verify runtime invariants: beacon rotates and distant Vagabond interior PointLights are culled!
+const runtimeCheck = await page.evaluate(async () => {
+  const sc = BABYLON.EngineStore.LastCreatedEngine?.scenes?.[0];
+  const rig = sc?.getTransformNodeByName('vagTowerBeaconRig');
+  const y0 = rig ? rig.rotation.y : null;
+  await new Promise((r) => setTimeout(r, 450));
+  const y1 = rig ? rig.rotation.y : null;
+  const activePointLights = sc ? sc.lights.filter((l) => l.getTypeID() === BABYLON.Light.LIGHTTYPEID_POINTLIGHT && l.isEnabled()).length : -1;
+  return { beaconDelta: (y0 !== null && y1 !== null) ? Math.abs(y1 - y0) : 0, activePointLights };
+});
+console.log('MENU:', JSON.stringify({ loadMs, frameMs: menu.frameMs, draws: menu.drawCalls, tris: Math.round(menu.triangles), ...runtimeCheck }));
 
 await page.click('#mission-dreadnought-btn');
 await page.waitForTimeout(2600);
@@ -66,8 +76,8 @@ if (errors.length) console.error(errors.join('\n'));
 await browser.close();
 server.close();
 
-if (errors.length > 0 || menu.drawCalls > 650 || menu.triangles > 450000) {
-  console.error('PERF/ERROR BUDGET EXCEEDED!');
+if (errors.length > 0 || menu.drawCalls > 650 || menu.triangles > 450000 || runtimeCheck.beaconDelta < 0.05 || runtimeCheck.activePointLights > 0) {
+  console.error('PERF/RUNTIME ASSERTION FAILED!', runtimeCheck);
   process.exit(1);
 }
 console.log('PERF BENCH PASSED!');

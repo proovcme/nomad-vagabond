@@ -2237,8 +2237,9 @@ export class ExplorerAircraft {
         this.recoilShake = Math.max(this.recoilShake || 0, 0.045);
       }
       // Ground-effect cushion when flaring close above the Vagabond runway (0.5..6m)
-      if (world.asteroidBase && this.airspeed > 14 && this._takeoffPitchGrace <= 0) {
-        const bPos = world.asteroidBase.group.position;
+      const vagBase = world.vagabondBase || world.asteroidBase;
+      if (vagBase && this.airspeed > 14 && this._takeoffPitchGrace <= 0) {
+        const bPos = vagBase.group.position;
         const dBaseH = Math.hypot(this.group.position.x - bPos.x, this.group.position.z - bPos.z);
         const hAboveDeck = this.group.position.y - (bPos.y + 3.4);
         if (dBaseH < 64 && hAboveDeck > 0.4 && hAboveDeck < 6.0 && this.velocity.y < 0) {
