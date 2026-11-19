@@ -46,17 +46,12 @@ class RockProjection extends BABYLON.MaterialPluginBase {
                        + texture2D(rockTriplanarSampler, pDetail.xz).rgb * rockW.y
                        + texture2D(rockTriplanarSampler, pDetail.xy).rgb * rockW.z;
 
-        vec3 pMicro = rockWorld * 0.21 + vec3(0.61, 0.29, 0.83);
-        vec3 colMicro = texture2D(rockTriplanarSampler, pMicro.zy).rgb * rockW.x
-                      + texture2D(rockTriplanarSampler, pMicro.xz).rgb * rockW.y
-                      + texture2D(rockTriplanarSampler, pMicro.xy).rgb * rockW.z;
-
-        // Preserve the hand-painted block cracks of golden-cliff-albedo.png while adding crisp micro-grain
-        vec3 paintedCliff = mix(mix(colMacro, colDetail, 0.38), colMicro, 0.16);
+        // Preserve the hand-painted block cracks of golden-cliff-albedo.png (6-tap triplanar, zero pixel shimmer)
+        vec3 paintedCliff = mix(colMacro, colDetail, 0.36);
         float cliffLuma = dot(paintedCliff, vec3(0.299, 0.587, 0.114));
         float crackMask = smoothstep(0.20, 0.58, cliffLuma);
         vRockCreviceAO = mix(0.68, 1.06, crackMask);
-        vRockMicroRelief = (dot(colDetail - colMacro, vec3(0.333)) + (colMicro.r - 0.5) * 0.45);
+        vRockMicroRelief = dot(colDetail - colMacro, vec3(0.333));
         vRockStrataSlope = cos(rockWorld.y * 0.52 + cliffLuma * 4.2);
 
         // Subtle horizontal geological strata modulation & directional shading cues
@@ -105,10 +100,8 @@ class RockProjection extends BABYLON.MaterialPluginBase {
       CUSTOM_FRAGMENT_BEFORE_FINALCOLORCOMPOSITION: `
         #if defined(ROCK_PROJECTION) && !defined(UNLIT)
         vec3 sunDirW = normalize(vec3(-0.66, 0.28, -0.69));
-        // Screen-space derivative micro-bump from triplanar cliff relief for chiseled rock lighting
-        float dRx = dFdx(vRockMicroRelief);
-        float dRy = dFdy(vRockMicroRelief);
-        vec3 microNormalW = normalize(vNormalW + vec3(vRockMicroRelief * 0.42 + dRx * 3.5, vRockStrataSlope * 0.34 - dRy * 3.5, -vRockMicroRelief * 0.36));
+        // Clean smooth triplanar relief normal (no screen-space dFdx/dFdy shimmer)
+        vec3 microNormalW = normalize(vNormalW + vec3(vRockMicroRelief * 0.30, vRockStrataSlope * 0.24, -vRockMicroRelief * 0.26));
         float ndl = dot(microNormalW, sunDirW);
         // Deep dramatic golden-hour contrast: crisp sunlit facets vs cool sapphire shadow crevices
         float celBand = smoothstep(-0.04, 0.18, ndl) * 0.62 + smoothstep(0.36, 0.64, ndl) * 0.38;

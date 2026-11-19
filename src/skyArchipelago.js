@@ -55,15 +55,7 @@ function registerSkyShaders() {
       }
 
       float fbm(vec2 p) {
-        float v = 0.0;
-        float a = 0.5;
-        mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
-        for (int i = 0; i < 3; i++) {
-          v += a * noise2(p);
-          p = rot * p * 2.04 + vec2(11.3, 7.1);
-          a *= 0.5;
-        }
-        return v;
+        return noise2(p) * 0.65 + noise2(mat2(0.8, 0.6, -0.6, 0.8) * p * 2.04 + vec2(11.3, 7.1)) * 0.35;
       }
 
       vec4 cloudVolume(vec3 origin, vec3 dir) {
@@ -106,15 +98,15 @@ function registerSkyShaders() {
           col = mix(horizCol, abyssCol, smoothstep(0.0, -0.35, h));
         }
 
-        // High altitude wispy cirrus streaks lit by golden sun (single fast domain-warped fbm)
+        // High altitude wispy cirrus streaks lit by golden sun (fast 2-octave fbm)
         vec3 sunSkyDir = normalize(vec3(uSunDir.x, 0.125, uSunDir.z));
         float sunDot = max(0.0001, dot(d, sunSkyDir));
         if (h > 0.03) {
           vec2 uv = d.xz / (h + 0.20) * 1.35 + vec2(uTime * 0.0035, uTime * 0.0018);
-          float c1 = fbm(uv + vec2(noise2(uv * 0.65) * 0.45, 0.0));
-          float wisps = smoothstep(0.48, 0.84, c1) * smoothstep(0.03, 0.24, h);
+          float c1 = fbm(uv);
+          float wisps = smoothstep(0.46, 0.84, c1) * smoothstep(0.03, 0.24, h);
           vec3 wispCol = mix(vec3(0.62, 0.74, 0.90), vec3(1.00, 0.82, 0.52), pow(sunDot, 1.4));
-          col = mix(col, wispCol, wisps * 0.46);
+          col = mix(col, wispCol, wisps * 0.44);
         }
 
         // Painted 360-degree ether-current panorama, with procedural poles/seam blending.
@@ -198,15 +190,7 @@ function registerSkyShaders() {
       }
 
       float fbm(vec2 p) {
-        float v = 0.0;
-        float a = 0.5;
-        mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
-        for (int i = 0; i < 3; i++) {
-          v += a * noise2(p);
-          p = rot * p * 2.03 + vec2(5.2, 9.7);
-          a *= 0.5;
-        }
-        return v;
+        return noise2(p) * 0.65 + noise2(mat2(0.8, 0.6, -0.6, 0.8) * p * 2.03 + vec2(5.2, 9.7)) * 0.35;
       }
 
       void main(void) {
@@ -725,19 +709,19 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   concreteMat.metallic = 0.04;
   concreteMat.roughness = 0.86;
   concreteMat.environmentIntensity = 0.24;
-  if (concreteMat.bumpTexture) concreteMat.bumpTexture.level = 1.65;
+  if (concreteMat.bumpTexture) concreteMat.bumpTexture.level = 0.85;
   const runwayMat = makeTerrainPBRMaterial(scene, 'vagRunwayPBR', 'anti_slip_concrete', 14, 5, '#686a6c');
   runwayMat.useMetallnessFromMetallicTextureBlue = false;
   runwayMat.metallic = 0.06;
-  runwayMat.roughness = 0.78;
-  runwayMat.environmentIntensity = 0.30;
-  if (runwayMat.bumpTexture) runwayMat.bumpTexture.level = 1.65;
+  runwayMat.roughness = 0.82;
+  runwayMat.environmentIntensity = 0.26;
+  if (runwayMat.bumpTexture) runwayMat.bumpTexture.level = 0.85;
   const grateMat = makeTerrainPBRMaterial(scene, 'vagabondGratePBR', 'metal_grate_rusty', 8, 8, '#a28d76');
   grateMat.useMetallnessFromMetallicTextureBlue = false;
-  grateMat.metallic = 0.38;
-  grateMat.roughness = 0.60;
-  grateMat.environmentIntensity = 0.38;
-  if (grateMat.bumpTexture) grateMat.bumpTexture.level = 1.60;
+  grateMat.metallic = 0.34;
+  grateMat.roughness = 0.66;
+  grateMat.environmentIntensity = 0.34;
+  if (grateMat.bumpTexture) grateMat.bumpTexture.level = 0.90;
 
   if (asteroidBase.rockMesh) {
     asteroidBase.rockMesh.material = rockMat;
@@ -762,7 +746,7 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   const hullMat = new BABYLON.PBRMaterial('vagHullMat', scene);
   hullMat.albedoTexture = vagHullTex.albedoTex;
   hullMat.bumpTexture = vagHullTex.bumpTex;
-  hullMat.bumpTexture.level = 1.35;
+  hullMat.bumpTexture.level = 0.85;
   hullMat.albedoColor = c3('#8c7d6b');
   hullMat.metallic = 0.42;
   hullMat.roughness = 0.54;
@@ -2027,10 +2011,9 @@ export class SkyArchipelagoWorld {
     this.skyMat.disableDepthWrite = true;
     this.skyDome.material = this.skyMat;
 
-    // 2. Multi-tier Sunset Cloud Sea below & around the islands
+    // 2. Single High-Efficiency Sunset Cloud Sea layer below the islands (halves full-screen overdraw!)
     const seaLayers = [
-      { y: -125, scale: 0.0022, opacity: 0.88 },
-      { y: -195, scale: 0.0014, opacity: 0.96 },
+      { y: -135, scale: 0.0018, opacity: 0.94 },
     ];
     seaLayers.forEach((sl, idx) => {
       const plane = BABYLON.MeshBuilder.CreateGround(`archCloudSea_${idx}`, { width: 14000, height: 14000, subdivisions: 2 }, this.scene);
@@ -2091,12 +2074,9 @@ export class SkyArchipelagoWorld {
       mistMat.alpha = 0.30;
 
       const mistPositions = [
-        [-120, 12, -85, 165, 95, 2.4], [140, 28, -95, 185, 105, 1.9],
-        [240, 56, -210, 210, 115, 2.6], [390, 42, -295, 195, 110, 2.1],
-        [-210, -22, -260, 220, 120, 2.8], [-340, 14, -380, 190, 105, 2.0],
-        [25, 8, -225, 200, 110, 2.3], [95, 72, -310, 175, 95, 1.8],
-        [-65, 68, -165, 160, 90, 2.2], [495, 65, -345, 210, 115, 2.5],
-        [-185, 48, -125, 170, 92, 1.7], [290, 112, -240, 180, 96, 2.1],
+        [-120, 12, -85, 165, 95, 2.4], [240, 56, -210, 210, 115, 2.6],
+        [-210, -22, -260, 220, 120, 2.8], [95, 72, -310, 175, 95, 1.8],
+        [495, 65, -345, 210, 115, 2.5], [-185, 48, -125, 170, 92, 1.7],
       ];
       mistPositions.forEach(([mx, my, mz, mw, mh, mSpd], idx) => {
         const wisp = BABYLON.MeshBuilder.CreateGround(`archMistWisp_${idx}`, { width: mw, height: mh }, this.scene);

@@ -232,12 +232,8 @@ export class GraphicsManager {
         pipe.bloomKernel = 32;
         pipe.bloomScale = 0.35;
       }
-      // A single ACES/PBR-neutral path with subtle sharpening for crisp rock/metal detail
-      pipe.sharpenEnabled = true;
-      if (pipe.sharpen) {
-        pipe.sharpen.edgeAmount = 0.22;
-        pipe.sharpen.colorAmount = 1.0;
-      }
+      // Disable post-process sharpen to prevent texture shimmering/moire on tiled PBR surfaces
+      pipe.sharpenEnabled = false;
       pipe.grainEnabled = false;
       pipe.chromaticAberrationEnabled = false;
       this.pipeline = pipe;

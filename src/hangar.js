@@ -45,7 +45,7 @@ export function finishRockHangar(scene, base, shadowGenerator, rockMasses) {
     hangarTex.bumpTex.uScale = hangarTex.bumpTex.vScale = 5;
     iron.albedoTexture = hangarTex.albedoTex;
     iron.bumpTexture = hangarTex.bumpTex;
-    iron.bumpTexture.level = 1.4;
+    iron.bumpTexture.level = 0.85;
   }
   const glow = new B.StandardMaterial('hangarWarmStrip', scene);
   glow.emissiveColor = B.Color3.FromHexString('#ffcc71'); glow.disableLighting = true;
