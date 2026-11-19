@@ -244,6 +244,20 @@ function registerSkyShaders() {
         col = mix(col, warmRim, smoothstep(0.38, 0.92, lit) * 0.58 + sunGlint * 0.62);
         col += vec3(1.00, 0.84, 0.50) * pow(sunAlign, 12.0) * smoothstep(0.55, 0.96, lit) * (1.0 - nightMask) * 0.35;
 
+        // Abyssal chaos below the clouds: intermittent deep storm-lightning blooms & sunken ether-engine flashes!
+        vec2 cellId = floor(vWorldPos.xz * 0.0024);
+        vec2 cellF = fract(vWorldPos.xz * 0.0024) - 0.5;
+        float cRnd = hash21(cellId);
+        float pulseT = fract(uTime * (0.22 + cRnd * 0.25) + cRnd * 19.7);
+        float flashEnv = pow(max(0.0, 1.0 - pulseT * 4.8), 3.0) * step(0.68, cRnd);
+        float flashRad = exp(-dot(cellF, cellF) * 16.0);
+        vec3 flashCol = mix(vec3(0.35, 0.86, 1.00), vec3(1.00, 0.52, 0.18), fract(cRnd * 13.7));
+        col += flashCol * flashEnv * flashRad * (0.75 + 0.85 * nightMask) * (0.45 + 0.55 * density);
+
+        // Faint glowing abyssal fissures shimmering in the deepest cloud troughs
+        float trough = (1.0 - smoothstep(0.18, 0.58, density)) * smoothstep(0.62, 0.88, noise2(p * 3.1 + vec2(0.0, uTime * 0.04)));
+        col += vec3(0.22, 0.68, 0.72) * trough * (0.22 + 0.35 * nightMask);
+
         float horizonBlend = smoothstep(950.0, 2700.0, dist);
         vec3 horizonHaze = mix(
           mix(vec3(0.68, 0.82, 0.94), vec3(0.98, 0.82, 0.60), pow(sunAlign, 1.8) * 0.78),

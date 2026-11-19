@@ -9,16 +9,42 @@ export class SkyCelestials {
     this._registerShaders();
     this.primaryMaterial=this._material('shatteredIvoryMoon',this.primaryDirection,false);
     this.secondaryMaterial=this._material('smallOchreMoon',this.secondaryDirection,true);
-    this.primary=this._sphere('fracturedIvoryMoon',48,32,0.009);
-    this.primary.material=this.primaryMaterial;this.primary.scaling.setAll(260);
-    this.primary.position.copyFrom(this.primaryDirection.scale(2200));
+
+    const right=BABYLON.Vector3.Cross(BABYLON.Axis.Y,this.primaryDirection.scale(-1)).normalize();
+    const up=BABYLON.Vector3.Cross(this.primaryDirection.scale(-1),right).normalize();
+    const moonCenter=this.primaryDirection.scale(2200);
+
+    // Truly split shattered moon: two jagged separated halves with a visible sky chasm + molten core remnant!
+    const splitAxis=right.scale(0.76).add(up.scale(0.65)).normalize();
+    this.primary=this._splitHalf('fracturedIvoryMoon_A',36,24,0.014,1);
+    this.primary.material=this.primaryMaterial;this.primary.scaling.setAll(255);
+    this.primary.position.copyFrom(moonCenter).addInPlace(splitAxis.scale(62));
+    this.primary.rotation.z=-0.09;
+
+    this.primaryB=this._splitHalf('fracturedIvoryMoon_B',36,24,0.014,-1);
+    this.primaryB.material=this.primaryMaterial;this.primaryB.scaling.setAll(245);
+    this.primaryB.position.copyFrom(moonCenter).addInPlace(splitAxis.scale(-68));
+    this.primaryB.rotation.z=0.13;
+
+    // Glowing exposed planetary core & magma-ether fissure drifting in the chasm between the two halves
+    const coreMat=new BABYLON.StandardMaterial('shatteredMoonCoreMat',scene);
+    coreMat.emissiveColor=BABYLON.Color3.FromHexString('#ff9c42');
+    coreMat.disableLighting=true;coreMat.alpha=0.58;coreMat.alphaMode=BABYLON.Engine.ALPHA_ADD;coreMat.disableDepthWrite=true;
+    this.materials.push(coreMat);
+    this.coreGlow=BABYLON.MeshBuilder.CreateSphere('shatteredMoonCore', { diameter: 140, segments: 12 }, scene);
+    this.coreGlow.position.copyFrom(moonCenter).addInPlace(splitAxis.scale(-4));
+    this.coreGlow.scaling.set(0.55, 1.45, 0.55);
+    this.coreGlow.rotation.z=0.68;
+    this.coreGlow.material=coreMat;
+    this._configure(this.coreGlow);
+
     this.secondary=this._sphere('distantOchreMoon',24,16,0.005);
     this.secondary.material=this.secondaryMaterial;this.secondary.scaling.setAll(88);
     this.secondary.position.copyFrom(this.secondaryDirection.scale(2750));
-    const right=BABYLON.Vector3.Cross(BABYLON.Axis.Y,this.primaryDirection.scale(-1)).normalize();
-    const up=BABYLON.Vector3.Cross(this.primaryDirection.scale(-1),right).normalize();
-    // Broken continental rim pieces and an orbital debris arc following the ancient fault plane.
+
+    // Broken continental rim pieces + chasm debris bridge floating between the two split halves
     const fragments=[
+      [0.02,0.04,24,.04],[-0.08,-0.12,18,.08],[0.14,0.18,16,-.06],[-0.16,-0.24,14,.05],[0.22,-0.18,12,.09],
       [1.07,.29,34,.12],[-.94,-.58,26,-.1],
       [1.24,.39,18,.1],[1.42,.47,14,-.13],[1.62,.58,11,.2],
       [1.85,.66,9,-.14],[-1.18,-.72,15,.11],[-1.42,-.86,10,-.08],
@@ -29,15 +55,153 @@ export class SkyCelestials {
       const direction=this.primaryDirection.scale(2200+depth*100).add(right.scale(x*260)).add(up.scale(y*260));
       const chip=BABYLON.MeshBuilder.CreateIcoSphere(`shatteredMoonFragment_${index}`,{radius:1,subdivisions:1,flat:true},scene);
       const positions=chip.getVerticesData(BABYLON.VertexBuffer.PositionKind);
-      for(let i=0;i<positions.length;i+=3){const factor=1+.12*Math.sin(i*1.71+index*2.3);positions[i]*=factor;positions[i+1]*=factor;positions[i+2]*=factor;}
+      for(let i=0;i<positions.length;i+=3){const factor=1+.16*Math.sin(i*1.71+index*2.3);positions[i]*=factor;positions[i+1]*=factor;positions[i+2]*=factor;}
       chip.updateVerticesData(BABYLON.VertexBuffer.PositionKind,positions);
       const normals=[];BABYLON.VertexData.ComputeNormals(positions,chip.getIndices(),normals);chip.updateVerticesData(BABYLON.VertexBuffer.NormalKind,normals);
       chip.position.copyFrom(direction);chip.scaling.set(size,size*.69,size*.83);
       chip.rotation.set(index*.7,index*.91,index*.42);
       chip.material=this.primaryMaterial;this._configure(chip);this.chips.push(chip);
     });
+
+    // Colossal Ancient Broken Orbital Megastructure Ring arching across the sky ("Кольцо Предтеч")
+    this._buildOrbitalMegastructure();
+
     this.update(0);
     scene.onDisposeObservable.addOnce(()=>this.dispose());
+  }
+
+  _buildOrbitalMegastructure() {
+    const B = BABYLON, scene = this.scene;
+    const ringMat = new B.StandardMaterial('ancientSkyRingMat', scene);
+    ringMat.emissiveColor = B.Color3.FromHexString('#586c74');
+    ringMat.diffuseColor = B.Color3.FromHexString('#1e282d');
+    ringMat.disableLighting = true;
+    ringMat.alpha = 0.42;
+    ringMat.backFaceCulling = false;
+    ringMat.disableDepthWrite = true;
+    this.materials.push(ringMat);
+
+    const veinMat = new B.StandardMaterial('ancientSkyRingVeinMat', scene);
+    veinMat.emissiveColor = B.Color3.FromHexString('#e8a848');
+    veinMat.disableLighting = true;
+    veinMat.alpha = 0.55;
+    veinMat.alphaMode = B.Engine.ALPHA_ADD;
+    veinMat.backFaceCulling = false;
+    veinMat.disableDepthWrite = true;
+    this.materials.push(veinMat);
+    this._ringVeinMat = veinMat;
+
+    const ringRoot = new B.TransformNode('ancientOrbitalRingRoot', scene);
+    ringRoot.parent = this.root;
+    ringRoot.rotation.set(0.54, 0.42, -0.32);
+
+    // 3 fractured monumental ring arcs with dramatic broken gaps
+    const arcs = [
+      { start: -0.95, end: 0.72, radius: 2480, width: 58 },
+      { start: 0.92, end: 2.35, radius: 2480, width: 52 },
+      { start: 2.68, end: 4.15, radius: 2480, width: 46 },
+    ];
+    arcs.forEach((arc, aIdx) => {
+      const steps = 28;
+      const pos = [], idx = [], nrm = [];
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const ang = arc.start + (arc.end - arc.start) * t;
+        const jag = (i === 0 || i === steps) ? 0.35 : (0.85 + 0.15 * Math.sin(i * 2.7 + aIdx));
+        const hw = arc.width * jag;
+        const c = Math.cos(ang), s = Math.sin(ang);
+        pos.push(c * arc.radius, -hw, s * arc.radius);
+        pos.push(c * arc.radius, hw, s * arc.radius);
+        nrm.push(-c, 0, -s, -c, 0, -s);
+      }
+      for (let i = 0; i < steps; i++) {
+        const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
+        idx.push(a, b, d, a, d, c);
+      }
+      const m = new B.Mesh(`ancientOrbitalArc_${aIdx}`, scene);
+      const vd = new B.VertexData();
+      Object.assign(vd, { positions: pos, indices: idx, normals: nrm });
+      vd.applyToMesh(m);
+      m.parent = ringRoot;
+      m.material = ringMat;
+      this._configure(m);
+      m.parent = ringRoot;
+
+      // Glowing ancient conduit rib along the center of each broken ring arc
+      const rPos = [], rIdx = [];
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const ang = arc.start + (arc.end - arc.start) * t;
+        const c = Math.cos(ang), s = Math.sin(ang);
+        const r = arc.radius - 12;
+        rPos.push(c * r, -7, s * r, c * r, 7, s * r);
+      }
+      for (let i = 0; i < steps; i++) {
+        const a = i * 2;
+        rIdx.push(a, a + 1, a + 3, a, a + 3, a + 2);
+      }
+      const rib = new B.Mesh(`ancientOrbitalVein_${aIdx}`, scene);
+      const rvd = new B.VertexData();
+      Object.assign(rvd, { positions: rPos, indices: rIdx, normals: nrm });
+      rvd.applyToMesh(rib);
+      rib.material = veinMat;
+      this._configure(rib);
+      rib.parent = ringRoot;
+    });
+
+    // Distant colossal Sky-Tether Monolith piercing down through the horizon clouds
+    const spire = B.MeshBuilder.CreateCylinder('ancientSkySpire', { diameterTop: 22, diameterBottom: 95, height: 1150, tessellation: 6 }, scene);
+    spire.position.set(1620, 120, -1850);
+    spire.rotation.z = 0.08;
+    spire.material = ringMat;
+    this._configure(spire);
+
+    const spireBeam = B.MeshBuilder.CreateCylinder('ancientSkySpireBeam', { diameterTop: 8, diameterBottom: 24, height: 1350, tessellation: 6 }, scene);
+    spireBeam.position.set(1620, 160, -1850);
+    spireBeam.rotation.z = 0.08;
+    spireBeam.material = veinMat;
+    this._configure(spireBeam);
+  }
+
+  /** Generates a truly split jagged hemisphere cleaved along the diagonal fault plane. */
+  _splitHalf(name, longitude, latitude, roughness, side) {
+    const positions = [], normals = [], indices = [];
+    const planeN = new BABYLON.Vector3(0.76, 0.65, 0.0).normalize();
+    for (let j = 0; j <= latitude; j++) {
+      const phi = (j / latitude) * Math.PI;
+      for (let i = 0; i <= longitude; i++) {
+        const theta = (i / longitude) * Math.PI * 2;
+        let nx = Math.sin(phi) * Math.cos(theta);
+        let ny = Math.cos(phi);
+        let nz = Math.sin(phi) * Math.sin(theta);
+        const radius = 1 + roughness * (Math.sin(theta * 7 + ny * 8) * 0.65 + Math.sin(theta * 13 - ny * 11) * 0.35) * Math.sin(phi);
+        let px = nx * radius, py = ny * radius, pz = nz * radius;
+        const proj = px * planeN.x + py * planeN.y;
+        const jag = (Math.sin(pz * 9.0 + py * 6.0) * 0.045 + Math.cos(px * 11.0 - pz * 7.0) * 0.03);
+        if (side > 0 && proj < jag) {
+          const shift = jag - proj;
+          px += planeN.x * shift; py += planeN.y * shift;
+          nx = -planeN.x; ny = -planeN.y; nz = 0;
+        } else if (side < 0 && proj > jag) {
+          const shift = proj - jag;
+          px -= planeN.x * shift; py -= planeN.y * shift;
+          nx = planeN.x; ny = planeN.y; nz = 0;
+        }
+        positions.push(px, py, pz);
+        normals.push(nx, ny, nz);
+      }
+    }
+    const stride = longitude + 1;
+    for (let j = 0; j < latitude; j++) {
+      for (let i = 0; i < longitude; i++) {
+        const a = j * stride + i, b = a + 1, c = a + stride, d = c + 1;
+        indices.push(a, c, b, b, c, d);
+      }
+    }
+    const mesh = new BABYLON.Mesh(name, this.scene), data = new BABYLON.VertexData();
+    Object.assign(data, { positions, normals, indices });
+    data.applyToMesh(mesh);
+    return this._configure(mesh);
   }
 
   _configure(mesh) {
@@ -143,6 +307,8 @@ export class SkyCelestials {
     if(this.disposed)return;this.time+=Math.max(0,Math.min(dt,.1));
     // One camera-relative parent avoids double application of Babylon infiniteDistance offsets.
     this.root.position.copyFrom(this.camera.parent?this.camera.globalPosition:this.camera.position);
+    if(this._ringVeinMat) this._ringVeinMat.alpha = 0.36 + 0.24 * Math.sin(this.time * 1.15);
+    if(this.coreGlow) this.coreGlow.scaling.y = 1.38 + 0.14 * Math.sin(this.time * 0.9);
   }
 
   get snapshot(){return {meshes:this.meshes.length,triangles:this.meshes.reduce((n,m)=>n+m.getTotalIndices()/3,0),
