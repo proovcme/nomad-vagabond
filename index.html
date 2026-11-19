@@ -749,18 +749,28 @@
     .boss-track { flex:1; height:7px; background:#0b140d; border:1px solid #889176; overflow:hidden; }
     .boss-fill { height:100%; width:100%; background:linear-gradient(90deg,#d94432,#ff7a45); transition:width 0.12s linear; }
     .boss-fill.base { background:linear-gradient(90deg,#5ba888,#8be0ba); }
-    #tactical-radar-wrap { position:absolute; right:20px; bottom:20px; width:136px; height:136px; border-radius:50%; border:3px solid #354331; outline:1px solid #8d9479; background:radial-gradient(circle at 50% 50%, #112319 0%, #09130d 72%, #060d09 100%); box-shadow:0 3px 12px #0009, inset 0 0 18px #000c; display:none; overflow:hidden; z-index:14; pointer-events:none; }
+    #tactical-radar-wrap { position:absolute; right:20px; bottom:20px; width:136px; height:136px; border-radius:50%; border:3px solid #7d673b; outline:2px solid #262f24; background:radial-gradient(circle at 50% 50%, #1b2817 0%, #0e170d 72%, #070c07 100%); box-shadow:0 4px 16px #000a, inset 0 0 20px #000e, 0 0 0 1px #d4ae6680; display:none; overflow:hidden; z-index:14; pointer-events:none; }
     #tactical-radar { width:100%; height:100%; display:block; }
-    #mission-preview-card { position:absolute; right:44px; bottom:62px; width:340px; padding:18px 20px; pointer-events:none; z-index:32; }
-    #mission-preview-card .mp-tag { font:10px "Courier New",monospace; letter-spacing:.14em; text-transform:uppercase; color:#d8b774; margin-bottom:6px; }
-    #mission-preview-card .mp-title { font:700 17px/1.25 "Arial Narrow",Arial,sans-serif; color:#f8e8be; margin-bottom:8px; }
-    #mission-preview-card .mp-desc { font-size:12.5px; line-height:1.45; color:#d9d4be; margin-bottom:10px; }
-    #mission-preview-card .mp-meta { display:flex; justify-content:space-between; font:11px "Courier New",monospace; color:#b8c0a2; border-top:1px solid #a8ab8440; padding-top:8px; }
+    #mission-preview-card { position:absolute; right:44px; bottom:62px; width:348px; padding:18px 22px; pointer-events:none; z-index:32; border:1px solid #c9a45c !important; box-shadow:inset 0 0 0 3px #182119, inset 0 0 0 4px #c9a45c44, 0 10px 32px #000b !important; }
+    #mission-preview-card .mp-tag { font:10px "Courier New",monospace; letter-spacing:.18em; text-transform:uppercase; color:#e5bd6c; margin-bottom:6px; }
+    #mission-preview-card .mp-title { font:700 18px/1.25 Georgia, "Times New Roman", serif; letter-spacing:.03em; color:#fbf0d0; margin-bottom:8px; }
+    #mission-preview-card .mp-desc { font-size:12.5px; line-height:1.48; color:#ddd6be; margin-bottom:10px; }
+    #mission-preview-card .mp-meta { display:flex; justify-content:space-between; font:11px "Courier New",monospace; color:#c8c8a2; border-top:1px double #c9a45c66; padding-top:8px; }
+    /* Interbellum 1930s Art Deco + Dieselpunk Menu & Panel Framing */
+    .menu-title { font-family: Georgia, "Times New Roman", serif !important; letter-spacing: .16em !important; }
+    .menu-rule { position:relative; height:3px !important; background:linear-gradient(90deg, #d8b264, #f5e1a8 45%, #8a6c34 100%) !important; }
+    .menu-rule::after { content:"◆"; position:absolute; right:-4px; top:-8px; font-size:12px; color:#e5c37a; }
+    .menu-item { border-left:2px solid transparent; transition:background .15s, border-color .15s, padding-left .15s; }
+    .menu-item.selected, .menu-item:hover { padding-left:14px; border-left-color:#e8c474 !important; }
+    /* Zero-draw-call CSS Storm Rain Streaks Overlay */
+    #storm-rain-overlay { position:fixed; inset:0; pointer-events:none; display:none; z-index:8; opacity:0.32; background-image:repeating-linear-gradient(104deg, transparent 0 26px, rgba(205,225,245,0.28) 26px 27px, transparent 27px 64px); background-size:120px 180px; animation:stormRainFall 0.28s linear infinite; }
+    @keyframes stormRainFall { from { background-position:0 0; } to { background-position:-36px 180px; } }
     @media (max-width: 960px) { #mission-preview-card { display:none !important; } #tactical-radar-wrap { width:104px; height:104px; right:12px; bottom:12px; } }
   </style>
 </head>
 <body>
   <canvas id="game-canvas"></canvas>
+  <div id="storm-rain-overlay"></div>
 
   <!-- IN-GAME HUD -->
   <div id="hud">
@@ -944,6 +954,8 @@
         <button class="menu-item" id="mission-night-btn"><span class="dot"></span>3 · Ночной перехват (Прожекторы)</button>
         <button class="menu-item" id="mission-convoy-btn"><span class="dot"></span>4 · Перехват конвоя (Рассвет)</button>
         <button class="menu-item" id="mission-bastion-btn"><span class="dot"></span>5 · Оборона бастиона (Зенитная пушка)</button>
+        <button class="menu-item" id="mission-canyon-btn"><span class="dot"></span>6 · Каньон шпилей (Перехват аса)</button>
+        <button class="menu-item" id="mission-survival-btn"><span class="dot"></span>7 · Бесконечные волны (Выживание)</button>
         <button class="menu-item" id="hangar-start-btn"><span class="dot"></span>Ангар · свободный вылет</button>
         <button class="menu-item" id="menu-settings-btn"><span class="dot"></span>Настройки</button>
         <button class="menu-item" id="menu-controls-btn"><span class="dot"></span>Управление</button>

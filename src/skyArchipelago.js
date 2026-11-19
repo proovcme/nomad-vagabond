@@ -1284,6 +1284,28 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   asteroidBase._towerBeaconRig = beaconRig;
   asteroidBase._towerBeaconMat = towerBeaconMat;
 
+  // Living Vagabond Deck: Interbellum red/cream Windsock on runway rim + 2 spinning industrial exhaust fans
+  const rwSockPole = BABYLON.MeshBuilder.CreateCylinder('vagRwWindsockPole', { diameter: 0.14, height: 4.8, tessellation: 6 }, scene);
+  rwSockPole.parent = asteroidBase.group; rwSockPole.position.set(49.5, 5.7, 9.6); rwSockPole.material = hullMat;
+  const rwSockPivot = new BABYLON.TransformNode('vagRwWindsockPivot', scene);
+  rwSockPivot.parent = asteroidBase.group; rwSockPivot.position.set(49.5, 8.0, 9.6);
+  const rwSockMat = new BABYLON.PBRMaterial('vagRwWindsockMat', scene);
+  rwSockMat.albedoColor = c3('#c84428'); rwSockMat.roughness = 0.86; rwSockMat.metallic = 0.0;
+  const rwSockCone = BABYLON.MeshBuilder.CreateCylinder('vagRwWindsockCone', { diameterTop: 0.24, diameterBottom: 0.62, height: 2.3, tessellation: 8 }, scene);
+  rwSockCone.parent = rwSockPivot; rwSockCone.rotation.z = -Math.PI * 0.5; rwSockCone.position.x = 1.15; rwSockCone.material = rwSockMat; rwSockCone.isPickable = false;
+  asteroidBase._windsock = rwSockPivot;
+
+  asteroidBase._exhaustFans = [];
+  for (const [fx, fy, fz] of [[-23.5, 24.5, 13.5], [-36.5, 24.5, 13.5]]) {
+    const fanHub = new BABYLON.TransformNode(`vagExhaustFan_${fx}`, scene);
+    fanHub.parent = asteroidBase.group; fanHub.position.set(fx, fy, fz);
+    for (let b = 0; b < 4; b++) {
+      const blade = BABYLON.MeshBuilder.CreateBox(`vagFanBlade_${fx}_${b}`, { width: 1.5, height: 0.26, depth: 0.06 }, scene);
+      blade.parent = fanHub; blade.rotation.z = (b * Math.PI) / 2; blade.material = hullMat; blade.isPickable = false;
+    }
+    asteroidBase._exhaustFans.push(fanHub);
+  }
+
   // 4B. Upper Workshop & Ether Generator Complex (high-detail dieselpunk GLB)
   const generatorFooting = BABYLON.MeshBuilder.CreateBox('vagGeneratorFooting', {width:14,height:.76,depth:18},scene);
   generatorFooting.parent=asteroidBase.group;generatorFooting.position.set(-30,21.49,13.5);
@@ -2519,6 +2541,15 @@ export class SkyArchipelagoWorld {
       { type: 'spire', pos: [255,  52, -355], rot: [-0.10, 1.2, 0.09], scale: [1.25, 1.35, 1.18], mat: forestRockMat, seed: 431 },
       { type: 'crag',  pos: [-385, 14, -295], rot: [-0.11, 0.7, 0.09], scale: [1.25, 1.18, 1.20], mat: indRockMat, seed: 479 },
     ];
+    if (this.levelConfig?.extraSpireField) {
+      rockPlacements.push(
+        { type: 'spire', pos: [110,  70, 95],   rot: [0.06, 0.4, -0.08], scale: [1.15, 2.15, 1.10], mat: forestRockMat, seed: 601 },
+        { type: 'spire', pos: [-125, 82, 110],  rot: [-0.07, 1.4, 0.08], scale: [1.20, 2.35, 1.15], mat: milRockMat, seed: 613 },
+        { type: 'spire', pos: [195,  90, -15],  rot: [0.08, 2.1, -0.06], scale: [1.18, 2.25, 1.12], mat: forestRockMat, seed: 619 },
+        { type: 'spire', pos: [-220, 75, -185], rot: [-0.05, 0.9, 0.09], scale: [1.22, 2.40, 1.18], mat: milRockMat, seed: 631 },
+        { type: 'spire', pos: [45,   95, -245], rot: [0.07, 1.7, -0.07], scale: [1.15, 2.20, 1.10], mat: indRockMat, seed: 641 },
+      );
+    }
 
     rockPlacements.forEach((rp, idx) => {
       const masses = rp.type === 'spire' ? spireTemplateMasses : cragTemplateMasses;
@@ -2864,6 +2895,13 @@ export class SkyArchipelagoWorld {
     }
     if (this.vagabondBase?._radarRotor) {
       this.vagabondBase._radarRotor.rotation.y += dt * 0.58;
+    }
+    if (this.vagabondBase?._windsock) {
+      this.vagabondBase._windsock.rotation.y = Math.sin(this.simTime * 2.2) * 0.24;
+      this.vagabondBase._windsock.rotation.z = Math.sin(this.simTime * 5.8) * 0.08;
+    }
+    if (this.vagabondBase?._exhaustFans?.length) {
+      for (const f of this.vagabondBase._exhaustFans) f.rotation.z += dt * 5.2;
     }
     // Distance-cull Vagabond interior PointLights when camera is far (flight/menu) so Vagabond shades against 3 lights instead of 8+!
     if (this.vagabondBase && cameraPos) {

@@ -86,7 +86,8 @@ export class CombatHUD {
 
     const ctx = this.radarCtx, w = 136, h = 136, cx = 68, cy = 68, r = 62, range = 520;
     ctx.clearRect(0, 0, w, h);
-    ctx.strokeStyle = 'rgba(138, 178, 128, 0.28)';
+    // 1930s Interbellum amber-phosphor CRT scope rings & degree ticks
+    ctx.strokeStyle = 'rgba(218, 184, 108, 0.28)';
     ctx.lineWidth = 1;
     for (const ring of [0.33, 0.66, 1.0]) {
       ctx.beginPath(); ctx.arc(cx, cy, r * ring, 0, Math.PI * 2); ctx.stroke();
@@ -98,7 +99,10 @@ export class CombatHUD {
     const heading = Math.atan2(fwd.x, fwd.z);
     const cosH = Math.cos(heading), sinH = Math.sin(heading);
     const sweep = (performance.now() * 0.0022) % (Math.PI * 2);
-    ctx.strokeStyle = 'rgba(138, 224, 170, 0.42)';
+    // Phosphor afterglow sweep wedge
+    ctx.fillStyle = 'rgba(212, 186, 102, 0.14)';
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, sweep - Math.PI * 0.5 - 0.38, sweep - Math.PI * 0.5); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(244, 212, 124, 0.62)';
     ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.sin(sweep) * r, cy - Math.cos(sweep) * r); ctx.stroke();
 
     const toRadar = (worldPos) => {

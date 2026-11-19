@@ -314,6 +314,62 @@ export class SoundEngine {
     }
   }
 
+  playFlakCannon() {
+    if (!this.ctx || !this.noiseBuffer) return;
+    const now = this.ctx.currentTime;
+    // Heavy 88mm breech punch + sub-bass concussion
+    const sub = this.ctx.createOscillator();
+    const sGain = this.ctx.createGain();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(135, now);
+    sub.frequency.exponentialRampToValueAtTime(28, now + 0.28);
+    sGain.gain.setValueAtTime(0.42, now);
+    sGain.gain.exponentialRampToValueAtTime(0.001, now + 0.30);
+    sub.connect(sGain); sGain.connect(this.masterGain);
+    sub.start(now); sub.stop(now + 0.32);
+
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer;
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.frequency.setValueAtTime(680, now); bp.Q.value = 0.8;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.32, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+    src.connect(bp); bp.connect(g); g.connect(this.masterGain);
+    src.start(now, Math.random() * 0.5, 0.25);
+  }
+
+  playHeavyLaunch() {
+    if (!this.ctx || !this.noiseBuffer) return;
+    const now = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer;
+    const lpf = this.ctx.createBiquadFilter();
+    lpf.type = 'lowpass';
+    lpf.frequency.setValueAtTime(1400, now);
+    lpf.frequency.exponentialRampToValueAtTime(240, now + 0.95);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.02, now);
+    g.gain.linearRampToValueAtTime(0.40, now + 0.08);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+    src.connect(lpf); lpf.connect(g); g.connect(this.masterGain);
+    src.start(now, Math.random() * 0.4, 1.05);
+  }
+
+  playRadioSquelch() {
+    if (!this.ctx || !this.noiseBuffer) return;
+    const now = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer;
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.frequency.value = 1850; bp.Q.value = 2.4;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.09, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+    src.connect(bp); bp.connect(g); g.connect(this.masterGain);
+    src.start(now, Math.random() * 0.7, 0.1);
+  }
+
   playExplosion(intensity = 0.8) {
     if (!this.ctx || !this.noiseBuffer) return;
     const now = this.ctx.currentTime;

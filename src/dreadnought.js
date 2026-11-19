@@ -295,6 +295,10 @@ export class EnemyDreadnought {
     const wpRatio = aliveWp / totalWp;
     const effSpeed = this.speed * (0.55 + 0.45 * wpRatio);
     const hpRatio = this.hp / Math.max(1, this.maxHp);
+    if (!this.isConvoy && !this._launchedInterceptors && hpRatio < 0.55) {
+      this._launchedInterceptors = true;
+      this._requestInterceptorLaunch = true;
+    }
     this._dmgFireCd = Math.max(0, (this._dmgFireCd || 0) - dt);
     if (hpRatio < 0.65 && this._dmgFireCd <= 0) {
       this._dmgFireCd = hpRatio < 0.35 ? 0.55 : 1.15;

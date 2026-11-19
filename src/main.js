@@ -78,7 +78,9 @@ const updateTacticalRadar = (activeEnemies) => combatHud.updateRadar({ activeEne
 const hideCombatOverlays = () => combatHud.hideAll();
 
 const audio = new SoundEngine();
+window.__audio = audio;
 const ui = new GameUI();
+const stormRainEl = document.getElementById('storm-rain-overlay');
 
 let scene = null;
 let camera = null;
@@ -112,12 +114,12 @@ function spawnDemoExplosion(pos,scale=1){
   explosionEffects?.spawn(pos,scale);
 }
 
-function spawnEnemySquadron(centerPos, escort = false) {
+function spawnEnemySquadron(centerPos, escort = false, { includeAce = false } = {}) {
   if (!demoState) return;
   const defs = escort ? [
-    {variant:'fighter', file:'scrapyard_fighter.glb', hp:185, speed:32, off:[150,62,-45], scale:1.2},
-    {variant:'fighter', file:'scrapyard_fighter.glb', hp:185, speed:32, off:[175,75,45], scale:1.2},
-  ] : [{variant:'bomber', file:'scrapyard_bomber.glb', hp:260, speed:20, off:[155,45,0], scale:1.35}];
+    {variant:'fighter', file:'scrapyard_fighter.glb', hp: includeAce ? 260 : 185, speed: includeAce ? 38 : 32, off:[150,62,-45], scale: includeAce ? 1.32 : 1.2, isAce: includeAce},
+    {variant:'fighter', file:'scrapyard_fighter.glb', hp:185, speed:32, off:[175,75,45], scale:1.2, isAce: false},
+  ] : [{variant:'bomber', file:'scrapyard_bomber.glb', hp:260, speed:20, off:[155,45,0], scale:1.35, isAce: false}];
   defs.forEach((d, idx) => {
     const root = new BABYLON.TransformNode(`demoEnemy_${idx}`, scene);
     root.position.copyFrom(centerPos).addInPlace(new BABYLON.Vector3(...d.off));
@@ -130,6 +132,7 @@ function spawnEnemySquadron(centerPos, escort = false) {
       maxHp: d.hp,
       speed: d.speed,
       variant: d.variant,
+      isAce: Boolean(d.isAce),
       phase: idx * 1.25,
       fireCd: 1.5 + idx * 0.5,
       burstLeft: 0,
@@ -1025,6 +1028,18 @@ async function startStandaloneMission(missionId) {
     demoState.antiIslandCd = 0;
     ui.showToast('🎯 ОБОРОНА БАСТИОНА: ЛКМ/Space — Зенитная пушка · [2/F] — ЗРК · [3/R] — Противоостровная ракета!', 5500);
     ui.showRadio('dispatcher', 'Тревога! Вражеский остров-крепость «Монолит» идёт на таран под прикрытием авиации! Сбивай самолёты из зенитной пушки и ЗРК [2/F], а по острову бей противоостровными ракетами «Громобой» [3/R]!', 8500);
+  } else if (missionId === 'canyon') {
+    spawnEnemySquadron(vPos, true, { includeAce: true });
+    spawnEnemySquadron(vPos.add(new BABYLON.Vector3(-80, 35, -90)), false);
+    demoState.totalEnemies = 3;
+    ui.showToast('🏔️ КАНЬОН ШПИЛЕЙ: Дуэль с алым Асом среди парящих скал!', 4500);
+    ui.showRadio('dispatcher', 'Внимание! В Каньоне шпилей замечен вражеский Ас с эскортом! Маневрируй между каменных колонн и бей первым!', 7500);
+  } else if (missionId === 'survival') {
+    demoState.survivalWave = 1;
+    spawnEnemySquadron(vPos, true, { includeAce: false });
+    demoState.totalEnemies = 2;
+    ui.showToast('🌩️ ВЫЖИВАНИЕ · ВОЛНА 1 — отбивай бесконечные налёты!', 4500);
+    ui.showRadio('dispatcher', 'Штормовая тревога! Враг идёт волнами. За каждую отбитую волну механики подлатают броню и начислят лом!', 7500);
   }
 }
 
@@ -1132,7 +1147,7 @@ function launchAntiIslandMissile(firstPerson = false) {
   }
   const hm = { mesh: mMesh, trail, vel: initDir.scale(firstPerson ? 88 : 76), target: tgt, life: 12.0, manual: firstPerson };
   demoState.heavyMissiles.push(hm);
-  audio?.playExplosion?.(0.8);
+  audio?.playHeavyLaunch?.();
   if (firstPerson) {
     controlledHeavyMissile = hm;
     controlMode = 'missile_cam';
@@ -1157,6 +1172,8 @@ document.getElementById('mission-dreadnought-btn')?.addEventListener('click', ()
 document.getElementById('mission-night-btn')?.addEventListener('click', () => startStandaloneMission('night'));
 document.getElementById('mission-convoy-btn')?.addEventListener('click', () => startStandaloneMission('convoy'));
 document.getElementById('mission-bastion-btn')?.addEventListener('click', () => startStandaloneMission('bastion'));
+document.getElementById('mission-canyon-btn')?.addEventListener('click', () => startStandaloneMission('canyon'));
+document.getElementById('mission-survival-btn')?.addEventListener('click', () => startStandaloneMission('survival'));
 document.getElementById('hangar-start-btn').addEventListener('click',async()=>{
   activeMissionId = null;
   activeMissionTheme = 'sunset';
@@ -1331,6 +1348,9 @@ document.getElementById('menu-victory-btn').addEventListener('click', () => {
 });
 
 function togglePause() {
+  if (stormRainEl) {
+    stormRainEl.style.display = (gameState === 'playing' && world?.theme === 'storm') ? 'block' : 'none';
+  }
   if (gameState === 'playing') {
     gameState = 'paused';
     if (document.pointerLockElement) document.exitPointerLock?.();
@@ -1415,7 +1435,10 @@ window.addEventListener('keydown', (e) => {
 
   if (e.code === 'KeyM' || e.code === 'Tab') {
     e.preventDefault();
-    if (gameState === 'playing') {
+    if (stormRainEl) {
+    stormRainEl.style.display = (gameState === 'playing' && world?.theme === 'storm') ? 'block' : 'none';
+  }
+  if (gameState === 'playing') {
       openDeviceModal('map', 'playing');
     } else if (gameState === 'map') {
       closeDeviceModal();
@@ -2098,6 +2121,21 @@ function missionEnemyDown(enemy) {
 function checkMissionClear() {
   if (!demoState || demoState.stage !== 'combat') return false;
   if (demoState.kills >= demoState.totalEnemies) {
+    if (demoState.missionId === 'survival') {
+      demoState.survivalWave = (demoState.survivalWave || 1) + 1;
+      const w = demoState.survivalWave;
+      saveMissionRecord('survival', runTime, demoState.kills);
+      construction.addSalvage(40);
+      ship.hull = Math.min(ship.maxHull || 120, ship.hull + (ship.maxHull || 120) * 0.35);
+      const vPos = asteroidBase.group.position;
+      spawnEnemySquadron(vPos, true, { includeAce: w >= 2 });
+      if (w >= 3) spawnEnemySquadron(vPos.add(new BABYLON.Vector3(-90, 40, -70)), false);
+      demoState.totalEnemies += w >= 3 ? 3 : 2;
+      audio?.playUpgrade?.();
+      ui.showToast(`🌩️ ВОЛНА ${w}! +40 лома · +35% ремонт корпуса`, 4200);
+      ui.showRadio('dispatcher', `Волна ${w - 1} отбита! Механики восстановили броню. На радаре волна ${w}${w >= 2 ? ' — с ними Ас!' : '!'}`, 6500);
+      return false;
+    }
     demoState.stage = 'return_to_base';
     if (demoState.missionId) {
       saveMissionRecord(demoState.missionId, runTime, demoState.kills);
@@ -2477,6 +2515,9 @@ engine.runRenderLoop(() => {
   if (!scene) return;
   const dt = Math.max(0, Math.min(engine.getDeltaTime() / 1000, 0.05));
 
+  if (stormRainEl) {
+    stormRainEl.style.display = (gameState === 'playing' && world?.theme === 'storm') ? 'block' : 'none';
+  }
   if (gameState === 'playing') {
     world.motion?.update(dt,Boolean(demoState?.powerOn));
     world.industrialCranes?.update(dt);
@@ -3189,6 +3230,13 @@ engine.runRenderLoop(() => {
           demoState._enemyTracerMat.disableLighting = true;
         }
         dr.update(dt, ship.group.position, ship.velocity, playerInAirCombat, demoState.enemyShots, demoState._enemyTracerMat, spawnDemoExplosion, audio);
+        if (dr._requestInterceptorLaunch) {
+          dr._requestInterceptorLaunch = false;
+          spawnEnemySquadron(dr.root.position.add(new BABYLON.Vector3(0, -16, 0)), true, { includeAce: true });
+          demoState.totalEnemies += 2;
+          ui.showToast('⚠️ Дредноут выпустил звено перехватчиков с Асом!', 4200);
+          ui.showRadio('dispatcher', 'Осторожно! У линкора открылся нижний ангар — на перехват вылетела пара истребителей во главе с Асом!', 6500);
+        }
 
         if (dr.alive) {
           for (let pi = ship.projectiles.length - 1; pi >= 0; pi--) {
