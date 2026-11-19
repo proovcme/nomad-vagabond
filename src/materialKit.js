@@ -1,21 +1,28 @@
 class WorldPaint extends BABYLON.MaterialPluginBase {
   constructor(material,texture,role,weathered=false) {
     super(material,'WorldPaint',205,{WORLD_PAINT:false,WORLD_WEATHERED:false},true);
-    this.texture=texture;this.role=role;this.weathered=weathered;this.registerForExtraEvents=true;this._enable(true);
+    this.texture=texture;this.role=role;this.weathered=weathered;this.registerForExtraEvents=true;
+    this._invMatrix=new BABYLON.Matrix();this._defaultVar=[0,0,0,.16];
+    this._enable(true);
   }
   getClassName(){return 'WorldPaint';}
   prepareDefines(defines){defines.WORLD_PAINT=true;defines.WORLD_WEATHERED=this.weathered;}
   getUniforms(){return {ubo:[{name:'worldPaintToLocal',size:16,type:'mat4'},{name:'worldPaintTone',size:4,type:'vec4'},{name:'worldPaintVariation',size:4,type:'vec4'}],fragment:'uniform mat4 worldPaintToLocal; uniform vec4 worldPaintTone; uniform vec4 worldPaintVariation;'};}
   hardBindForSubMesh(buffer,scene,engine,subMesh){
-    const mesh=subMesh.getRenderingMesh();buffer.updateMatrix('worldPaintToLocal',mesh.getWorldMatrix().clone().invert());
-    if(!mesh.metadata?.paintVariation){
+    const mesh=subMesh.getRenderingMesh();mesh.getWorldMatrix().invertToRef(this._invMatrix);
+    buffer.updateMatrix('worldPaintToLocal',this._invMatrix);
+    if(this.weathered && !mesh.metadata?.paintVariation){
       let hash=2166136261;for(const c of mesh.name)hash=Math.imul(hash^c.charCodeAt(0),16777619);
       const unit=(hash>>>0)/4294967295;mesh.metadata={...mesh.metadata,paintVariation:[unit*3.73,(unit*7.31)%3,(unit*5.17)%4,.13+unit*.045]};
     }
-    buffer.updateFloat4('worldPaintVariation',...(this.weathered?mesh.metadata.paintVariation:[0,0,0,.16]));buffer.update();
+    const v=this.weathered?mesh.metadata.paintVariation:this._defaultVar;
+    buffer.updateFloat4('worldPaintVariation',v[0],v[1],v[2],v[3]);
+    buffer.setTexture('worldPaintSampler',this.texture);
+    buffer.updateFloat4('worldPaintTone',this.role[0],this.role[1],this.role[2],this.role[3]);
+    buffer.update();
   }
   getSamplers(samplers){samplers.push('worldPaintSampler');}
-  bindForSubMesh(buffer){buffer.setTexture('worldPaintSampler',this.texture);buffer.updateFloat4('worldPaintTone',...this.role);buffer.update();}
+  bindForSubMesh(){}
   getCustomCode(type){
     if(type!=='fragment')return null;
     return {
@@ -82,7 +89,7 @@ export class MaterialKit {
   apply(material,file,metallic,roughness,role=[.44,.40,.36,.42]){
     if(material._worldPaint)return;
     const texture=this.texture(file);
-    material.albedoTexture=texture;material.albedoColor.set(1,1,1);
+    material.albedoTexture=null;material.albedoColor.set(1,1,1);
     material.metallic=metallic;material.roughness=roughness;
     material._worldPaint=new WorldPaint(material,texture,role,file==='weathered-iron-v2.jpg');this.changed.push(material.name);
   }

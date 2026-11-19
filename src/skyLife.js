@@ -67,7 +67,6 @@ export class SkyLife {
         body.material = bodyMat;
         body.parent = root;
         body.isPickable = false;
-        body.alwaysSelectAsActiveMesh = true;
 
         const wings = [];
         for (const side of [-1, 1]) {
@@ -90,7 +89,6 @@ export class SkyLife {
           innerMesh.material = bodyMat;
           innerMesh.parent = innerPivot;
           innerMesh.isPickable = false;
-          innerMesh.alwaysSelectAsActiveMesh = true;
 
           // Outer wingtip (dark ink plumage, articulated secondary joint)
           const outerPivot = new B.TransformNode(`skyBirdWingOuterPivot_${idx}_${side}`, scene);
@@ -110,7 +108,6 @@ export class SkyLife {
           outerMesh.material = wingTipMat;
           outerMesh.parent = outerPivot;
           outerMesh.isPickable = false;
-          outerMesh.alwaysSelectAsActiveMesh = true;
 
           wings.push({ innerPivot, outerPivot, mesh: innerMesh, side });
         }

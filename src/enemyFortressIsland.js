@@ -120,6 +120,8 @@ export class EnemyFortressIsland {
 
     this._rockMat = rockMat;
     this._armorMat = armorMat;
+    this._ownedMaterials = [rockMat, armorMat, crimsonMat, coreMat];
+    this._ownedTextures = rustTex ? [rustTex.albedoTex, rustTex.bumpTex] : [];
   }
 
   /** Apply hit damage from Flak 88 shell or Anti-Island Missile. */
@@ -228,5 +230,7 @@ export class EnemyFortressIsland {
     for (const ch of this.chunks) ch.mesh?.dispose?.();
     this.chunks = [];
     this.root?.dispose();
+    for (const m of this._ownedMaterials || []) m?.dispose?.();
+    for (const t of this._ownedTextures || []) t?.dispose?.();
   }
 }

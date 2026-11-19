@@ -251,7 +251,6 @@ function registerSkyShaders() {
         );
         col = mix(col, horizonHaze, horizonBlend);
         float alpha = density * uOpacity * (1.0-smoothstep(1700.0,6000.0,dist));
-        if (alpha < 0.02) discard;
         gl_FragColor = vec4(col, alpha);
         #include<imageProcessingCompatibility>
       }

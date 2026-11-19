@@ -2,8 +2,12 @@
 class RockProjection extends BABYLON.MaterialPluginBase {
   constructor(material, scene, style = 'forest') {
     super(material, 'RockProjection', 200, {ROCK_PROJECTION:false}, true);
-    this.texture = new BABYLON.Texture('./assets/textures/nomad/golden-cliff-albedo.png', scene);
-    this.texture.anisotropicFilteringLevel = 8;
+    if (!scene._sharedRockCliffTex) {
+      const tex = new BABYLON.Texture('./assets/textures/nomad/golden-cliff-albedo.png', scene);
+      tex.anisotropicFilteringLevel = 8;
+      scene._sharedRockCliffTex = tex;
+    }
+    this.texture = scene._sharedRockCliffTex;
     this.styleCode = style === 'industrial' ? 1.0 : style === 'military' ? 2.0 : 0.0;
     this._invMatrix = new BABYLON.Matrix();
     this.registerForExtraEvents=true;

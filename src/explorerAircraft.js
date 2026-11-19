@@ -368,8 +368,20 @@ export class ExplorerAircraft {
   setVariant(variant) {
     if (!variant || variant === this.variant) return;
     this.variant = variant;
-    this.spec = AIRCRAFT_SPECS[variant] || AIRCRAFT_SPECS.cargo;
-    this.maxHull = this.spec.maxHull;
+    const baseSpec = AIRCRAFT_SPECS[variant] || AIRCRAFT_SPECS.cargo;
+    const u = this._upgrades || { armor: 0, engine: 0, guns: 0 };
+    const engMult = Math.pow(1.14, u.engine || 0);
+    const gunCdMult = Math.pow(0.82, u.guns || 0);
+    const gunSpdMult = Math.pow(1.12, u.guns || 0);
+    this.spec = {
+      ...baseSpec,
+      maxSpeed: baseSpec.maxSpeed * engMult,
+      boostSpeed: baseSpec.boostSpeed * engMult,
+      accel: baseSpec.accel * Math.pow(1.15, u.engine || 0),
+      gunCd: Math.max(0.06, baseSpec.gunCd * gunCdMult),
+      gunSpeed: baseSpec.gunSpeed * gunSpdMult,
+    };
+    this.maxHull = Math.round(baseSpec.maxHull * Math.pow(1.25, u.armor || 0));
     this.hull = Math.min(this.hull, this.maxHull);
     if (this.glbRoot) {
       this.glbRoot.dispose(false, false);
@@ -1416,16 +1428,15 @@ export class ExplorerAircraft {
     this.lastMouseX = 0;
     this.lastMouseY = 0;
     listen('keydown', (e) => {
-      if (!this.keys[e.code]) {
+      const tag = e.target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (!this.keys[e.code] && this._lastControlMode === 'aircraft') {
         if (e.code === 'KeyV') this._toggleExpertAerobatics = true;
         if (e.code === 'KeyX') this._requestBarrelRoll = true;
         if (e.code === 'KeyT') this._cycleShowSmoke = true;
         if (e.code === 'KeyL') this._toggleLandingGear = true;
         if (e.code === 'KeyH') this._requestFlares = true;
-        if (e.code === 'Digit1' || e.code === 'Tab') {
-          if (e.code === 'Tab') e.preventDefault();
-          this._toggleCockpitView = true;
-        }
+        if (e.code === 'Digit1') this._toggleCockpitView = true;
       }
       this.keys[e.code] = true;
     });
@@ -1674,20 +1685,24 @@ export class ExplorerAircraft {
     root.parent = host;
     this._upgradeVisualRoot = root;
 
-    const steelMat = new BABYLON.PBRMaterial('acUpgSteelMat', this.scene);
-    steelMat.albedoColor = c3('#3b3d3a');
-    steelMat.metallic = 0.78;
-    steelMat.roughness = 0.36;
+    if (!this._upgMats || this._upgMats.steel.isDisposed) {
+      const steelMat = new BABYLON.PBRMaterial('acUpgSteelMat', this.scene);
+      steelMat.albedoColor = c3('#3b3d3a');
+      steelMat.metallic = 0.78;
+      steelMat.roughness = 0.36;
 
-    const brassMat = new BABYLON.PBRMaterial('acUpgBrassMat', this.scene);
-    brassMat.albedoColor = c3('#cf9b4a');
-    brassMat.metallic = 0.86;
-    brassMat.roughness = 0.28;
+      const brassMat = new BABYLON.PBRMaterial('acUpgBrassMat', this.scene);
+      brassMat.albedoColor = c3('#cf9b4a');
+      brassMat.metallic = 0.86;
+      brassMat.roughness = 0.28;
 
-    const copperMat = new BABYLON.PBRMaterial('acUpgCopperMat', this.scene);
-    copperMat.albedoColor = c3('#c46d3a');
-    copperMat.metallic = 0.84;
-    copperMat.roughness = 0.32;
+      const copperMat = new BABYLON.PBRMaterial('acUpgCopperMat', this.scene);
+      copperMat.albedoColor = c3('#c46d3a');
+      copperMat.metallic = 0.84;
+      copperMat.roughness = 0.32;
+      this._upgMats = { steel: steelMat, brass: brassMat, copper: copperMat };
+    }
+    const { steel: steelMat, brass: brassMat, copper: copperMat } = this._upgMats;
 
     const prep = (m, mat) => {
       m.parent = root;
@@ -1816,6 +1831,12 @@ export class ExplorerAircraft {
   }
 
   update(dt, world, controlMode, toastCb) {
+    this._lastControlMode = controlMode;
+    if (controlMode !== 'aircraft' && this._lastCanopyVis) {
+      this._lastCanopyVis = false;
+      const canopyEl = typeof document !== 'undefined' ? document.getElementById('cockpit-canopy-frame') : null;
+      if (canopyEl) canopyEl.style.display = 'none';
+    }
     const q = this.group.rotationQuaternion || BABYLON.Quaternion.Identity();
     const rotMat = BABYLON.Matrix.FromQuaternionToRef(q, new BABYLON.Matrix());
     const right = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(1, 0, 0), rotMat).normalize();
@@ -2408,10 +2429,12 @@ export class ExplorerAircraft {
       this._toggleCockpitView = false;
       this.cockpitView = !this.cockpitView;
       this.camInited = false;
-      if (typeof document !== 'undefined') {
-        const canopyEl = document.getElementById('cockpit-canopy-frame');
-        if (canopyEl) canopyEl.style.display = this.cockpitView ? 'block' : 'none';
-      }
+    }
+    const showCanopy = Boolean(this.cockpitView && !this.dockedAsteroid && !this.dockedPlanet && this._lastControlMode === 'aircraft');
+    if (typeof document !== 'undefined' && this._lastCanopyVis !== showCanopy) {
+      this._lastCanopyVis = showCanopy;
+      const canopyEl = document.getElementById('cockpit-canopy-frame');
+      if (canopyEl) canopyEl.style.display = showCanopy ? 'block' : 'none';
     }
     const right = BABYLON.Vector3.Cross(up, forward).normalize();
     if (this.cockpitView && !this.dockedAsteroid && !this.dockedPlanet) {

@@ -180,19 +180,46 @@ export class EnemyDreadnought {
     // Beacon marker above hull
     this.marker = reg(B.MeshBuilder.CreateSphere(`${this.root.name}_marker`, { diameter: 3.8, segments: 8 }, scene), markerMat);
     this.marker.position.set(0, 15.5 * lenScale, 0);
+
+    this._ownedMaterials = [envelopeMat, armorMat, crimsonMat, coreMat, markerMat];
+    this._ownedTextures = hullTex ? [hullTex.albedoTex, hullTex.bumpTex] : [];
+    this._invMat = new B.Matrix();
   }
 
-  /** Applies hit from player projectile. Returns { hit, weakPointDestroyed, destroyed, hitPos }. */
+  /** Direct damage hook for SAMs / area blasts that detonate near the hull. */
+  applyExternalDamage(dmg, hitPos, spawnExplosionFn) {
+    if (!this.alive || this.sinking) return false;
+    this.hp = Math.max(0, this.hp - dmg);
+    spawnExplosionFn?.(hitPos || this.root.position.clone(), 1.8);
+    if (this.hp <= 0) {
+      this.alive = false;
+      this.sinking = true;
+      this.sinkTimer = 5.2;
+      this.sinkBlastCd = 0.1;
+      this.marker?.dispose?.();
+      return true;
+    }
+    return false;
+  }
+
+  /** Applies hit from player projectile (segment-checked so fast shells never tunnel). */
   checkHit(prevPos, curPos, dmg, spawnExplosionFn) {
     if (!this.alive || this.sinking) return { hit: false };
     const hitRes = { hit: false, weakPointDestroyed: null, destroyed: false, hitPos: curPos.clone() };
+    const segA = prevPos || curPos;
+    const segVec = curPos.subtract(segA);
+    const segLenSq = segVec.lengthSquared();
+    const distToSeg = (pt) => {
+      if (segLenSq < 0.0001) return BABYLON.Vector3.Distance(pt, curPos);
+      const t = Math.max(0, Math.min(1, BABYLON.Vector3.Dot(pt.subtract(segA), segVec) / segLenSq));
+      return BABYLON.Vector3.Distance(pt, segA.add(segVec.scale(t)));
+    };
 
     // 1. Check destructible weak points first (bonus damage!)
     for (const wp of this.weakPoints) {
       if (!wp.alive || !wp.node || wp.node.isDisposed?.()) continue;
-      wp.node.computeWorldMatrix(true);
       const wpPos = wp.node.getAbsolutePosition();
-      if (BABYLON.Vector3.Distance(curPos, wpPos) < wp.radius) {
+      if (distToSeg(wpPos) < wp.radius) {
         hitRes.hit = true;
         hitRes.hitPos = wpPos.clone();
         wp.hp -= dmg;
@@ -210,8 +237,8 @@ export class EnemyDreadnought {
 
     // 2. Check main airship envelope hit (ellipsoid approximation in local space)
     if (!hitRes.hit) {
-      const invMat = this.root.getWorldMatrix().clone().invert();
-      const localP = BABYLON.Vector3.TransformCoordinates(curPos, invMat);
+      this.root.getWorldMatrix().invertToRef(this._invMat);
+      const localP = BABYLON.Vector3.TransformCoordinates(curPos, this._invMat);
       const rx = this.isConvoy ? 9.5 : 12.0;
       const ry = this.isConvoy ? 11.0 : 13.5;
       const rz = this.isConvoy ? 27.0 : 35.0;
@@ -293,7 +320,10 @@ export class EnemyDreadnought {
         const dist = delta.length();
         if (dist < 320) {
           const targetYaw = Math.atan2(-delta.x, -delta.z) - this.root.rotation.y;
-          rig.yawNode.rotation.y += (targetYaw - rig.yawNode.rotation.y) * (1 - Math.exp(-3.5 * dt));
+          let yawDiff = targetYaw - rig.yawNode.rotation.y;
+          while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
+          while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
+          rig.yawNode.rotation.y += yawDiff * (1 - Math.exp(-3.5 * dt));
           const horiz = Math.max(1, Math.hypot(delta.x, delta.z));
           const targetPitch = Math.max(-0.15, Math.min(1.25, Math.atan2(delta.y, horiz)));
           rig.pitchNode.rotation.x += (targetPitch - rig.pitchNode.rotation.x) * (1 - Math.exp(-3.5 * dt));
@@ -325,5 +355,7 @@ export class EnemyDreadnought {
     if (this.disposed) return;
     this.disposed = true;
     this.root?.dispose();
+    for (const m of this._ownedMaterials || []) m?.dispose?.();
+    for (const t of this._ownedTextures || []) t?.dispose?.();
   }
 }

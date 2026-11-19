@@ -1,5 +1,5 @@
 import { SeededRNG } from './rng.js?v=mission1';
-import { createPlanetTextures, createStarTexture, createSpaceEnvironmentTexture } from './textures.js?v=mission1';
+import { createPlanetTextures, createStarTexture } from './textures.js?v=mission1';
 import { TerrainPlanet } from './planet.js?v=mission1';
 import { GraphicsManager } from './graphics.js?v=mission1';
 
