@@ -2002,6 +2002,19 @@ export class ExplorerAircraft {
       if (this.keys['KeyQ']) rollIn += 1;
       if (this.keys['KeyR']) rollIn -= 1;
 
+      // Optional Mouse Aim mode ([U] or Settings): cursor off-center steers nose smoothly
+      if (window.__mouseAim && !this.dockedAsteroid && !this.dockedPlanet) {
+        const mx = window.__mouseNormX || 0;
+        const my = window.__mouseNormY || 0;
+        const dead = 0.04;
+        if (yawIn === 0 && Math.abs(mx) > dead) {
+          yawIn = clamp(-Math.sign(mx) * ((Math.abs(mx) - dead) / (1 - dead)) * 1.35, -1, 1);
+        }
+        if (pitchIn === 0 && Math.abs(my) > dead) {
+          pitchIn = clamp(-Math.sign(my) * ((Math.abs(my) - dead) / (1 - dead)) * 1.25 * pitchSign, -1, 1);
+        }
+      }
+
       if (this.keys['KeyW']) {
         this.throttle = clamp(this.throttle + dt * 1.2, 0, 1);
         thrusting = true;
@@ -2186,10 +2199,20 @@ export class ExplorerAircraft {
 
     // Atmospheric Aerodynamics (lift, bank-coupling, stall, drag, dive/climb energy) scaled by dens
     if (world.isSkyWorld) {
-      // Bank-coupled lift, real dive overspeed energy, steep climb speed bleed & low-speed stall/sink
+      // Bank-coupled lift, real dive overspeed energy, steep climb speed bleed, airbrake drag & low-speed stall/sink
       this.liftRatio = clamp((this.airspeed - 5.0) / 13.0, 0, 1);
       this.isStalling = this.airspeed < 13.5;
-      netForce.addInPlace(refVel.scale(-0.12));
+      const airbrakeDrag = (isPiloted && this.keys['KeyS'] && this.airspeed > 16) ? 0.34 : 0.12;
+      netForce.addInPlace(refVel.scale(-airbrakeDrag));
+      if (isPiloted && this.airspeed > 6 && this.airspeed < 16.5 && this._takeoffPitchGrace <= 0) {
+        // Tactile stall buffet warning before nose drops
+        this.recoilShake = Math.max(this.recoilShake || 0, 0.04 * (1 - (this.airspeed - 6) / 10.5));
+      }
+      if (isPiloted && world.theme === 'storm' && this._takeoffPitchGrace <= 0) {
+        const gt = performance.now() * 0.001;
+        const gust = Math.sin(gt * 1.3) * Math.cos(gt * 2.7) * 2.4;
+        netForce.addInPlace(right.scale(gust));
+      }
       if (this._takeoffPitchGrace <= 0) {
         if (forward.y < -0.06) {
           // Diving converts potential energy into airspeed
@@ -2451,6 +2474,14 @@ export class ExplorerAircraft {
       }
       this.camera.upVector.copyFrom(up);
       this.camera.setTarget(lookTgt);
+      if (typeof document !== 'undefined') {
+        const canopyEl = document.getElementById('cockpit-canopy-frame');
+        if (canopyEl && this._lastCanopyVis) {
+          const px = clamp(-right.y * 14, -14, 14);
+          const py = clamp(forward.y * 10 + (this.recoilShake || 0) * 18, -12, 12);
+          canopyEl.style.transform = `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0) scale(1.03)`;
+        }
+      }
       return;
     }
     let camBackDir = forward.scale(-1);

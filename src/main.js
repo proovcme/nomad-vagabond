@@ -83,8 +83,158 @@ const hudEls = {
   btnHeavyAuto: document.getElementById('btn-turret-heavy-auto'),
   btnHeavyFpv: document.getElementById('btn-turret-heavy-fpv'),
   missileCamHud: document.getElementById('missile-cam-hud'),
+  missileTelemetry: document.getElementById('missile-cam-telemetry'),
   cockpitCanopy: document.getElementById('cockpit-canopy-frame'),
+  turretReticle: document.getElementById('turret-reticle'),
+  hitmarker: document.getElementById('hitmarker'),
+  damageArc: document.getElementById('damage-arc'),
+  bossBar: document.getElementById('boss-hp-bar'),
+  bossEnemyRow: document.getElementById('boss-enemy-row'),
+  bossEnemyName: document.getElementById('boss-enemy-name'),
+  bossEnemyFill: document.getElementById('boss-enemy-fill'),
+  bossEnemyPct: document.getElementById('boss-enemy-pct'),
+  bossBaseRow: document.getElementById('boss-base-row'),
+  bossBaseFill: document.getElementById('boss-base-fill'),
+  bossBasePct: document.getElementById('boss-base-pct'),
+  radarWrap: document.getElementById('tactical-radar-wrap'),
+  radarCanvas: document.getElementById('tactical-radar'),
+  victoryTitle: document.getElementById('victory-title'),
 };
+
+let hitmarkerTimer = 0;
+let damageArcTimer = 0;
+function flashHitmarker(isKill = false) {
+  if (!hudEls.hitmarker) return;
+  hudEls.hitmarker.classList.toggle('kill', Boolean(isKill));
+  hudEls.hitmarker.classList.add('show');
+  hitmarkerTimer = isKill ? 0.28 : 0.14;
+}
+function flashDamageArc(sourceWorldPos) {
+  if (!hudEls.damageArc || !camera) return;
+  let angDeg = 0;
+  if (sourceWorldPos) {
+    const camPos = camera.position;
+    const fwd = camera.getForwardRay().direction;
+    const right = BABYLON.Vector3.Cross(fwd, BABYLON.Axis.Y);
+    if (right.lengthSquared() > 0.001) right.normalize();
+    const toSrc = sourceWorldPos.subtract(camPos);
+    const fx = BABYLON.Vector3.Dot(toSrc, right);
+    const fz = BABYLON.Vector3.Dot(toSrc, fwd);
+    angDeg = Math.atan2(fx, fz) * (180 / Math.PI);
+  }
+  hudEls.damageArc.style.transform = `rotate(${angDeg.toFixed(1)}deg)`;
+  hudEls.damageArc.classList.add('show');
+  damageArcTimer = 0.45;
+}
+
+function getMissionRecord(id) {
+  try {
+    const raw = localStorage.getItem(`nomad_rec_${id}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function saveMissionRecord(id, timeSec, kills) {
+  if (!id) return;
+  try {
+    const prev = getMissionRecord(id);
+    const bestTime = prev ? Math.min(prev.time, Math.round(timeSec)) : Math.round(timeSec);
+    const bestKills = prev ? Math.max(prev.kills, kills) : kills;
+    localStorage.setItem(`nomad_rec_${id}`, JSON.stringify({ time: bestTime, kills: bestKills }));
+  } catch {}
+}
+
+function createDetailedMissile(name, scale, bodyHex, noseHex, flameMat) {
+  const root = new BABYLON.TransformNode(name, scene);
+  const key = `mslMat_${bodyHex}_${noseHex}`;
+  scene._sharedMissileMats ||= {};
+  if (!scene._sharedMissileMats[key] || scene._sharedMissileMats[key].body.isDisposed) {
+    const body = new BABYLON.PBRMaterial(`${key}_b`, scene);
+    body.albedoColor = BABYLON.Color3.FromHexString(bodyHex);
+    body.metallic = 0.55; body.roughness = 0.36;
+    const nose = new BABYLON.PBRMaterial(`${key}_n`, scene);
+    nose.albedoColor = BABYLON.Color3.FromHexString(noseHex);
+    nose.emissiveColor = BABYLON.Color3.FromHexString(noseHex).scale(0.35);
+    nose.metallic = 0.35; nose.roughness = 0.32;
+    scene._sharedMissileMats[key] = { body, nose };
+  }
+  const { body: bodyMat, nose: noseMat } = scene._sharedMissileMats[key];
+  const cyl = BABYLON.MeshBuilder.CreateCylinder(`${name}_body`, { diameter: 0.42 * scale, height: 2.2 * scale, tessellation: 10 }, scene);
+  cyl.parent = root; cyl.material = bodyMat; cyl.isPickable = false;
+  const cone = BABYLON.MeshBuilder.CreateCylinder(`${name}_nose`, { diameterTop: 0.02 * scale, diameterBottom: 0.42 * scale, height: 0.85 * scale, tessellation: 10 }, scene);
+  cone.parent = root; cone.position.y = 1.52 * scale; cone.material = noseMat; cone.isPickable = false;
+  for (let fi = 0; fi < 2; fi++) {
+    const fin = BABYLON.MeshBuilder.CreateBox(`${name}_fin_${fi}`, { width: 1.05 * scale, height: 0.55 * scale, depth: 0.05 * scale }, scene);
+    fin.parent = root; fin.position.y = -0.82 * scale; fin.rotation.y = fi * Math.PI * 0.5; fin.material = noseMat; fin.isPickable = false;
+  }
+  const plume = BABYLON.MeshBuilder.CreateCylinder(`${name}_plume`, { diameterTop: 0.38 * scale, diameterBottom: 0.04 * scale, height: 1.45 * scale, tessellation: 8 }, scene);
+  plume.parent = root; plume.position.y = -1.78 * scale; plume.material = flameMat; plume.isPickable = false;
+  return root;
+}
+
+const radarCtx = hudEls.radarCanvas ? hudEls.radarCanvas.getContext('2d') : null;
+let radarTicks = 0;
+function updateTacticalRadar(activeEnemies) {
+  if (!hudEls.radarWrap || !radarCtx) return;
+  const show = gameState === 'playing' && (controlMode === 'aircraft' || controlMode === 'turret' || controlMode === 'missile_cam') && worldMode === 'sky';
+  hudEls.radarWrap.style.display = show ? 'block' : 'none';
+  if (!show || (++radarTicks % 2 !== 0)) return;
+  const ctx = radarCtx, w = 136, h = 136, cx = 68, cy = 68, r = 62, range = 520;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = 'rgba(138, 178, 128, 0.28)';
+  ctx.lineWidth = 1;
+  for (const ring of [0.33, 0.66, 1.0]) {
+    ctx.beginPath(); ctx.arc(cx, cy, r * ring, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy); ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r); ctx.stroke();
+
+  const refPos = controlMode === 'turret' && activeFlakRig?.root ? activeFlakRig.root.getAbsolutePosition() : (ship?.group?.position || BABYLON.Vector3.Zero());
+  const fwd = camera ? camera.getForwardRay().direction : new BABYLON.Vector3(0, 0, -1);
+  const heading = Math.atan2(fwd.x, fwd.z);
+  const cosH = Math.cos(heading), sinH = Math.sin(heading);
+  const sweep = (performance.now() * 0.0022) % (Math.PI * 2);
+  ctx.strokeStyle = 'rgba(138, 224, 170, 0.42)';
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.sin(sweep) * r, cy - Math.cos(sweep) * r); ctx.stroke();
+
+  const toRadar = (worldPos) => {
+    const dx = worldPos.x - refPos.x;
+    const dz = worldPos.z - refPos.z;
+    const rx = -(dx * cosH - dz * sinH);
+    const ry = -(dx * sinH + dz * cosH);
+    const d = Math.hypot(rx, ry);
+    const clampScale = d > range ? range / d : 1;
+    return { x: cx + (rx * clampScale / range) * (r - 5), y: cy + (ry * clampScale / range) * (r - 5), dy: worldPos.y - refPos.y };
+  };
+
+  if (asteroidBase) {
+    const bp = toRadar(asteroidBase.group.position);
+    ctx.fillStyle = '#e8c46a';
+    ctx.fillRect(bp.x - 4, bp.y - 4, 8, 8);
+  }
+  for (const en of activeEnemies || []) {
+    if (!en?.root) continue;
+    const p = toRadar(en.root.position);
+    const isIncMissile = demoState?.incomingIslandMissiles?.includes(en);
+    const isBoss = en === demoState?.dreadnought || en === demoState?.enemyIsland;
+    if (isIncMissile) {
+      ctx.strokeStyle = Math.floor(performance.now() / 160) % 2 === 0 ? '#ff6b22' : '#ffe680';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(p.x - 4, p.y - 4); ctx.lineTo(p.x + 4, p.y + 4); ctx.moveTo(p.x + 4, p.y - 4); ctx.lineTo(p.x - 4, p.y + 4); ctx.stroke();
+    } else if (isBoss) {
+      ctx.fillStyle = '#ff4433';
+      ctx.beginPath(); ctx.moveTo(p.x, p.y - 6); ctx.lineTo(p.x + 6, p.y); ctx.lineTo(p.x, p.y + 6); ctx.lineTo(p.x - 6, p.y); ctx.closePath(); ctx.fill();
+    } else {
+      ctx.fillStyle = '#ff5442';
+      ctx.beginPath();
+      if (p.dy > 20) { ctx.moveTo(p.x, p.y - 4); ctx.lineTo(p.x + 3.5, p.y + 3); ctx.lineTo(p.x - 3.5, p.y + 3); }
+      else if (p.dy < -20) { ctx.moveTo(p.x, p.y + 4); ctx.lineTo(p.x + 3.5, p.y - 3); ctx.lineTo(p.x - 3.5, p.y - 3); }
+      else { ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); }
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  // Center player chevron
+  ctx.fillStyle = '#e8f5d8';
+  ctx.beginPath(); ctx.moveTo(cx, cy - 5); ctx.lineTo(cx + 4, cy + 4); ctx.lineTo(cx, cy + 2); ctx.lineTo(cx - 4, cy + 4); ctx.closePath(); ctx.fill();
+}
 
 function hideCombatOverlays() {
   if (hudEls.leadPipper) hudEls.leadPipper.style.display = 'none';
@@ -95,6 +245,11 @@ function hideCombatOverlays() {
   if (hudEls.turretBar) hudEls.turretBar.style.display = 'none';
   if (hudEls.missileCamHud) hudEls.missileCamHud.style.display = 'none';
   if (hudEls.cockpitCanopy) hudEls.cockpitCanopy.style.display = 'none';
+  if (hudEls.turretReticle) hudEls.turretReticle.style.display = 'none';
+  if (hudEls.bossBar) hudEls.bossBar.style.display = 'none';
+  if (hudEls.radarWrap) hudEls.radarWrap.style.display = 'none';
+  if (hudEls.hitmarker) hudEls.hitmarker.classList.remove('show', 'kill');
+  if (hudEls.damageArc) hudEls.damageArc.classList.remove('show');
 }
 
 const audio = new SoundEngine();
@@ -1143,14 +1298,10 @@ function launchAntiIslandMissile(firstPerson = false) {
     demoState._heavyTrailMat.alpha = 0.72;
     if (ship?.trailMat?.opacityTexture) demoState._heavyTrailMat.opacityTexture = ship.trailMat.opacityTexture;
   }
-  const mMesh = BABYLON.MeshBuilder.CreateCylinder('antiIslandMissile', { diameterTop: 0.45, diameterBottom: 1.05, height: 6.4, tessellation: 10 }, scene);
+  const mMesh = createDetailedMissile('antiIslandMissile', 2.4, '#4c524a', '#e85d22', demoState._heavyMissileMat);
   mMesh.position.copyFrom(startPos);
   mMesh.lookAt(startPos.add(initDir));
   mMesh.rotate(BABYLON.Axis.X, Math.PI * 0.5, BABYLON.Space.LOCAL);
-  mMesh.material = demoState._heavyMissileMat;
-  mMesh.isPickable = false;
-  const plume = BABYLON.MeshBuilder.CreateCylinder('antiIslandPlume', { diameterTop: 1.15, diameterBottom: 0.08, height: 4.5, tessellation: 8 }, scene);
-  plume.parent = mMesh; plume.position.set(0, -4.8, 0); plume.material = demoState._heavyMissileMat; plume.isPickable = false;
   let trail = null;
   if (typeof BABYLON.TrailMesh === 'function') {
     trail = new BABYLON.TrailMesh(`heavyTrail_${Date.now()}`, mMesh, scene, 1.15, 55, true);
@@ -1249,6 +1400,27 @@ invertPitchBtn.addEventListener('click', () => {
   invertPitchBtn.classList.toggle('active', invertPitch);
   window.__invertPitch = invertPitch;
 });
+const mouseAimBtn = document.getElementById('mouse-aim-btn');
+let mouseAimOn = false;
+function setMouseAim(next) {
+  mouseAimOn = Boolean(next);
+  window.__mouseAim = mouseAimOn;
+  if (mouseAimBtn) {
+    mouseAimBtn.textContent = mouseAimOn ? 'Вкл' : 'Выкл';
+    mouseAimBtn.classList.toggle('active', mouseAimOn);
+  }
+}
+mouseAimBtn?.addEventListener('click', () => setMouseAim(!mouseAimOn));
+window.addEventListener('mousemove', (e) => {
+  window.__mouseNormX = ((e.clientX / Math.max(1, window.innerWidth)) - 0.5) * 2;
+  window.__mouseNormY = ((e.clientY / Math.max(1, window.innerHeight)) - 0.5) * 2;
+});
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyU' && gameState === 'playing' && controlMode === 'aircraft' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+    setMouseAim(!mouseAimOn);
+    ui.showToast(mouseAimOn ? '🖱️ Наведение мышью (U): ВКЛ' : '⌨️ Наведение мышью (U): ВЫКЛ', 2000);
+  }
+});
 const soundToggleBtn = document.getElementById('sound-toggle-btn');
 let soundOn = true;
 soundToggleBtn.addEventListener('click', () => {
@@ -1257,6 +1429,34 @@ soundToggleBtn.addEventListener('click', () => {
   soundToggleBtn.classList.toggle('active', soundOn);
   audio?.setMuted?.(!soundOn);
 });
+
+const MENU_PREVIEW_INFO = {
+  'start-btn': { id: 'prologue', tag: 'ЗАКАТНЫЙ АРХИПЕЛАГ · СЮЖЕТ', title: 'Пролог: Аварийная посадка', desc: 'Посадите повреждённый борт на «Бродягу», восстановите питание, постройте оборону и отбейте налёт.', role: 'Борт: Грузовой / «Оса»' },
+  'mission-dreadnought-btn': { id: 'dreadnought', tag: 'ШТОРМОВОЙ АРХИПЕЛАГ · БОСС', title: 'Охота на Дредноут', desc: 'Прорвитесь сквозь грозу и молнии, уничтожьте двигатели и турели 65-метрового воздушного дредноута.', role: 'Борт: Штурмовик · Ракеты' },
+  'mission-night-btn': { id: 'night', tag: 'ЛУННЫЙ АРХИПЕЛАГ · НОЧЬ', title: 'Ночной перехват', desc: 'Ночной бой под звёздами в лучах прожекторов ПВО. Перехватите звено вражеских перехватчиков.', role: 'Борт: Истребитель «Оса»' },
+  'mission-convoy-btn': { id: 'convoy', tag: 'РАССВЕТНЫЙ АРХИПЕЛАГ · ШТУРМ', title: 'Перехват конвоя', desc: 'Атакуйте тяжёлый воздушный транспорт и его эскорт на рассвете. Бомбы и прикрытие ЗРК.', role: 'Борт: Бомбардировщик' },
+  'mission-bastion-btn': { id: 'bastion', tag: 'ОБОРОНА «БРОДЯГИ» · 1-Е ЛИЦО', title: 'Оборона бастиона', desc: 'Отбивайтесь из Зенитной пушки, сбивайте вражеские ракеты и разнесите остров-крепость «Монолит» ракетой «Громобой»!', role: 'Орудие: Зенитная пушка + ЗРК' },
+  'hangar-start-btn': { id: null, tag: 'СВОБОДНЫЙ ПОЛЁТ · ЭСКАДРИЛЬЯ', title: 'Ангар «Бродяги»', desc: 'Все 4 самолёта готовы к вылету прямо в ангаре. Выбирайте любой борт, апгрейдите на верстаке и берите задания.', role: 'Все 4 класса самолётов' },
+};
+function updateMenuPreview(btnId) {
+  const info = MENU_PREVIEW_INFO[btnId];
+  const card = document.getElementById('mission-preview-card');
+  if (!card) return;
+  if (!info) { card.style.opacity = '0.45'; return; }
+  card.style.opacity = '1';
+  document.getElementById('mp-tag').textContent = info.tag;
+  document.getElementById('mp-title').textContent = info.title;
+  document.getElementById('mp-desc').textContent = info.desc;
+  document.getElementById('mp-role').textContent = info.role;
+  const rec = info.id ? getMissionRecord(info.id) : null;
+  document.getElementById('mp-record').textContent = rec ? `Рекорд: ${rec.time}с · ${rec.kills} сбито` : 'Рекорд: —';
+}
+for (const btnId of Object.keys(MENU_PREVIEW_INFO)) {
+  const el = document.getElementById(btnId);
+  el?.addEventListener('mouseenter', () => updateMenuPreview(btnId));
+  el?.addEventListener('focus', () => updateMenuPreview(btnId));
+}
+updateMenuPreview('start-btn');
 
 document.getElementById('map-hud-btn').addEventListener('click', () => openDeviceModal('map', 'playing'));
 document.getElementById('help-hud-btn').addEventListener('click', () => openDeviceModal('controls', 'playing'));
@@ -1271,9 +1471,16 @@ document.getElementById('new-seed-defeat-btn').addEventListener('click', () => {
   startRun(generateRandomSeed());
 });
 document.getElementById('new-seed-victory-btn').addEventListener('click', () => {
-  activeMissionId = null;
-  activeMissionTheme = 'sunset';
-  startRun(generateRandomSeed());
+  victoryModal.style.display = 'none';
+  const order = ['dreadnought', 'night', 'convoy', 'bastion'];
+  if (activeMissionId && order.includes(activeMissionId)) {
+    const nextId = order[(order.indexOf(activeMissionId) + 1) % order.length];
+    startStandaloneMission(nextId);
+  } else {
+    activeMissionId = null;
+    activeMissionTheme = 'sunset';
+    startRun(generateRandomSeed());
+  }
 });
 document.getElementById('menu-victory-btn').addEventListener('click', () => {
   victoryModal.style.display = 'none';
@@ -1976,14 +2183,16 @@ function missionEnemyDown(enemy) {
     demoState._debrisMat.emissiveColor = BABYLON.Color3.FromHexString('#7a2c0c');
   }
 
-  // Spawn 6 spinning structural debris chunks (wing panels, tail pieces, cowling)
+  // Spawn spinning aerodynamic structural debris shards (wing panels, tail fins, struts)
   const chunkCount = enemy.variant === 'bomber' ? 8 : 6;
   for (let ci = 0; ci < chunkCount; ci++) {
+    const isStrut = ci % 3 === 0;
     const chunk = BABYLON.MeshBuilder.CreateBox(`wreckDebris_${Date.now()}_${ci}`, {
-      width: 0.7 + Math.random() * 1.4,
-      height: 0.18 + Math.random() * 0.35,
-      depth: 0.9 + Math.random() * 1.8,
+      width: isStrut ? 0.22 : (1.1 + Math.random() * 1.6),
+      height: isStrut ? 0.22 : 0.07,
+      depth: isStrut ? (1.8 + Math.random() * 1.4) : (0.7 + Math.random() * 1.3),
     }, scene);
+    chunk.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
     chunk.position.copyFrom(enemy.root.position).addInPlace(new BABYLON.Vector3(
       (Math.random() - 0.5) * 4.5,
       (Math.random() - 0.5) * 2.5,
@@ -2046,8 +2255,24 @@ function checkMissionClear() {
   if (demoState.kills >= demoState.totalEnemies) {
     demoState.stage = 'return_to_base';
     if (demoState.missionId) {
+      saveMissionRecord(demoState.missionId, runTime, demoState.kills);
       ui.showToast(`Небо чистое · ${demoState.kills}/${demoState.totalEnemies} · Миссия выполнена!`, 5000);
-      ui.showRadio('dispatcher', 'Блестящая работа! Все вражеские цели уничтожены. Возвращайся на «Бродягу» или выбирай новую миссию в меню.', 7500);
+      ui.showRadio('dispatcher', 'Блестящая работа! Все вражеские цели уничтожены. Доклад готов — можно переходить к следующей миссии!', 7500);
+      const clearedGen = runGeneration;
+      const clearedId = demoState.missionId;
+      const clearedKills = demoState.kills;
+      const clearedSalvage = construction?.snapshot?.salvage || 0;
+      const clearedTime = Math.round(runTime);
+      setTimeout(() => {
+        if (clearedGen !== runGeneration || gameState !== 'playing') return;
+        audio?.playVictory?.();
+        gameState = 'victory';
+        ui.showHUD(false);
+        hideCombatOverlays();
+        if (hudEls.victoryTitle) hudEls.victoryTitle.textContent = `${MISSION_CONFIGS[clearedId]?.title || 'МИССИЯ ВЫПОЛНЕНА'}`;
+        document.getElementById('victory-stats').textContent = `Все цели уничтожены! Сбито: ${clearedKills} • Лом: ${clearedSalvage} • Время: ${clearedTime}с`;
+        victoryModal.style.display = 'flex';
+      }, 4200);
     } else {
       ui.showToast(`Небо чистое · ${demoState.kills}/${demoState.totalEnemies} · +20 лома`, 4500);
       ui.showRadio('dispatcher', 'Небо чистое. Лом с обломков доставлен на остров. Возвращайся: установим радар и уведём базу из опасного сектора.', 6800);
@@ -2180,14 +2405,10 @@ function updateMission(dt) {
           demoState._samTrailMat.alpha = 0.62;
           if (ship?.trailMat?.opacityTexture) demoState._samTrailMat.opacityTexture = ship.trailMat.opacityTexture;
         }
-        const mMesh = BABYLON.MeshBuilder.CreateCylinder('samMissile', { diameterTop: 0.16, diameterBottom: 0.30, height: 2.2, tessellation: 8 }, scene);
+        const mMesh = createDetailedMissile('samMissile', 0.95, '#d2d4cc', '#ff8c28', demoState._samMat);
         mMesh.position.copyFrom(startPos);
         mMesh.lookAt(startPos.add(initDir));
         mMesh.rotate(BABYLON.Axis.X, Math.PI * 0.5, BABYLON.Space.LOCAL);
-        mMesh.material = demoState._samMat;
-        mMesh.isPickable = false;
-        const samPlume = BABYLON.MeshBuilder.CreateCylinder('samPlume', { diameterTop: 0.34, diameterBottom: 0.02, height: 1.6, tessellation: 6 }, scene);
-        samPlume.parent = mMesh; samPlume.position.set(0, -1.7, 0); samPlume.material = demoState._samMat; samPlume.isPickable = false;
         let trail = null;
         if (typeof BABYLON.TrailMesh === 'function') {
           trail = new BABYLON.TrailMesh(`samTrail_${Date.now()}`, mMesh, scene, 0.42, 38, true);
@@ -2785,15 +3006,38 @@ engine.runRenderLoop(() => {
             // Keep dogfight within the Vagabond sky arena
             desDir = vCenter.add(new BABYLON.Vector3(0, 72, 0)).subtract(en.root.position).normalize();
           } else {
-            // Lead-pursuit intercept toward player's flight path with wingman flank offset
+            // Wingman escort & pincer intercept: stay near VIP bomber/dreadnought if player is far, else flank player
+            const vip = demoState.dreadnought?.alive ? demoState.dreadnought.root.position : demoState.enemies.find(o => o.alive && o.variant === 'bomber')?.root.position;
             const sideRight = BABYLON.Vector3.Cross(BABYLON.Vector3.Up(), playerDir);
             if (sideRight.lengthSquared() < 0.01) sideRight.set(1, 0, 0);
             else sideRight.normalize();
-            const leadPos = ship.group.position
-              .add(ship.velocity.scale(0.55))
-              .add(sideRight.scale((en.flankOffset || 0) * Math.min(1, dPl / 140)));
-            const toLead = leadPos.subtract(en.root.position);
-            desDir = toLead.lengthSquared() > 1 ? toLead.normalize() : playerDir;
+            if (vip && dPl > 235) {
+              const escortPt = vip.add(sideRight.scale((en.flankOffset || 24) * 1.4)).add(new BABYLON.Vector3(0, 14, 0));
+              const toEsc = escortPt.subtract(en.root.position);
+              desDir = toEsc.lengthSquared() > 1 ? toEsc.normalize() : playerDir;
+            } else {
+              const leadPos = ship.group.position
+                .add(ship.velocity.scale(0.55))
+                .add(sideRight.scale((en.flankOffset || 0) * Math.min(1, dPl / 120)));
+              const toLead = leadPos.subtract(en.root.position);
+              desDir = toLead.lengthSquared() > 1 ? toLead.normalize() : playerDir;
+            }
+          }
+
+          // Terrain & Island Obstacle Avoidance (prevents AI from clipping through cliffs or Vagabond)
+          const avoidPoints = [
+            { pos: vCenter, r: 62 },
+            world?.forestIsland?.group ? { pos: world.forestIsland.group.position, r: 82 } : null,
+            world?.industrialIsland?.group ? { pos: world.industrialIsland.group.position, r: 82 } : null,
+            demoState.enemyIsland?.alive ? { pos: demoState.enemyIsland.root.position, r: 58 } : null,
+          ];
+          for (const ob of avoidPoints) {
+            if (!ob) continue;
+            const awayOb = en.root.position.subtract(ob.pos);
+            const dOb = awayOb.length();
+            if (dOb < ob.r && dOb > 0.1) {
+              desDir.addInPlace(awayOb.scale((1.6 / dOb) * (1 - dOb / ob.r))).addInPlace(new BABYLON.Vector3(0, 0.55, 0)).normalize();
+            }
           }
 
           const turnRate = en.aiState === 'evade' ? 2.9 : (en.aiState === 'break' ? 2.4 : 2.1);
@@ -3105,6 +3349,7 @@ engine.runRenderLoop(() => {
             const res = dr.checkHit(pr.previousPosition, pr.mesh.position, dmg, spawnDemoExplosion);
             if (res.hit) {
               audio?.playHitmarker?.();
+              flashHitmarker(Boolean(res.destroyed || res.weakPointDestroyed));
               spawnDemoExplosion(res.hitPos || pr.mesh.position, pr.kind === 'bullet' ? 0.55 : 1.6);
               pr.trail?.dispose();
               pr.mesh.dispose(false, false);
@@ -3162,7 +3407,47 @@ engine.runRenderLoop(() => {
           }
         }
       }
-      if (mHud) mHud.style.display = controlMode === 'missile_cam' ? 'block' : 'none';
+      if (mHud) {
+        const isFpv = controlMode === 'missile_cam';
+        mHud.style.display = isFpv ? 'block' : 'none';
+        if (isFpv && hudEls.missileTelemetry && controlledHeavyMissile && demoState.enemyIsland?.alive) {
+          const dIsl = Math.round(BABYLON.Vector3.Distance(controlledHeavyMissile.mesh.position, demoState.enemyIsland.root.position));
+          const mSpd = Math.round(controlledHeavyMissile.vel.length() * 3.6);
+          hudEls.missileTelemetry.textContent = ` · ДО ЦЕЛИ: ${dIsl} м · ${mSpd} км/ч`;
+        }
+      }
+      if (hudEls.turretReticle) hudEls.turretReticle.style.display = controlMode === 'turret' ? 'block' : 'none';
+      if (hitmarkerTimer > 0) {
+        hitmarkerTimer = Math.max(0, hitmarkerTimer - dt);
+        if (hitmarkerTimer <= 0 && hudEls.hitmarker) hudEls.hitmarker.classList.remove('show', 'kill');
+      }
+      if (damageArcTimer > 0) {
+        damageArcTimer = Math.max(0, damageArcTimer - dt);
+        if (damageArcTimer <= 0 && hudEls.damageArc) hudEls.damageArc.classList.remove('show');
+      }
+      // Boss & Vagabond Base Integrity HUD bar
+      if (hudEls.bossBar) {
+        const boss = demoState.enemyIsland?.alive ? demoState.enemyIsland : (demoState.dreadnought?.alive ? demoState.dreadnought : null);
+        const showBase = Boolean(demoState.enemyIsland?.alive || (asteroidBase && (asteroidBase.integrity ?? 100) < 99));
+        hudEls.bossBar.style.display = (boss || showBase) ? 'flex' : 'none';
+        if (hudEls.bossEnemyRow) {
+          hudEls.bossEnemyRow.style.display = boss ? 'flex' : 'none';
+          if (boss) {
+            const pct = Math.max(0, Math.min(100, Math.round((boss.hp / Math.max(1, boss.maxHp)) * 100)));
+            if (hudEls.bossEnemyName) hudEls.bossEnemyName.textContent = boss.name || 'Остров «Монолит»';
+            if (hudEls.bossEnemyFill) hudEls.bossEnemyFill.style.width = `${pct}%`;
+            if (hudEls.bossEnemyPct) hudEls.bossEnemyPct.textContent = `${pct}%`;
+          }
+        }
+        if (hudEls.bossBaseRow) {
+          hudEls.bossBaseRow.style.display = showBase ? 'flex' : 'none';
+          if (showBase && asteroidBase) {
+            const bPct = Math.max(0, Math.min(100, Math.round(asteroidBase.integrity ?? 100)));
+            if (hudEls.bossBaseFill) hudEls.bossBaseFill.style.width = `${bPct}%`;
+            if (hudEls.bossBasePct) hudEls.bossBasePct.textContent = `${bPct}%`;
+          }
+        }
+      }
 
       // Update Enemy Fortress Island ("Железный Монолит"): advances & fires cannons + interceptable anti-island missiles!
       demoState.incomingIslandMissiles ||= [];
@@ -3194,7 +3479,8 @@ engine.runRenderLoop(() => {
           // 2. Interceptable Heavy Enemy Missiles launched at Vagabond (shoot them down in mid-air!)
           demoState.enemyIslMissileCd = Math.max(0, (demoState.enemyIslMissileCd ?? 5.5) - dt);
           if (demoState.enemyIslMissileCd <= 0 && demoState.incomingIslandMissiles.length < 2) {
-            demoState.enemyIslMissileCd = 9.5 + Math.random() * 3.0;
+            const cadScale = demoState.enemyIsland.missileCadenceScale || 1.0;
+            demoState.enemyIslMissileCd = (9.5 + Math.random() * 3.0) * cadScale;
             const startPos = demoState.enemyIsland.root.position.add(new BABYLON.Vector3(0, 26, 0));
             const initDir = basePos.add(new BABYLON.Vector3(0, 14, 0)).subtract(startPos).normalize().add(new BABYLON.Vector3(0, 0.25, 0)).normalize();
             if (!demoState._incMissileMat || demoState._incMissileMat.isDisposed) {
@@ -3211,14 +3497,10 @@ engine.runRenderLoop(() => {
               demoState._incTrailMat.alpha = 0.72;
               if (ship?.trailMat?.opacityTexture) demoState._incTrailMat.opacityTexture = ship.trailMat.opacityTexture;
             }
-            const mm = BABYLON.MeshBuilder.CreateCylinder('incEnemyIslandMissile', { diameterTop: 0.40, diameterBottom: 0.90, height: 5.0, tessellation: 8 }, scene);
+            const mm = createDetailedMissile('incEnemyIslandMissile', 1.9, '#3e3936', '#ff3424', demoState._incMissileMat);
             mm.position.copyFrom(startPos);
             mm.lookAt(startPos.add(initDir));
             mm.rotate(BABYLON.Axis.X, Math.PI * 0.5, BABYLON.Space.LOCAL);
-            mm.material = demoState._incMissileMat;
-            mm.isPickable = false;
-            const plume = BABYLON.MeshBuilder.CreateCylinder('incEnemyPlume', { diameterTop: 0.95, diameterBottom: 0.06, height: 3.4, tessellation: 6 }, scene);
-            plume.parent = mm; plume.position.set(0, -3.8, 0); plume.material = demoState._incMissileMat; plume.isPickable = false;
             let trail = null;
             if (typeof BABYLON.TrailMesh === 'function') {
               trail = new BABYLON.TrailMesh(`incMissileTrail_${Date.now()}`, mm, scene, 0.85, 45, true);
@@ -3298,6 +3580,7 @@ engine.runRenderLoop(() => {
             im.hp = 0;
             im.alive = false;
             audio?.playHitmarker?.();
+            flashHitmarker(true);
             break;
           }
         }
@@ -3307,6 +3590,7 @@ engine.runRenderLoop(() => {
             hit = true;
             en.hp -= 68;
             audio?.playHitmarker?.();
+            flashHitmarker(en.hp <= 0);
             spawnDemoExplosion(sh.mesh.position.clone(), 1.55);
             if (en.hp <= 0) missionEnemyDown(en);
             break;
@@ -3317,6 +3601,7 @@ engine.runRenderLoop(() => {
           if (res.hit) {
             hit = true;
             audio?.playHitmarker?.();
+            flashHitmarker(Boolean(res.destroyed || res.weakPointDestroyed));
             spawnDemoExplosion(res.hitPos || sh.mesh.position.clone(), 1.6);
             if (res.destroyed) { demoState.kills++; construction.addSalvage(80); ui.showToast(`🔥 ${demoState.dreadnought.name} СБИТ!`, 4500); checkMissionClear(); }
           }
@@ -3326,6 +3611,7 @@ engine.runRenderLoop(() => {
             hit = true;
             audio?.playHitmarker?.();
             const downed = demoState.enemyIsland.applyDamage(52, sh.mesh.position.clone(), spawnDemoExplosion, audio);
+            flashHitmarker(downed);
             if (downed) {
               demoState.kills++;
               construction.addSalvage(150);
@@ -3435,6 +3721,7 @@ engine.runRenderLoop(() => {
         ...(demoState.enemies || []).filter(e => e.alive && e.root && !e.root.isDisposed?.()),
         ...((world.jobs?.entities || []).filter(e => e.alive && e.kind === 'scout' && e.root && !e.root.isDisposed?.())),
       ];
+      updateTacticalRadar(activeEnemies);
       const hudShooterPos = controlMode === 'turret' && activeFlakRig?.root ? activeFlakRig.root.getAbsolutePosition() : ship.group.position;
       if (((controlMode === 'aircraft' && !ship.dockedAsteroid) || controlMode === 'turret' || controlMode === 'missile_cam') && activeEnemies.length && camera) {
         let bestEn = activeEnemies[0];
@@ -3514,6 +3801,7 @@ engine.runRenderLoop(() => {
             ship.hull = Math.max(0, ship.hull - 4);
             ship.recoilShake = Math.max(ship.recoilShake || 0, 0.32);
             audio?.playImpact?.();
+            flashDamageArc(es.mesh.position.subtract(es.vel));
             spawnDemoExplosion(es.mesh.position, 0.45);
             if (ship.hull <= 0) checkWinLose();
           }

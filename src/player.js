@@ -464,6 +464,25 @@ export class NavigatorPlayer {
       for (const [k, ag] of Object.entries(this.animGroups)) {
         ag.setWeightForAllAnimatables((this._animWeights[k] || 0) * invSum);
       }
+
+      // Dynamic secondary motion: turn banking, sprint lean, landing squash & scarf wind
+      const yawDelta = this._prevYaw !== undefined ? Math.atan2(Math.sin(this.yaw - this._prevYaw), Math.cos(this.yaw - this._prevYaw)) : 0;
+      this._prevYaw = this.yaw;
+      const turnRate = clamp(yawDelta / Math.max(0.008, dt), -4.5, 4.5);
+      const targetRoll = clamp(-turnRate * 0.055 * Math.min(1, horizSpeed / 3.5), -0.14, 0.14);
+      const targetPitch = grounded ? clamp(horizSpeed * 0.012, 0, 0.11) : clamp(-this.localVel.y * 0.018, -0.12, 0.12);
+      this._leanRoll = (this._leanRoll || 0) + (targetRoll - (this._leanRoll || 0)) * (1 - Math.exp(-9 * dt));
+      this._leanPitch = (this._leanPitch || 0) + (targetPitch - (this._leanPitch || 0)) * (1 - Math.exp(-8 * dt));
+      if (grounded && this._wasGrounded === false) {
+        this._landSquash = 0.12;
+      }
+      this._wasGrounded = grounded;
+      this._landSquash = Math.max(0, (this._landSquash || 0) - dt * 0.72);
+      const squashY = 1 - this._landSquash * 0.55;
+      const squashXZ = 1 + this._landSquash * 0.25;
+      this.skeletalRoot.scaling.set(squashXZ, squashY, squashXZ);
+      this.skeletalRoot.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(Math.PI, this._leanPitch, this._leanRoll);
+      this.heroLook?.setMotion?.(horizSpeed, turnRate * 0.35, !grounded);
       return;
     }
     if (!this.legL || !this.legR || !this.armL || !this.armR || !this.bodyPivot) return;

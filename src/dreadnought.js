@@ -291,8 +291,22 @@ export class EnemyDreadnought {
 
     if (!this.alive) return;
 
+    // Weak-point gameplay impact: destroyed engines/nodes slow cruise speed & cause a visible burning list
+    const totalWp = Math.max(1, this.weakPoints.length);
+    const aliveWp = this.weakPoints.filter((w) => w.alive).length;
+    const wpRatio = aliveWp / totalWp;
+    const effSpeed = this.speed * (0.55 + 0.45 * wpRatio);
+    const hpRatio = this.hp / Math.max(1, this.maxHp);
+    this._dmgFireCd = Math.max(0, (this._dmgFireCd || 0) - dt);
+    if (hpRatio < 0.65 && this._dmgFireCd <= 0) {
+      this._dmgFireCd = hpRatio < 0.35 ? 0.55 : 1.15;
+      const off = new BABYLON.Vector3((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 26);
+      spawnExplosionFn?.(this.root.position.add(off), hpRatio < 0.35 ? 1.15 : 0.72);
+    }
+
     // Cruise smoothly along high-altitude patrol orbit
-    this.phase += (this.speed / this.orbitRadius) * dt;
+    this.phase += (effSpeed / this.orbitRadius) * dt;
+    this.root.rotation.z += ((1 - wpRatio) * 0.22 - this.root.rotation.z) * Math.min(1, dt * 1.5);
     const nx = this.centerPos.x + Math.cos(this.phase) * this.orbitRadius;
     const ny = this.centerPos.y + this.altitude + Math.sin(this.phase * 2.0) * 6.0;
     const nz = this.centerPos.z + Math.sin(this.phase) * this.orbitRadius;

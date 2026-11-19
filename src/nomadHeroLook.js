@@ -15,6 +15,8 @@ export function styleNomadHero(scene, importResult, container = importResult?.me
   const petrol=mat('nomadFlightKitPetrol','#254c50',.12,.83);
   const brass=mat('nomadFlightKitBrass','#c69a48',.58,.48);
   const ivory=mat('nomadFlightKitIvory','#e5dfba',.05,.78);
+  const etherGlow=mat('nomadFlightKitEtherGlow','#6ce8d4',.1,.28);
+  etherGlow.emissiveColor=B.Color3.FromHexString('#34b8a8');
   const ochre=mat('nomadFlightKitScarf','#dca442',0,.94);
   ochre.backFaceCulling=false;ochre.twoSidedLighting=true;
   const clothTexture=scene.textures.find(t=>(t.url||t.name||'').endsWith('ochre-aircraft-canvas.png'));
@@ -23,11 +25,11 @@ export function styleNomadHero(scene, importResult, container = importResult?.me
   const ownedMaterials=new Set(importResult.meshes.map(m=>m.material).filter(Boolean));
   for(const m of [...ownedMaterials])if(m.subMaterials)for(const sm of m.subMaterials)if(sm)ownedMaterials.add(sm);
   for(const m of ownedMaterials){
-    if(m.name==='M_GoggleGlass'){m.albedoColor=B.Color3.FromHexString('#d6a750');m.alpha=.88;m.metallic=.12;m.roughness=.20;}
-    if(m.name==='M_AgedBrass'){m.albedoColor.set(1.15,1.08,.9);m.metallic=.52;m.roughness=.52;}
-    if(m.name==='M_AviatorLeather'){m.albedoColor.set(1.12,1.02,.88);m.metallic=.05;m.roughness=.77;}
-    if(m.name==='M_FadedHenley'){m.albedoColor.set(1.05,1.04,.9);m.metallic=0;m.roughness=.93;}
-    if(m.name==='M_WorkCanvas'){m.albedoColor.set(.72,.95,.92);m.metallic=.02;m.roughness=.90;}
+    if(m.name==='M_GoggleGlass'){m.albedoColor=B.Color3.FromHexString('#e4b252');m.emissiveColor=B.Color3.FromHexString('#3b2206');m.alpha=.90;m.metallic=.22;m.roughness=.14;}
+    if(m.name==='M_AgedBrass'){m.albedoColor.set(1.18,1.10,.92);m.metallic=.62;m.roughness=.42;}
+    if(m.name==='M_AviatorLeather'){m.albedoColor.set(1.12,1.02,.88);m.metallic=.05;m.roughness=.74;}
+    if(m.name==='M_FadedHenley'){m.albedoColor.set(1.05,1.04,.9);m.metallic=0;m.roughness=.92;}
+    if(m.name==='M_WorkCanvas'){m.albedoColor.set(.74,.96,.92);m.metallic=.02;m.roughness=.88;}
   }
   function frame(name,node){
     // Babylon uses row-vector composition. This preserves model-space axes in
@@ -36,7 +38,7 @@ export function styleNomadHero(scene, importResult, container = importResult?.me
     f.parent=node;f.rotationQuaternion=B.Quaternion.Identity();relative.decompose(f.scaling,f.rotationQuaternion,f.position);frames.push(f);return f;
   }
   const chestFrame=frame('nomadFlightKitChest',chest),neckFrame=frame('nomadFlightKitNeck',neck);
-  const batches=new Map([[petrol,[]],[brass,[]],[ivory,[]]]);
+  const batches=new Map([[petrol,[]],[brass,[]],[ivory,[]],[etherGlow,[]]]);
   const put=(mesh,material)=>{mesh.material=material;batches.get(material).push(mesh);return mesh;};
   function extrude(name,profile,z0,z1,material){
     const positions=[],indices=[],uvs=[];
@@ -50,13 +52,20 @@ export function styleNomadHero(scene, importResult, container = importResult?.me
   const chamfer=(cx,cy,w,h,c)=>[[cx-w/2+c,cy-h/2],[cx+w/2-c,cy-h/2],[cx+w/2,cy-h/2+c],[cx+w/2,cy+h/2-c],[cx+w/2-c,cy+h/2],[cx-w/2+c,cy+h/2],[cx-w/2,cy+h/2-c],[cx-w/2,cy-h/2+c]];
   function tube(name,points,radius,material){return put(B.MeshBuilder.CreateTube(name,{path:points.map(p=>new B.Vector3(...p)),radius,tessellation:6,cap:B.Mesh.CAP_ALL},scene),material);}
   function disc(name,x,y,z,diameter,depth,material){const m=B.MeshBuilder.CreateCylinder(name,{diameter,height:depth,tessellation:16},scene);m.rotation.x=Math.PI/2;m.position.set(x,y,z);return put(m,material);}
-  // A compact chamfered ether satchel, with collar, service rails and leather lid.
+  // A compact chamfered ether satchel, with collar, service rails, leather lid & glowing ether cells.
   extrude('nomadEtherSatchel',chamfer(0,1.285,.31,.36,.042),-.34,-.155,petrol);
   extrude('nomadSatchelLid',chamfer(0,1.46,.33,.095,.025),-.354,-.145,petrol);
   for(const x of[-.11,.11])tube('nomadSatchelEdgeRail',[[x,1.14,-.357],[x,1.40,-.357]],.009,brass);
   extrude('nomadSatchelServicePlate',chamfer(0,1.29,.16,.19,.018),-.36,-.347,brass);
-  for(const y of[1.24,1.29,1.34])extrude('nomadEtherCellWindow',chamfer(0,y,.105,.025,.006),-.369,-.361,ivory);
+  for(const y of[1.24,1.29,1.34])extrude('nomadEtherCellWindow',chamfer(0,y,.105,.025,.006),-.370,-.361,etherGlow);
   for(const x of[-.125,.125])for(const y of[1.17,1.405])disc('nomadSatchelRivet',x,y,-.363,.016,.008,brass);
+  // Brass shoulder signal lamp on right strap + twin brass exhaust vents on satchel top
+  disc('nomadShoulderLampCase',.115,1.425,.138,.056,.038,brass);
+  disc('nomadShoulderLampLens',.115,1.425,.158,.038,.010,etherGlow);
+  for(const x of[-.085,.085])tube('nomadSatchelVent',[[x,1.495,-.24],[x,1.535,-.27]],.016,brass);
+  // Waist utility pouch on left hip
+  extrude('nomadWaistPouch',chamfer(-.175,1.06,.09,.12,.015),-.05,.06,petrol);
+  extrude('nomadWaistPouchClasp',chamfer(-.175,1.09,.036,.032,.005),.061,.072,brass);
   // Shoulder harness follows the torso. Profile strips have real width instead
   // of floating lines, and stay just outside the jacket's authored silhouette.
   for(const side of[-1,1]){
@@ -90,20 +99,28 @@ export function styleNomadHero(scene, importResult, container = importResult?.me
   // Opaque two-sided cloth avoids transparency sorting and duplicated coplanar faces.
   const scarfNormals=[];B.VertexData.ComputeNormals(scarfPositions,scarfIndices,scarfNormals);
   const scarf=new B.Mesh('nomadOchreWindScarf',scene),scarfData=new B.VertexData();Object.assign(scarfData,{positions:scarfPositions,indices:scarfIndices,normals:scarfNormals,uvs:scarfUV});scarfData.applyToMesh(scarf,true);scarf.parent=neckFrame;scarf.material=ochre;meshes.push(scarf);
-  const rest=scarfPositions.slice();let time=0,ticks=0;
+  const rest=scarfPositions.slice();let time=0,ticks=0,motionSpeed=0,motionTurn=0,motionAir=0;
   const observer=scene.onBeforeRenderObservable.add(()=>{
     if(!container.isEnabled()||++ticks%2)return;
-    time+=Math.min(scene.getEngine().getDeltaTime()/1000,.05)*2;
+    const dt=Math.min(scene.getEngine().getDeltaTime()/1000,.05)*2;
+    const spdFactor=Math.min(1.6,motionSpeed/6.5);
+    time+=dt*(1.0+spdFactor*1.45);
+    // Subtle breathing glow on ether satchel cells & shoulder lamp
+    const pulse=0.72+Math.sin(time*1.8)*0.28;
+    etherGlow.emissiveColor.set(0.18*pulse,0.68*pulse,0.62*pulse);
     for(let i=tailStart;i<rest.length/3;i++){
       const t=Math.floor((i-tailStart)/2)/(tailRows-1),at=i*3;
-      scarfPositions[at]=rest[at]+Math.sin(time*3.4-t*2.2)*.018*t;
-      scarfPositions[at+2]=rest[at+2]+Math.sin(time*2.1-t*3.1)*.014*t;
+      const flutter=(0.018+spdFactor*0.032)*t;
+      scarfPositions[at]=rest[at]+Math.sin(time*3.4-t*2.4)*flutter-motionTurn*0.08*t;
+      scarfPositions[at+1]=rest[at+1]+(spdFactor*0.14+motionAir*0.18)*t*t+Math.cos(time*4.1-t*2.0)*flutter*0.45;
+      scarfPositions[at+2]=rest[at+2]-spdFactor*0.16*t+Math.sin(time*2.3-t*3.1)*flutter*0.85;
     }
     scarf.updateVerticesData(B.VertexBuffer.PositionKind,scarfPositions,false,false);
   });
   for(const mesh of meshes){mesh.isPickable=false;mesh.checkCollisions=false;mesh.receiveShadows=true;mesh.metadata={cameraIgnore:true,nomadHeroKit:true};}
   let disposed=false;
   const result={meshes,frames,materials,headNode:head,chestNode:chest,neckNode:neck,
+    setMotion(speed=0,turnRate=0,inAir=false){motionSpeed=speed;motionTurn=Math.max(-1,Math.min(1,turnRate));motionAir=inAir?1:0;},
     snapshot:{batches:meshes.length,triangles:meshes.reduce((n,m)=>n+m.getTotalIndices()/3,0),modelSpaceHeightMetres:1.822,bones:[head.name,chest.name,neck.name],goggles:'authored GLB glass changed to warm amber',newLights:0,newColliders:0},
     dispose(){if(disposed)return;disposed=true;scene.onBeforeRenderObservable.remove(observer);frames.forEach(n=>n.dispose());materials.forEach(m=>m.dispose());}};
   container.metadata={...container.metadata,nomadHeroLook:result};scene.onDisposeObservable.addOnce(()=>result.dispose());return result;

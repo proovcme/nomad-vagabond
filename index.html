@@ -737,6 +737,28 @@
       .ctrl-grid {grid-template-columns:1fr;gap:4px;}
       .island-builder-panel.pilot-panel {outline:none;border-width:2px;} .island-builder-panel.pilot-panel [data-message] {padding-top:5px;}
     }
+
+    /* Tactical Radar, Hitmarker, Damage Arc, Turret Sight, Boss HP & Menu Preview */
+    #hitmarker { position:fixed; left:50%; top:50%; width:34px; height:34px; transform:translate(-50%,-50%) scale(0.85); pointer-events:none; opacity:0; transition:opacity 0.08s ease-out, transform 0.08s ease-out; z-index:26; }
+    #hitmarker.show { opacity:1; transform:translate(-50%,-50%) scale(1.05); }
+    #hitmarker.kill line { stroke:#ff4838; stroke-width:2.6; }
+    #damage-arc { position:fixed; left:50%; top:50%; width:230px; height:230px; margin:-115px 0 0 -115px; pointer-events:none; opacity:0; transition:opacity 0.12s ease-out; z-index:24; }
+    #damage-arc.show { opacity:0.92; }
+    #turret-reticle { position:fixed; left:50%; top:50%; width:220px; height:220px; transform:translate(-50%,-50%); pointer-events:none; display:none; z-index:22; opacity:0.88; }
+    #boss-hp-bar { position:absolute; top:76px; left:50%; transform:translateX(-50%); width:min(360px,46vw); display:none; flex-direction:column; gap:5px; padding:7px 12px; z-index:16; pointer-events:none; }
+    .boss-row { display:flex; align-items:center; gap:8px; font:10.5px "Courier New",monospace; color:#f2e2b7; }
+    .boss-row-name { min-width:118px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .boss-track { flex:1; height:7px; background:#0b140d; border:1px solid #889176; overflow:hidden; }
+    .boss-fill { height:100%; width:100%; background:linear-gradient(90deg,#d94432,#ff7a45); transition:width 0.12s linear; }
+    .boss-fill.base { background:linear-gradient(90deg,#5ba888,#8be0ba); }
+    #tactical-radar-wrap { position:absolute; right:20px; bottom:20px; width:136px; height:136px; border-radius:50%; border:3px solid #354331; outline:1px solid #8d9479; background:radial-gradient(circle at 50% 50%, #112319 0%, #09130d 72%, #060d09 100%); box-shadow:0 3px 12px #0009, inset 0 0 18px #000c; display:none; overflow:hidden; z-index:14; pointer-events:none; }
+    #tactical-radar { width:100%; height:100%; display:block; }
+    #mission-preview-card { position:absolute; right:44px; bottom:62px; width:340px; padding:18px 20px; pointer-events:none; z-index:32; }
+    #mission-preview-card .mp-tag { font:10px "Courier New",monospace; letter-spacing:.14em; text-transform:uppercase; color:#d8b774; margin-bottom:6px; }
+    #mission-preview-card .mp-title { font:700 17px/1.25 "Arial Narrow",Arial,sans-serif; color:#f8e8be; margin-bottom:8px; }
+    #mission-preview-card .mp-desc { font-size:12.5px; line-height:1.45; color:#d9d4be; margin-bottom:10px; }
+    #mission-preview-card .mp-meta { display:flex; justify-content:space-between; font:11px "Courier New",monospace; color:#b8c0a2; border-top:1px solid #a8ab8440; padding-top:8px; }
+    @media (max-width: 960px) { #mission-preview-card { display:none !important; } #tactical-radar-wrap { width:104px; height:104px; right:12px; bottom:12px; } }
   </style>
 </head>
 <body>
@@ -805,7 +827,52 @@
       <button class="turret-w-btn" id="btn-turret-heavy-auto">[3/R] «Громобой» (Авто) · Готово</button>
       <button class="turret-w-btn" id="btn-turret-heavy-fpv">[4/V] «Громобой» (От 1-го лица!) · Готово</button>
     </div>
-    <div id="missile-cam-hud">☄️ КАМЕРА РАКЕТЫ «ГРОМОБОЙ» · WASD / Стрелки — наведение · [G] — автопилот</div>
+    <div id="missile-cam-hud">☄️ ГСН «ГРОМОБОЙ» · WASD/Стрелки — наведение · [G] — автопилот <span id="missile-cam-telemetry" class="mono"></span></div>
+
+    <!-- Optical Reticle for AA Gun -->
+    <div id="turret-reticle">
+      <svg viewBox="0 0 220 220" width="220" height="220">
+        <circle cx="110" cy="110" r="96" fill="none" stroke="rgba(232,190,107,0.48)" stroke-width="1.3"/>
+        <circle cx="110" cy="110" r="48" fill="none" stroke="rgba(232,190,107,0.58)" stroke-width="1" stroke-dasharray="6 5"/>
+        <line x1="14" y1="110" x2="96" y2="110" stroke="rgba(232,190,107,0.75)" stroke-width="1.2"/>
+        <line x1="124" y1="110" x2="206" y2="110" stroke="rgba(232,190,107,0.75)" stroke-width="1.2"/>
+        <line x1="110" y1="14" x2="110" y2="96" stroke="rgba(232,190,107,0.75)" stroke-width="1.2"/>
+        <line x1="110" y1="124" x2="110" y2="206" stroke="rgba(232,190,107,0.75)" stroke-width="1.2"/>
+        <line x1="102" y1="138" x2="118" y2="138" stroke="rgba(232,190,107,0.65)" stroke-width="1"/>
+        <line x1="105" y1="162" x2="115" y2="162" stroke="rgba(232,190,107,0.65)" stroke-width="1"/>
+        <circle cx="110" cy="110" r="2.6" fill="#ffbe55"/>
+      </svg>
+    </div>
+
+    <!-- Hitmarker & Directional Damage Arc -->
+    <svg id="hitmarker" viewBox="0 0 36 36">
+      <line x1="6" y1="6" x2="14" y2="14" stroke="#fff4d6" stroke-width="2.1" stroke-linecap="round"/>
+      <line x1="30" y1="6" x2="22" y2="14" stroke="#fff4d6" stroke-width="2.1" stroke-linecap="round"/>
+      <line x1="6" y1="30" x2="14" y2="22" stroke="#fff4d6" stroke-width="2.1" stroke-linecap="round"/>
+      <line x1="30" y1="30" x2="22" y2="22" stroke="#fff4d6" stroke-width="2.1" stroke-linecap="round"/>
+    </svg>
+    <svg id="damage-arc" viewBox="0 0 220 220">
+      <path d="M 65 24 A 96 96 0 0 1 155 24" fill="none" stroke="#ff3b2f" stroke-width="7" stroke-linecap="round"/>
+    </svg>
+
+    <!-- Boss & Base Integrity Bar -->
+    <div id="boss-hp-bar" class="panel pilot-panel">
+      <div class="boss-row" id="boss-enemy-row">
+        <span class="boss-row-name" id="boss-enemy-name">Дредноут</span>
+        <div class="boss-track"><div class="boss-fill" id="boss-enemy-fill"></div></div>
+        <span id="boss-enemy-pct">100%</span>
+      </div>
+      <div class="boss-row" id="boss-base-row">
+        <span class="boss-row-name">База «Бродяга»</span>
+        <div class="boss-track"><div class="boss-fill base" id="boss-base-fill"></div></div>
+        <span id="boss-base-pct">100%</span>
+      </div>
+    </div>
+
+    <!-- Compact Tactical Radar -->
+    <div id="tactical-radar-wrap">
+      <canvas id="tactical-radar" width="136" height="136"></canvas>
+    </div>
 
     <!-- Bottom-Left Instruments (WWII Aviation Gauges) -->
     <div id="hud-bottom-left">
@@ -885,6 +952,12 @@
       </div>
       <input id="seed-input" type="hidden" value="AETHER-742" />
     </div>
+    <div id="mission-preview-card" class="panel pilot-panel">
+      <div class="mp-tag" id="mp-tag">ЗАКАТНЫЙ АРХИПЕЛАГ · СЮЖЕТ</div>
+      <div class="mp-title" id="mp-title">Пролог: Аварийная посадка</div>
+      <div class="mp-desc" id="mp-desc">Посадите повреждённый борт на «Бродягу», восстановите питание, постройте оборону и отбейте первый налёт.</div>
+      <div class="mp-meta"><span id="mp-role">Борт: Грузовой / «Оса»</span><span id="mp-record">Рекорд: —</span></div>
+    </div>
     <div class="menu-bottom">Стрелки / W S — выбор • Enter — подтвердить • ЛКМ по пункту</div>
   </div>
 
@@ -934,6 +1007,10 @@
             <button class="seg-btn" id="invert-pitch-btn">Выкл</button>
           </div>
           <div class="setting-row">
+            <span>Наведение мышью в полёте [U]</span>
+            <button class="seg-btn" id="mouse-aim-btn">Выкл</button>
+          </div>
+          <div class="setting-row">
             <span>Звуковые эффекты</span>
             <button class="seg-btn active" id="sound-toggle-btn">Вкл</button>
           </div>
@@ -943,14 +1020,14 @@
           <div class="ctrl-grid">
             <div class="ctrl-row"><span>Тяга / Тормоз / Шаг</span><span class="kbd-tag">W A S D</span></div>
             <div class="ctrl-row"><span>Тангаж (высота) / Поворот</span><span class="kbd-tag">↑ ↓ ← →</span></div>
-            <div class="ctrl-row"><span>Крен самолёта</span><span class="kbd-tag">Q / R</span></div>
+            <div class="ctrl-row"><span>Крен / Наведение мышью</span><span class="kbd-tag">Q R / U</span></div>
             <div class="ctrl-row"><span>Пушки / Турель</span><span class="kbd-tag">Space / ЛКМ</span></div>
             <div class="ctrl-row"><span>Самонав. ракеты / Бомбы / Лебёдка</span><span class="kbd-tag">F / ПКМ</span></div>
             <div class="ctrl-row"><span>Боевая бочка / High-G вираж</span><span class="kbd-tag">X / C</span></div>
             <div class="ctrl-row"><span>Тепловые ловушки (от ракет)</span><span class="kbd-tag">H</span></div>
             <div class="ctrl-row"><span>Залп ЗРК с острова (в полёте / зенитке)</span><span class="kbd-tag">2 / F</span></div>
-            <div class="ctrl-row"><span>Противоостровная ракета (зенитка)</span><span class="kbd-tag">3 / R</span></div>
-            <div class="ctrl-row"><span>Вид из кабины / снаружи</span><span class="kbd-tag">1 / Tab</span></div>
+            <div class="ctrl-row"><span>«Громобой» (Авто / 1-е лицо)</span><span class="kbd-tag">3 R / 4 V</span></div>
+            <div class="ctrl-row"><span>Вид из кабины / снаружи</span><span class="kbd-tag">1</span></div>
             <div class="ctrl-row"><span>Пилотаж PRO 360° / Дым / Шасси</span><span class="kbd-tag">V / T / L</span></div>
             <div class="ctrl-row"><span>Форсаж / Бег пешком</span><span class="kbd-tag">Shift</span></div>
             <div class="ctrl-row"><span>Сесть / Взаимодействие</span><span class="kbd-tag">E</span></div>
@@ -1005,10 +1082,10 @@
   <!-- VICTORY MODAL -->
   <div id="victory-modal" class="overlay">
     <div class="card-modal pilot-panel">
-      <div class="device-title" style="color:var(--accent-teal); margin-bottom:8px;">ВРАТА ПРОЙДЕНЫ</div>
+      <div class="device-title" id="victory-title" style="color:var(--accent-teal); margin-bottom:8px;">МИССИЯ ВЫПОЛНЕНА</div>
       <p class="muted" id="victory-stats" style="font-size:13px; margin-bottom:20px; line-height:1.5;"></p>
-      <div style="display:flex; gap:10px;">
-        <button class="btn-primary" id="new-seed-victory-btn">Следующая система</button>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn-primary" id="new-seed-victory-btn">Следующая миссия</button>
         <button class="btn-ghost" id="menu-victory-btn">В меню</button>
       </div>
     </div>

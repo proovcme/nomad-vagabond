@@ -210,6 +210,17 @@ export class EnemyFortressIsland {
 
     if (!this.alive) return;
 
+    // Persistent damage fires & slight structural list as fortress takes heavy hits
+    const hpRatio = this.hp / Math.max(1, this.maxHp);
+    this.missileCadenceScale = hpRatio < 0.45 ? 1.65 : 1.0;
+    this._dmgFireCd = Math.max(0, (this._dmgFireCd || 0) - dt);
+    if (hpRatio < 0.68 && this._dmgFireCd <= 0) {
+      this._dmgFireCd = hpRatio < 0.35 ? 0.65 : 1.3;
+      const off = new BABYLON.Vector3((Math.random() - 0.5) * 32, 6 + Math.random() * 18, (Math.random() - 0.5) * 32);
+      spawnExplosionFn?.(this.root.position.add(off), hpRatio < 0.35 ? 1.35 : 0.85);
+    }
+    this.root.rotation.z += ((1 - hpRatio) * 0.14 - this.root.rotation.z) * Math.min(1, dt * 1.2);
+
     // Slowly advance menacingly toward Vagabond until ~175m standoff distance, then hover & rock gently
     const toBase = this.targetBasePos.add(new BABYLON.Vector3(0, 46, 0)).subtract(this.root.position);
     const dist = toBase.length();
