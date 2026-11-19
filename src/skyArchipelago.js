@@ -143,17 +143,21 @@ function registerSkyShaders() {
           }
         }
 
-        // Luminous Golden Sun Disk (day) OR Cool Silver Moon Halo (night)
-        float rayWave = 0.5 + 0.5 * sin((d.x * 16.0 - d.y * 22.0) + uTime * 0.10) * cos((d.z * 14.0 + d.y * 18.0) - uTime * 0.07);
-        float godRays = pow(sunDot, 16.0) * smoothstep(0.25, 0.88, rayWave) * (1.0 - smoothstep(0.9965, 0.9985, sunDot)) * 0.38;
+        // Luminous Golden Sun Disk (day) OR Cool Silver Moon Halo (night) — fast multiply powers (zero pow() stall!)
+        float s2 = sunDot * sunDot;
+        float s4 = s2 * s2;
+        float s8 = s4 * s4;
+        float s16 = s8 * s8;
+        float s24 = s16 * s8;
+        float godRays = s16 * (1.0 - smoothstep(0.9965, 0.9985, sunDot)) * 0.24;
 
-        vec3 dayMie = vec3(1.00, 0.52, 0.16) * pow(sunDot, 4.5) * 0.48 * (1.0 - smoothstep(0.05, 0.68, abs(h - 0.10)))
-                    + vec3(1.00, 0.78, 0.36) * (pow(sunDot, 24.0) * 0.62 + godRays);
-        vec3 nightMie = vec3(0.22, 0.36, 0.62) * pow(sunDot, 12.0) * 0.35;
+        vec3 dayMie = vec3(1.00, 0.52, 0.16) * s4 * 0.48 * (1.0 - smoothstep(0.05, 0.68, abs(h - 0.10)))
+                    + vec3(1.00, 0.78, 0.36) * (s24 * 0.62 + godRays);
+        vec3 nightMie = vec3(0.22, 0.36, 0.62) * (s8 * s4) * 0.35;
         col += mix(dayMie, nightMie, nightMask);
 
         float horizBand = exp(-abs(h - 0.008) * 9.0);
-        col = mix(col, mix(vec3(0.98, 0.82, 0.60), vec3(0.07, 0.11, 0.20), nightMask), horizBand * (0.22 + 0.34 * pow(sunDot, 1.8)) * mix(1.0, 0.45, nightMask));
+        col = mix(col, mix(vec3(0.98, 0.82, 0.60), vec3(0.07, 0.11, 0.20), nightMask), horizBand * (0.22 + 0.34 * s2) * mix(1.0, 0.45, nightMask));
 
         float coronaSoft = smoothstep(0.9910, 0.9978, sunDot);
         float solarCore = smoothstep(0.9974, 0.9988, sunDot);
@@ -1161,10 +1165,6 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   }
 
   const bushPlacements = [
-    { dir: './assets/benchmark/models/fern_02/', file: 'fern_02_1k.gltf', pos: [-23.0, 20.8, -19.5], s: 1.8, r: 0.4 },
-    { dir: './assets/benchmark/models/fern_02/', file: 'fern_02_1k.gltf', pos: [-12.0, 20.8, 20.5],  s: 1.9, r: 1.3 },
-    { dir: './assets/benchmark/models/fern_02/', file: 'fern_02_1k.gltf', pos: [-35.0, 20.8, -6.5],  s: 1.9, r: 1.9 },
-    { dir: './assets/benchmark/models/fern_02/', file: 'fern_02_1k.gltf', pos: [-19.5, 20.8, 21.0],  s: 1.9, r: 2.7 },
     { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-26.0, 20.8, 19.5],  s: 2.1, r: 0.5 },
     { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-16.0, 20.8, -20.5], s: 2.0, r: 1.8 },
     { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-36.0, 20.8, 5.0],   s: 2.2, r: 1.1 },
@@ -1296,12 +1296,15 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
     p.z = Math.max(-9.0, Math.min(9.0, p.z));
   };
 
-  // Real CC0 props inside the Hangar Apron & Upper Courtyard
+  // Real CC0 props inside the Hangar Apron (skipped 31k-tri Lantern_01 for fast Vagabond rendering)
   instantiateGLBInto(scene, './assets/benchmark/models/Barrel_01/', 'Barrel_01_1k.gltf', asteroidBase.group, new BABYLON.Vector3(2.5, 3.38, -5.8), 1.1, 0.4, shadowGen);
-  instantiateGLBInto(scene, './assets/benchmark/models/Barrel_01/', 'Barrel_01_1k.gltf', asteroidBase.group, new BABYLON.Vector3(3.3, 3.38, -5.1), 1.1, 1.7, shadowGen);
   instantiateGLBInto(scene, './assets/benchmark/models/old_military_crate/', 'old_military_crate_1k.gltf', asteroidBase.group, new BABYLON.Vector3(1.8, 3.38, 5.8), 1.2, 0.8, shadowGen);
-  instantiateGLBInto(scene, './assets/benchmark/models/Lantern_01/', 'Lantern_01_1k.gltf', asteroidBase.group, new BABYLON.Vector3(-4.0, 21.15, 0.0), 1.3, 0.0, shadowGen);
   finishRockHangar(scene, asteroidBase, shadowGen, rockMasses);
+  // Disable redundant legacy space-era point lights on Vagabond so PBR materials don't shade 12 lights per pixel
+  for (const lName of ['baseHouseLamp', 'baseGenLight', 'baseDeckLight', 'hangarInteriorLight_1']) {
+    const l = scene.getLightByName(lName);
+    if (l) l.setEnabled(false);
+  }
   for (const mesh of asteroidBase.group.getChildMeshes()) {
     if (mesh.isVisible && mesh.visibility > 0 && !/Leaf|Vine|Flame|Lamp|Light|Screen|Steam|Rotor|LiftRail|Sign|Glow|Trail|Smoke|Particle|Atmosphere/i.test(mesh.name)) makeSolid(mesh);
   }
@@ -2133,7 +2136,7 @@ export class SkyArchipelagoWorld {
       fMat.backFaceCulling = false;
       fMat.depthWrite = false;
       fMat.alphaMode = BABYLON.Engine.ALPHA_ADD;
-      const flare = BABYLON.MeshBuilder.CreatePlane('sunAnamorphicFlare', { width: 820, height: 410 }, this.scene);
+      const flare = BABYLON.MeshBuilder.CreatePlane('sunAnamorphicFlare', { width: 420, height: 160 }, this.scene);
       flare.material = fMat;
       flare.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
       flare.renderingGroupId = 0;
@@ -2696,6 +2699,19 @@ export class SkyArchipelagoWorld {
     if (this._sunFlareMesh && cameraPos) {
       const sDir = new BABYLON.Vector3(this.sunDir.x, 0.125, this.sunDir.z).normalize();
       this._sunFlareMesh.position.copyFrom(cameraPos).addInPlace(sDir.scale(2600));
+    }
+    // Distance-cull Vagabond interior PointLights when camera is far (flight/menu) so Vagabond shades against 3 lights instead of 8+!
+    if (this.asteroidBase && cameraPos) {
+      const dVag = BABYLON.Vector3.Distance(cameraPos, this.asteroidBase.group.position);
+      const wantInteriorLights = this._interiorLightsOn ? dVag < 64 : dVag < 52;
+      if (wantInteriorLights !== this._interiorLightsOn) {
+        this._interiorLightsOn = wantInteriorLights;
+        for (const l of this.scene.lights) {
+          if (l.getTypeID() === BABYLON.Light.LIGHTTYPEID_POINTLIGHT && !/baseHouseLamp|baseGenLight|baseDeckLight|hangarInteriorLight_1/.test(l.name)) {
+            l.setEnabled(wantInteriorLights);
+          }
+        }
+      }
     }
     for (const mat of this.cloudSeaMats) {
       mat.setFloat('uTime', this.simTime);
