@@ -80,6 +80,20 @@ export class SoundEngine {
     this.windFilter.connect(this.windGain);
     this.windGain.connect(this.masterGain);
     windSrc.start();
+
+    // Subtle warm diesel generator hum when walking on Vagabond's deck
+    this.deckHumOsc = this.ctx.createOscillator();
+    this.deckHumOsc.type = 'triangle';
+    this.deckHumOsc.frequency.value = 56;
+    const humFilter = this.ctx.createBiquadFilter();
+    humFilter.type = 'lowpass';
+    humFilter.frequency.value = 135;
+    this.deckHumGain = this.ctx.createGain();
+    this.deckHumGain.gain.value = 0.0;
+    this.deckHumOsc.connect(humFilter);
+    humFilter.connect(this.deckHumGain);
+    this.deckHumGain.connect(this.masterGain);
+    this.deckHumOsc.start();
   }
 
   _setupContinuousLoops() {
@@ -627,5 +641,55 @@ export class SoundEngine {
       osc.start(now + n.t);
       osc.stop(now + n.t + n.d + 0.05);
     });
+  }
+
+  /** Dynamic wind rush (speed/altitude) + warm diesel deck hum when walking on Vagabond */
+  updateAtmosphereAudio(speed = 0, altitude = 60, onDeck = false) {
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    const now = this.ctx.currentTime;
+    const spdNorm = Math.min(1, Math.max(0, speed / 75));
+    const altNorm = Math.min(1, Math.max(0, (altitude + 40) / 220));
+    if (this.windFilter && this.windGain) {
+      this.windFilter.frequency.setTargetAtTime(240 + spdNorm * 580 + altNorm * 160, now, 0.12);
+      this.windGain.gain.setTargetAtTime(0.035 + spdNorm * 0.095 + altNorm * 0.025, now, 0.12);
+    }
+    if (this.deckHumGain) {
+      this.deckHumGain.gain.setTargetAtTime(onDeck ? 0.045 : 0.0, now, 0.25);
+    }
+  }
+
+  /** Distant muffled storm thunder rumble */
+  playDistantThunder() {
+    if (!this.ctx || !this.noiseBuffer || this.muted) return;
+    const now = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer;
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(160, now);
+    lp.frequency.exponentialRampToValueAtTime(48, now + 2.4);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.001, now);
+    g.gain.linearRampToValueAtTime(0.22, now + 0.35);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 2.6);
+    src.connect(lp); lp.connect(g); g.connect(this.masterGain);
+    src.start(now); src.stop(now + 2.7);
+  }
+
+  /** Subtle 1930s Morse radio beacon pips on deck (· − ·) */
+  playMorseBeacon() {
+    if (!this.ctx || this.muted) return;
+    const now = this.ctx.currentTime;
+    const pattern = [[0.0, 0.07], [0.14, 0.20], [0.42, 0.07]];
+    for (const [offset, dur] of pattern) {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(760, now + offset);
+      g.gain.setValueAtTime(0.028, now + offset);
+      g.gain.exponentialRampToValueAtTime(0.0008, now + offset + dur);
+      osc.connect(g); g.connect(this.masterGain);
+      osc.start(now + offset); osc.stop(now + offset + dur + 0.02);
+    }
   }
 }

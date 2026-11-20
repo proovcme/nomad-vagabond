@@ -217,10 +217,39 @@ export class SkyLife {
     };
     motes.start();
     this.motes = motes;
+
+    // Distant peaceful Interbellum cargo airship barge cruising along the far horizon (1 merged draw call!)
+    const bargeParts = [];
+    const putB = (m, px, py, pz, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) => {
+      m.position.set(px, py, pz); m.rotation.set(rx, ry, rz); m.scaling.set(sx, sy, sz);
+      m.computeWorldMatrix(true); bargeParts.push(m);
+    };
+    putB(B.MeshBuilder.CreateSphere('bHull', { diameter: 14, segments: 10 }, scene), 0, 0, 0, 0, 0, 0, 0.85, 0.78, 3.1);
+    putB(B.MeshBuilder.CreateBox('bGondola', { width: 4.5, height: 3.4, depth: 18 }, scene), 0, -7.2, 0);
+    putB(B.MeshBuilder.CreateBox('bFinV', { width: 0.4, height: 11, depth: 9 }, scene), 0, 0, 17);
+    putB(B.MeshBuilder.CreateBox('bFinH', { width: 11, height: 0.4, depth: 9 }, scene), 0, 0, 17);
+    const bargeMesh = B.Mesh.MergeMeshes(bargeParts, true, true, undefined, false, false);
+    if (bargeMesh) {
+      bargeMesh.name = 'skyHorizonCargoBarge';
+      const bargeMat = new B.PBRMaterial('skyHorizonBargeMat', scene);
+      bargeMat.albedoColor = B.Color3.FromHexString('#c4b498');
+      bargeMat.metallic = 0.18; bargeMat.roughness = 0.78;
+      bargeMesh.material = bargeMat;
+      bargeMesh.isPickable = false; bargeMesh.checkCollisions = false;
+      this._horizonBarge = bargeMesh;
+    }
   }
 
   update(dt) {
     this.time += dt;
+    if (this._horizonBarge && !this._horizonBarge.isDisposed()) {
+      const a = this.time * 0.022 + 0.9;
+      const r = 740;
+      const bx = Math.cos(a) * r;
+      const bz = Math.sin(a) * r;
+      this._horizonBarge.position.set(bx, 118 + Math.sin(this.time * 0.35) * 6, bz);
+      this._horizonBarge.rotation.y = Math.atan2(Math.sin(a), -Math.cos(a));
+    }
     for (const bird of this.birds) {
       const angle = this.time * bird.speed * bird.dir + bird.phase;
       const rx = bird.radius;

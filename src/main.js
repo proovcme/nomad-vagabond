@@ -27,12 +27,14 @@ import { LEVEL_REGISTRY, getLevel } from './levels/levelRegistry.js?v=mission1';
 import { CombatHUD } from './combatHud.js?v=mission1';
 import { createDetailedMissile as buildDetailedMissile, attachSafeTrail } from './weapons/missileFactory.js?v=mission1';
 import { getMissionRecord, saveMissionRecord, loadUserSettings, saveUserSettings } from './storage/records.js?v=mission1';
+import { AtmosphereFX } from './effects/atmosphereFX.js?v=mission1';
 
 const MISSION_CONFIGS = LEVEL_REGISTRY;
 const savedSettings = loadUserSettings();
 let activeMissionTheme = 'sunset';
 let activeMissionId = null;
 let activeFlakRig = null;
+let atmosphereFX = null;
 let controlledHeavyMissile = null;
 const turretKeys = {};
 let turretFireCd = 0;
@@ -218,6 +220,13 @@ function initWorld(seedStr, { menuPreview = false } = {}) {
     construction = new IslandConstruction(scene, asteroidBase, world.shadowGenerator);
     islandOrigin = asteroidBase.group.position.clone();
     safeZone = islandOrigin.add(new BABYLON.Vector3(0, 0, 180));
+    atmosphereFX = new AtmosphereFX(scene, {
+      theme: activeMissionTheme,
+      asteroidBase,
+      forestIsland: world.forestIsland,
+      industrialIsland: world.industrialIsland,
+      audio,
+    });
   } else {
     world = new SolarWorld(scene, currentSeed);
     const tp = world.terrainPlanet || world.planets[0];
@@ -1147,6 +1156,7 @@ function launchAntiIslandMissile(firstPerson = false) {
   }
   const hm = { mesh: mMesh, trail, vel: initDir.scale(firstPerson ? 88 : 76), target: tgt, life: 12.0, manual: firstPerson };
   demoState.heavyMissiles.push(hm);
+  atmosphereFX?.spawnMuzzleFlash(startPos, initDir);
   audio?.playHeavyLaunch?.();
   if (firstPerson) {
     controlledHeavyMissile = hm;
@@ -2240,7 +2250,9 @@ function updateMission(dt) {
       line.color = BABYLON.Color3.FromHexString('#ffda74');
       line.isPickable = false;
       demoState.tracers.push({ mesh: line, life: 0.22 });
-      spawnDemoExplosion(to, 0.65);
+      atmosphereFX?.spawnMuzzleFlash(from);
+      atmosphereFX?.spawnFlakBurst(to, 0.95);
+      spawnDemoExplosion(to, 0.55);
     }
     audio?.playGunshot?.('attacker');
     const isStoryEnemy = demoState.enemies.includes(flakTarget);
@@ -2737,8 +2749,11 @@ engine.runRenderLoop(() => {
           sh.isPickable = false;
           demoState.playerFlakShells ||= [];
           demoState.playerFlakShells.push({ mesh: sh, prev: mPos.clone(), vel: aimDir.scale(285), life: 3.2 });
-          spawnDemoExplosion(mPos, 0.35);
-          audio?.playGunshot?.('attacker');
+          atmosphereFX?.spawnMuzzleFlash(mPos, aimDir);
+          atmosphereFX?.spawnFlakBurst(mPos.add(aimDir.scale(155)), 1.05);
+          spawnDemoExplosion(mPos, 0.28);
+          camera.position.addInPlace(aimDir.scale(-0.22));
+          audio?.playFlakCannon ? audio.playFlakCannon() : audio?.playGunshot?.('attacker');
         }
       }
     }
@@ -3614,6 +3629,10 @@ engine.runRenderLoop(() => {
         ...((world.jobs?.entities || []).filter(e => e.alive && e.kind === 'scout' && e.root && !e.root.isDisposed?.())),
       ];
       updateTacticalRadar(activeEnemies);
+      atmosphereFX?.update(dt, { ship, controlMode, activeEnemies, dreadnought: demoState.dreadnought, camera });
+      const flightSpd = (controlMode === 'aircraft' && ship?.velocity && !ship.dockedAsteroid) ? ship.velocity.length() : 0;
+      const flightAlt = camera?.position?.y ?? 60;
+      audio?.updateAtmosphereAudio?.(flightSpd, flightAlt, controlMode === 'foot');
       const hudShooterPos = controlMode === 'turret' && activeFlakRig?.root ? activeFlakRig.root.getAbsolutePosition() : ship.group.position;
       if (((controlMode === 'aircraft' && !ship.dockedAsteroid) || controlMode === 'turret' || controlMode === 'missile_cam') && activeEnemies.length && camera) {
         let bestEn = activeEnemies[0];
@@ -3802,6 +3821,7 @@ engine.runRenderLoop(() => {
     world.motion?.update(dt,false);
     world.industrialCranes?.update(dt);
     world.update(dt * 0.35, null, camera.position);
+    atmosphereFX?.update(dt, { controlMode: 'menu', camera });
     const basePos = asteroidBase ? asteroidBase.group.position : ship.group.position;
     world.updateShadowFocus?.(basePos);
     const angle = 0.78 + Math.sin(world.simTime * .035) * .16;

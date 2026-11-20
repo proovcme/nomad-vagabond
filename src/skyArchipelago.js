@@ -1009,7 +1009,9 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
     mark.material = hazardMat;
   }
 
-  // Runway edge lights & safety railings
+  // Runway edge lights & safety railings (with chasing approach-light animation!)
+  asteroidBase._runwayLamps = [];
+  let rwIdx = 0;
   for (let lx = 9; lx <= 53; lx += 7.2) {
     for (const lz of [-9.5, 9.5]) {
       const post = BABYLON.MeshBuilder.CreateCylinder(`vagRwPost_${lx}_${lz}`, { diameter: 0.26, height: 1.1, tessellation: 6 }, scene);
@@ -1021,7 +1023,48 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
       lamp.parent = post;
       lamp.position.y = 0.62;
       lamp.material = warmGlowMat;
+      asteroidBase._runwayLamps.push({ mesh: lamp, idx: rwIdx });
     }
+    rwIdx++;
+  }
+
+  // Sagging Interbellum catenary cables spanning Control Tower <-> Generator <-> Hangar Lintel (1 merged draw call!)
+  const cableSpans = [
+    [new BABYLON.Vector3(-28, 31.2, -15.5), new BABYLON.Vector3(-30, 27.5, 13.5), 2.4],
+    [new BABYLON.Vector3(-28, 29.8, -15.5), new BABYLON.Vector3(3.5, 16.5, -9.8), 2.8],
+    [new BABYLON.Vector3(-30, 26.8, 13.5),  new BABYLON.Vector3(3.5, 16.5, 11.8), 2.6],
+  ];
+  const cableMeshes = [];
+  cableSpans.forEach(([pA, pB, sag], cIdx) => {
+    const pts = [];
+    for (let s = 0; s <= 10; s++) {
+      const t = s / 10;
+      const p = BABYLON.Vector3.Lerp(pA, pB, t);
+      p.y -= Math.sin(t * Math.PI) * sag;
+      pts.push(p);
+    }
+    const tube = BABYLON.MeshBuilder.CreateTube(`vagCable_${cIdx}`, { path: pts, radius: 0.075, tessellation: 6 }, scene);
+    tube.computeWorldMatrix(true);
+    cableMeshes.push(tube);
+  });
+  const mergedCables = BABYLON.Mesh.MergeMeshes(cableMeshes, true, true, undefined, false, false);
+  if (mergedCables) {
+    mergedCables.name = 'vagCatenaryCables';
+    mergedCables.parent = asteroidBase.group;
+    mergedCables.material = pipeMat;
+    mergedCables.isPickable = false;
+  }
+
+  // Two fluttering Interbellum crimson-ochre deck pennants on upper deck edge
+  asteroidBase._pennants = [];
+  for (const [px, py, pz] of [[-23.0, 23.4, -12.0], [3.0, 23.4, 12.0]]) {
+    const piv = new BABYLON.TransformNode(`vagPennantPivot_${px}`, scene);
+    piv.parent = asteroidBase.group; piv.position.set(px, py + 1.1, pz);
+    const mast = BABYLON.MeshBuilder.CreateCylinder(`vagPennantMast_${px}`, { diameter: 0.10, height: 2.2, tessellation: 6 }, scene);
+    mast.parent = asteroidBase.group; mast.position.set(px, py, pz); mast.material = pipeMat; mast.isPickable = false;
+    const flag = BABYLON.MeshBuilder.CreateBox(`vagPennantCloth_${px}`, { width: 1.9, height: 0.65, depth: 0.04 }, scene);
+    flag.parent = piv; flag.position.set(0.95, 0, 0); flag.material = bannerMat; flag.isPickable = false;
+    asteroidBase._pennants.push(piv);
   }
 
   // Carved-In Hangar Portal recessed into the cliff face (x = -14..+5, z = -10..+10)
@@ -2863,6 +2906,20 @@ export class SkyArchipelagoWorld {
     }
     if (this.vagabondBase?._exhaustFans?.length) {
       for (const f of this.vagabondBase._exhaustFans) f.rotation.z += dt * 5.2;
+    }
+    if (this.vagabondBase?._runwayLamps?.length) {
+      const wave = (this.simTime * 3.8) % 7;
+      for (const rl of this.vagabondBase._runwayLamps) {
+        const dist = Math.abs((6 - rl.idx) - wave);
+        const pulse = dist < 1.1 ? 1.0 + (1.1 - dist) * 0.72 : 0.85;
+        rl.mesh.scaling.setAll(pulse);
+      }
+    }
+    if (this.vagabondBase?._pennants?.length) {
+      this.vagabondBase._pennants.forEach((p, idx) => {
+        p.rotation.y = Math.sin(this.simTime * 2.8 + idx * 1.4) * 0.28;
+        p.rotation.z = Math.sin(this.simTime * 6.2 + idx) * 0.08;
+      });
     }
     for (const bi of this.biomeIslands || []) {
       bi.update?.(this.simTime);
