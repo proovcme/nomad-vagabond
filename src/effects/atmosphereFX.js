@@ -43,53 +43,98 @@ export class AtmosphereFX {
     scene.onDisposeObservable.addOnce(() => this.dispose());
   }
 
+  _makeSoftCloudTex(name, rgb, alphaScale = 0.85, lobes = 5) {
+    const B = BABYLON;
+    const size = 128;
+    const tex = new B.DynamicTexture(name, { width: size, height: size }, this.scene, true);
+    const ctx = tex.getContext();
+    const img = ctx.createImageData(size, size);
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const u = ((x + 0.5) / size) * 2 - 1;
+        const v = ((y + 0.5) / size) * 2 - 1;
+        const wx = u + 0.11 * Math.sin(v * 7.5 + 0.6) + 0.04 * Math.sin(v * 17 - u * 5);
+        const wy = v + 0.09 * Math.sin(u * 6.5 - 1.1);
+        const ang = Math.atan2(wy, wx);
+        const r = Math.hypot(wx, wy);
+        const edge = 0.84 + 0.10 * Math.sin(ang * lobes + 0.5) + 0.04 * Math.sin(ang * (lobes + 4) + 1.3);
+        const falloff = Math.max(0, 1 - r / edge);
+        const wisp = 0.78 + 0.16 * Math.sin(wx * 11 + wy * 5) * Math.cos(wy * 9 - wx * 4);
+        const a = Math.pow(falloff, 1.85) * wisp * alphaScale;
+        const idx = (y * size + x) * 4;
+        img.data[idx] = rgb[0];
+        img.data[idx + 1] = rgb[1];
+        img.data[idx + 2] = rgb[2];
+        img.data[idx + 3] = Math.round(Math.max(0, Math.min(1, a)) * 255);
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    tex.hasAlpha = true;
+    tex.wrapU = tex.wrapV = B.Texture.CLAMP_ADDRESSMODE;
+    tex.update(false);
+    return tex;
+  }
+
   _initPuffPool() {
     const B = BABYLON;
-    // Soft radial smoke disc material (flak clouds, chimney smoke, damage smoke)
+    // Soft wispy billboard textures (zero angular polygons or black cubes!)
+    this._smokeTex = this._makeSoftCloudTex('atmoSoftSmokeTex', [54, 52, 50], 0.72, 5);
+    this._steamTex = this._makeSoftCloudTex('atmoSoftSteamTex', [216, 210, 198], 0.58, 5);
+    this._flashTex = this._makeSoftCloudTex('atmoSoftFlashTex', [255, 192, 92], 0.95, 7);
+
     this._smokeMat = new B.StandardMaterial('atmoSmokePuffMat', this.scene);
-    this._smokeMat.diffuseColor = c3('#2a2826');
-    this._smokeMat.emissiveColor = c3('#161412');
+    this._smokeMat.diffuseTexture = this._smokeTex;
+    this._smokeMat.useAlphaFromDiffuseTexture = true;
+    this._smokeMat.emissiveColor = c3('#2a2826');
+    this._smokeMat.diffuseColor = c3('#3c3936');
     this._smokeMat.specularColor = new B.Color3(0, 0, 0);
     this._smokeMat.disableLighting = true;
-    this._smokeMat.alpha = 0.72;
+    this._smokeMat.backFaceCulling = false;
     this._smokeMat.depthWrite = false;
 
     this._steamMat = new B.StandardMaterial('atmoSteamPuffMat', this.scene);
-    this._steamMat.diffuseColor = c3('#d8d2c4');
-    this._steamMat.emissiveColor = c3('#787266');
+    this._steamMat.diffuseTexture = this._steamTex;
+    this._steamMat.useAlphaFromDiffuseTexture = true;
+    this._steamMat.emissiveColor = c3('#c8c2b4');
+    this._steamMat.diffuseColor = c3('#e4dfd2');
     this._steamMat.specularColor = new B.Color3(0, 0, 0);
     this._steamMat.disableLighting = true;
-    this._steamMat.alpha = 0.55;
+    this._steamMat.backFaceCulling = false;
     this._steamMat.depthWrite = false;
 
     this._flashMat = new B.StandardMaterial('atmoFlashCoreMat', this.scene);
-    this._flashMat.emissiveColor = c3('#ff9e38');
+    this._flashMat.emissiveTexture = this._flashTex;
+    this._flashMat.opacityTexture = this._flashTex;
+    this._flashMat.emissiveColor = c3('#ffb24c');
     this._flashMat.disableLighting = true;
     this._flashMat.alphaMode = B.Engine.ALPHA_ADD;
+    this._flashMat.backFaceCulling = false;
     this._flashMat.depthWrite = false;
 
-    // Pre-allocate 36 reusable smoke/flak puffs (zero runtime mesh creation!)
-    for (let i = 0; i < 36; i++) {
-      const m = B.MeshBuilder.CreateIcoSphere(`atmoPuff_${i}`, { radius: 1, subdivisions: 1, flat: true }, this.scene);
+    // Pre-allocate 42 soft camera-facing billboard smoke puffs (zero boxes, zero faceted rocks!)
+    for (let i = 0; i < 42; i++) {
+      const m = B.MeshBuilder.CreatePlane(`atmoPuff_${i}`, { size: 2.0 }, this.scene);
+      m.billboardMode = B.Mesh.BILLBOARDMODE_ALL;
       m.isVisible = false;
       m.isPickable = false;
       m.checkCollisions = false;
       m.material = this._smokeMat;
       this._puffs.push({
         mesh: m, active: false, age: 0, maxAge: 2.2,
-        vel: new B.Vector3(), startScale: 1, endScale: 4, baseAlpha: 0.75,
+        vel: new B.Vector3(), startScale: 1, endScale: 4, baseAlpha: 0.72,
       });
     }
 
-    // Pre-allocate 10 reusable additive flash cores
-    for (let i = 0; i < 10; i++) {
-      const m = B.MeshBuilder.CreateSphere(`atmoFlash_${i}`, { diameter: 1, segments: 6 }, this.scene);
+    // Pre-allocate 12 soft additive radial flash sprites
+    for (let i = 0; i < 12; i++) {
+      const m = B.MeshBuilder.CreatePlane(`atmoFlash_${i}`, { size: 2.0 }, this.scene);
+      m.billboardMode = B.Mesh.BILLBOARDMODE_ALL;
       m.isVisible = false;
       m.isPickable = false;
       m.checkCollisions = false;
       m.material = this._flashMat;
       this._flashes.push({
-        mesh: m, active: false, age: 0, maxAge: 0.22, startScale: 2, endScale: 6,
+        mesh: m, active: false, age: 0, maxAge: 0.20, startScale: 2, endScale: 5.5,
       });
     }
   }
@@ -208,6 +253,7 @@ export class AtmosphereFX {
     flash.endScale = 7.5 * scale;
     flash.mesh.position.copyFrom(pos);
     flash.mesh.scaling.setAll(flash.startScale);
+    flash.mesh.visibility = 1.0;
     flash.mesh.isVisible = true;
 
     for (let k = 0; k < 2; k++) {
@@ -217,15 +263,17 @@ export class AtmosphereFX {
       p.maxAge = 2.2 + Math.random() * 0.9;
       p.startScale = (1.6 + k * 0.6) * scale;
       p.endScale = (5.4 + k * 1.6) * scale;
+      p.baseAlpha = 0.68;
       p.mesh.material = this._smokeMat;
       p.mesh.position.set(
         pos.x + (Math.random() - 0.5) * 2.2 * scale,
         pos.y + (Math.random() - 0.5) * 1.6 * scale,
         pos.z + (Math.random() - 0.5) * 2.2 * scale
       );
-      p.mesh.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+      p.mesh.rotation.z = Math.random() * Math.PI * 2;
       p.vel.set((Math.random() - 0.5) * 2.5 + 1.8, 1.2 + Math.random() * 1.4, (Math.random() - 0.5) * 2.5);
       p.mesh.scaling.setAll(p.startScale);
+      p.mesh.visibility = 0.05;
       p.mesh.isVisible = true;
     }
   }
@@ -269,11 +317,13 @@ export class AtmosphereFX {
     p.maxAge = 2.6 + Math.random() * 1.1;
     p.startScale = 0.9 * scale;
     p.endScale = 4.2 * scale;
+    p.baseAlpha = dark ? 0.62 : 0.48;
     p.mesh.material = dark ? this._smokeMat : this._steamMat;
     p.mesh.position.copyFrom(pos);
-    p.mesh.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+    p.mesh.rotation.z = Math.random() * Math.PI * 2;
     p.vel.set(2.2 + (Math.random() - 0.5) * 1.4, rise + Math.random() * 1.6, (Math.random() - 0.5) * 1.4);
     p.mesh.scaling.setAll(p.startScale);
+    p.mesh.visibility = 0.05;
     p.mesh.isVisible = true;
   }
 
@@ -402,7 +452,7 @@ export class AtmosphereFX {
       }
     }
 
-    // 7. Update active smoke/flak puffs
+    // 7. Update active soft smoke/flak billboard puffs (smooth fade-in & fade-out!)
     for (const p of this._puffs) {
       if (!p.active) continue;
       p.age += safeDt;
@@ -415,9 +465,12 @@ export class AtmosphereFX {
       p.mesh.position.addInPlaceFromFloats(p.vel.x * safeDt, p.vel.y * safeDt, p.vel.z * safeDt);
       const s = p.startScale + (p.endScale - p.startScale) * Math.sqrt(t);
       p.mesh.scaling.setAll(s);
+      const fadeIn = Math.min(1, t / 0.14);
+      const fadeOut = Math.max(0, 1 - Math.max(0, t - 0.28) / 0.72);
+      p.mesh.visibility = fadeIn * fadeOut * (p.baseAlpha || 0.72);
     }
 
-    // 8. Update active flash cores
+    // 8. Update active soft flash sprites
     for (const f of this._flashes) {
       if (!f.active) continue;
       f.age += safeDt;
@@ -428,6 +481,7 @@ export class AtmosphereFX {
       }
       const t = f.age / f.maxAge;
       f.mesh.scaling.setAll(f.startScale + (f.endScale - f.startScale) * t);
+      f.mesh.visibility = Math.max(0, 1 - t);
     }
   }
 
@@ -442,6 +496,9 @@ export class AtmosphereFX {
     this._smokeMat?.dispose();
     this._steamMat?.dispose();
     this._flashMat?.dispose();
+    this._smokeTex?.dispose();
+    this._steamTex?.dispose();
+    this._flashTex?.dispose();
     this._waterfallMat?.dispose();
     this._waterfallTex?.dispose();
   }

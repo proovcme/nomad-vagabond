@@ -2053,67 +2053,56 @@ function missionEnemyDown(enemy) {
     if (ship?.trailMat?.opacityTexture) demoState._wreckSmokeMat.opacityTexture = ship.trailMat.opacityTexture;
   }
   if (!demoState._debrisMat || demoState._debrisMat.isDisposed) {
-    demoState._debrisMat = new BABYLON.StandardMaterial('wreckDebrisSharedMat', scene);
-    demoState._debrisMat.diffuseColor = BABYLON.Color3.FromHexString('#38312b');
-    demoState._debrisMat.emissiveColor = BABYLON.Color3.FromHexString('#7a2c0c');
+    demoState._debrisMat = new BABYLON.PBRMaterial('wreckDebrisSharedMat', scene);
+    demoState._debrisMat.albedoColor = BABYLON.Color3.FromHexString('#6e685e');
+    demoState._debrisMat.emissiveColor = BABYLON.Color3.FromHexString('#4a1c08');
+    demoState._debrisMat.metallic = 0.65;
+    demoState._debrisMat.roughness = 0.48;
   }
 
-  // Spawn spinning aerodynamic structural debris shards (wing panels, tail fins, struts)
-  const chunkCount = enemy.variant === 'bomber' ? 8 : 6;
+  // Spawn thin metallic aircraft scrap plates (triangular wing/tail shards — zero black cubes!)
+  const chunkCount = enemy.variant === 'bomber' ? 7 : 5;
   for (let ci = 0; ci < chunkCount; ci++) {
-    const isStrut = ci % 3 === 0;
-    const chunk = BABYLON.MeshBuilder.CreateBox(`wreckDebris_${Date.now()}_${ci}`, {
-      width: isStrut ? 0.22 : (1.1 + Math.random() * 1.6),
-      height: isStrut ? 0.22 : 0.07,
-      depth: isStrut ? (1.8 + Math.random() * 1.4) : (0.7 + Math.random() * 1.3),
+    const chunk = BABYLON.MeshBuilder.CreateCylinder(`wreckShard_${Date.now()}_${ci}`, {
+      diameterTop: 0.12,
+      diameterBottom: 0.9 + Math.random() * 0.9,
+      height: 0.06,
+      tessellation: 3,
     }, scene);
     chunk.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
     chunk.position.copyFrom(enemy.root.position).addInPlace(new BABYLON.Vector3(
-      (Math.random() - 0.5) * 4.5,
-      (Math.random() - 0.5) * 2.5,
-      (Math.random() - 0.5) * 4.5
+      (Math.random() - 0.5) * 3.5,
+      (Math.random() - 0.5) * 2.0,
+      (Math.random() - 0.5) * 3.5
     ));
     chunk.material = demoState._debrisMat;
     chunk.isPickable = false;
-    let dTrail = null;
-    if (ci < 3 && typeof BABYLON.TrailMesh === 'function') {
-      chunk.computeWorldMatrix(true);
-      dTrail = new BABYLON.TrailMesh(`debrisTrail_${Date.now()}_${ci}`, chunk, scene, 0.35, 18, true);
-      dTrail.material = demoState._wreckSmokeMat;
-      dTrail.isPickable = false;
-    }
-    const burst = new BABYLON.Vector3((Math.random() - 0.5) * 34, 4 + Math.random() * 14, (Math.random() - 0.5) * 34);
+    const burst = new BABYLON.Vector3((Math.random() - 0.5) * 28, 3 + Math.random() * 12, (Math.random() - 0.5) * 28);
     demoState.fallingDebris.push({
       mesh: chunk,
-      trail: dTrail,
-      vel: (enemy.velocity ? enemy.velocity.scale(0.65) : BABYLON.Vector3.Zero()).add(burst),
-      rotVel: new BABYLON.Vector3((Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9),
-      life: 2.8 + Math.random() * 1.6,
+      trail: null,
+      vel: (enemy.velocity ? enemy.velocity.scale(0.70) : BABYLON.Vector3.Zero()).add(burst),
+      rotVel: new BABYLON.Vector3((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10),
+      life: 2.6 + Math.random() * 1.4,
     });
   }
 
-  // Attach engine fire core + thick smoke trail to the main airframe for a dramatic death spiral
-  const fireCore = BABYLON.MeshBuilder.CreateSphere('wreckFireCore', { diameter: enemy.variant === 'bomber' ? 2.4 : 1.7, segments: 8 }, scene);
+  // Keep the real shot-down aircraft airframe visible as it plunges in a burning, smoking death spiral!
+  const fireCore = BABYLON.MeshBuilder.CreatePlane('wreckFireGlow', { size: enemy.variant === 'bomber' ? 4.4 : 3.2 }, scene);
+  fireCore.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
   fireCore.parent = enemy.root;
-  fireCore.position.set(0, 0.3, 0);
-  fireCore.material = demoState._wreckFireMat;
+  fireCore.position.set(0, 0.35, 0);
+  fireCore.material = atmosphereFX?._flashMat || demoState._wreckFireMat;
   fireCore.isPickable = false;
-  let wreckTrail = null;
-  if (typeof BABYLON.TrailMesh === 'function') {
-    enemy.root.computeWorldMatrix(true);
-    fireCore.computeWorldMatrix(true);
-    wreckTrail = new BABYLON.TrailMesh(`wreckTrail_${Date.now()}`, fireCore, scene, enemy.variant === 'bomber' ? 1.35 : 0.95, 42, true);
-    wreckTrail.material = demoState._wreckSmokeMat;
-    wreckTrail.isPickable = false;
-  }
   demoState.fallingWrecks.push({
     root: enemy.root,
     fireCore,
-    trail: wreckTrail,
-    vel: (enemy.velocity ? enemy.velocity.scale(0.85) : new BABYLON.Vector3(0, 0, 12)).add(new BABYLON.Vector3(0, -4, 0)),
-    spin: new BABYLON.Vector3(-1.35 - Math.random() * 0.7, (Math.random() - 0.5) * 1.4, (Math.random() < 0.5 ? -1 : 1) * (3.6 + Math.random() * 2.2)),
-    life: 3.8 + Math.random() * 1.1,
-    blastCd: 0.45,
+    trail: null,
+    smokeCd: 0.06,
+    vel: (enemy.velocity ? enemy.velocity.scale(0.92) : new BABYLON.Vector3(0, 0, 22)).add(new BABYLON.Vector3(0, -3.5, 0)),
+    spin: new BABYLON.Vector3(-0.85 - Math.random() * 0.5, (Math.random() - 0.5) * 0.9, (Math.random() < 0.5 ? -1 : 1) * (2.6 + Math.random() * 1.8)),
+    life: 4.6 + Math.random() * 1.2,
+    blastCd: 0.75,
     isBomber: enemy.variant === 'bomber',
   });
 
@@ -3107,9 +3096,10 @@ engine.runRenderLoop(() => {
         const w = demoState.fallingWrecks[i];
         w.life -= dt;
         w.blastCd -= dt;
-        w.vel.y -= 23.0 * dt;
-        w.vel.x *= Math.exp(-dt * 0.35);
-        w.vel.z *= Math.exp(-dt * 0.35);
+        w.smokeCd = (w.smokeCd || 0) - dt;
+        w.vel.y -= 12.5 * dt;
+        w.vel.x *= Math.exp(-dt * 0.22);
+        w.vel.z *= Math.exp(-dt * 0.22);
         w.root.position.addInPlace(w.vel.scale(dt));
         if (!w.root.rotationQuaternion) {
           w.root.rotationQuaternion = BABYLON.Quaternion.FromEulerAngles(w.root.rotation.x, w.root.rotation.y, w.root.rotation.z);
@@ -3117,11 +3107,15 @@ engine.runRenderLoop(() => {
         const dq = BABYLON.Quaternion.FromEulerAngles(w.spin.x * dt, w.spin.y * dt, w.spin.z * dt);
         w.root.rotationQuaternion.multiplyInPlace(dq).normalize();
         if (w.fireCore && !w.fireCore.isDisposed()) {
-          w.fireCore.scaling.setAll(0.85 + Math.sin(performance.now() * 0.03 + i) * 0.3);
+          w.fireCore.scaling.setAll(0.85 + Math.sin(performance.now() * 0.03 + i) * 0.28);
+        }
+        if (w.smokeCd <= 0) {
+          w.smokeCd = 0.085;
+          atmosphereFX?.spawnSmokePuff(w.root.position, { dark: true, scale: w.isBomber ? 1.45 : 1.05, rise: 1.8 });
         }
         if (w.blastCd <= 0) {
-          w.blastCd = 0.42 + Math.random() * 0.28;
-          spawnDemoExplosion(w.root.position.clone(), 0.75);
+          w.blastCd = 0.65 + Math.random() * 0.35;
+          spawnDemoExplosion(w.root.position.clone(), 0.72);
         }
         if (w.life <= 0 || w.root.position.y < -95) {
           spawnDemoExplosion(w.root.position.clone(), w.isBomber ? 2.6 : 2.0);

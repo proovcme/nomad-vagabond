@@ -90,8 +90,11 @@ export class AircraftJobs {
     return {active:!['complete','failed'].includes(j.stage),id:j.id,variant:j.variant,stage:j.stage,title:definition.title,detail:j.stage==='complete'?'Задание выполнено: +30 лома. Вернитесь на ВПП и выберите следующий борт.':j.stage==='failed'?'Задание прервано. Выберите самолёт повторно.':j.stage==='deliver'?'Все три ящика на борту. Выполните посадку на своём острове для разгрузки.':`${definition.detail} ${j.done}/${j.total}.`,completed:j.done,total:j.total,reward:j.paid?30:0,winchProgress:Math.round((j.loading||0)/2.5*100),targets:this.entities.filter(e=>e.alive&&!e.collected).length,loadErrors:this.loadErrors.slice()};
   }
   update(dt,{ship,controlMode,onFoot=false,landed=false}={}){
-    if(this.disposed||!this.job||['complete','failed'].includes(this.job.stage)||!ship)return;
-    dt=Math.max(0,Math.min(dt,.1));this.ship=ship;this.controlMode=controlMode;this.job.time+=dt;
+    if(this.disposed)return;
+    const safeDt=Math.max(0,Math.min(dt,.1));
+    this._updateCrashingScouts(safeDt);
+    if(!this.job||['complete','failed'].includes(this.job.stage)||!ship)return;
+    dt=safeDt;this.ship=ship;this.controlMode=controlMode;this.job.time+=dt;
     if(ship.hull<=0){this.job.stage='failed';this._removeCable();this.onToast('Борт потерян: контракт можно начать заново.');return;}
     const correctVariant=ship.variant===this.job.variant;
     if(this.job.variant==='cargo'){
@@ -167,8 +170,45 @@ export class AircraftJobs {
       if(BABYLON.Vector3.Distance(center,point)<=e.radius+3){this._destroy(e);hit=true;}}
     if(this.job.done>=this.job.total)this._complete();return hit;
   }
-  _destroy(e){if(!e.alive)return;this.ship?.audio?.playExplosion?.(e.kind==='depot'?1.0:0.8);this.onExplosion?.(e.root.getAbsolutePosition().add(new BABYLON.Vector3(0,e.kind==='scout'?0:2,0)),e.kind==='depot'?2.2:1.5);e.alive=false;this.job.done++;e.root.setEnabled(false);this.onToast(`${e.kind==='scout'?'Разведчик сбит':e.kind==='flak'?'Батарея подавлена':'Топливный склад уничтожен'}: ${this.job.done}/${this.job.total}`);}
-  _complete(){if(this.job.paid)return;this.job.stage='complete';this.job.paid=true;this._removeCable();this.entities.forEach(e=>{e.root.parent=null;e.root.setEnabled(false);});this.hostileBolts.forEach(b=>b.mesh.dispose());this.hostileBolts=[];this.ship?.audio?.playUpgrade?.();this.onReward(30,{variant:this.job.variant,jobId:this.job.id});this.onToast(`${JOBS[this.job.variant].title}: выполнено. +30 лома`);}
+  _destroy(e){
+    if(!e.alive)return;
+    this.ship?.audio?.playExplosion?.(e.kind==='depot'?1.0:0.8);
+    this.onExplosion?.(e.root.getAbsolutePosition().add(new BABYLON.Vector3(0,e.kind==='scout'?0:2,0)),e.kind==='depot'?2.2:1.5);
+    e.alive=false;this.job.done++;
+    if(e.kind==='scout'){
+      // Keep shot-down scout visible and send it into a burning spiral crash dive instead of vanishing!
+      this.crashingScouts ||= [];
+      this.crashingScouts.push({
+        entity: e,
+        vel: (e.velocity ? e.velocity.scale(0.9) : new BABYLON.Vector3(14, -4, 10)).add(new BABYLON.Vector3(0, -3, 0)),
+        spin: new BABYLON.Vector3(-0.9 - Math.random() * 0.5, (Math.random() - 0.5) * 0.8, (Math.random() < 0.5 ? -1 : 1) * 3.0),
+        life: 4.2,
+        blastCd: 0.55,
+      });
+    } else {
+      e.root.setEnabled(false);
+    }
+    this.onToast(`${e.kind==='scout'?'Разведчик сбит':e.kind==='flak'?'Батарея подавлена':'Топливный склад уничтожен'}: ${this.job.done}/${this.job.total}`);
+  }
+  _updateCrashingScouts(dt){
+    if(!this.crashingScouts?.length)return;
+    for(let i=this.crashingScouts.length-1;i>=0;i--){
+      const c=this.crashingScouts[i], r=c.entity.root;
+      if(!r||r.isDisposed?.()){this.crashingScouts.splice(i,1);continue;}
+      c.life-=dt; c.blastCd-=dt;
+      c.vel.y-=12.5*dt;
+      r.position.addInPlace(c.vel.scale(dt));
+      if(!r.rotationQuaternion)r.rotationQuaternion=BABYLON.Quaternion.FromEulerAngles(r.rotation.x,r.rotation.y,r.rotation.z);
+      r.rotationQuaternion.multiplyInPlace(BABYLON.Quaternion.FromEulerAngles(c.spin.x*dt,c.spin.y*dt,c.spin.z*dt)).normalize();
+      if(c.blastCd<=0){c.blastCd=0.55;this.onExplosion?.(r.position.clone(),0.75);}
+      if(c.life<=0||r.position.y<-95){
+        this.onExplosion?.(r.position.clone(),1.8);
+        r.setEnabled(false);
+        this.crashingScouts.splice(i,1);
+      }
+    }
+  }
+  _complete(){if(this.job.paid)return;this.job.stage='complete';this.job.paid=true;this._removeCable();const crashing=new Set((this.crashingScouts||[]).map(c=>c.entity));this.entities.forEach(e=>{if(crashing.has(e))return;e.root.parent=null;e.root.setEnabled(false);});this.hostileBolts.forEach(b=>b.mesh.dispose());this.hostileBolts=[];this.ship?.audio?.playUpgrade?.();this.onReward(30,{variant:this.job.variant,jobId:this.job.id});this.onToast(`${JOBS[this.job.variant].title}: выполнено. +30 лома`);}
   _disposeProjectile(ship,i){const p=ship.projectiles[i];p.trail?.dispose();p.mesh.dispose(false,false);ship.projectiles.splice(i,1);}
   _fireHostile(e,ship){
     const from=e.root.getAbsolutePosition().add(new BABYLON.Vector3(0,e.kind==='flak'?3:1,0)),delta=ship.group.position.subtract(from),distance=delta.length();if(distance<12||distance>190||this.hostileBolts.length>=12)return;
