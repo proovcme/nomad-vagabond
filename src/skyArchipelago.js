@@ -86,12 +86,12 @@ function registerSkyShaders() {
         vec3 d = normalize(vLocalDir);
         float h = d.y;
 
-        // Porco Rosso × Interbellum sky palette: Adriatic steel-blue zenith, muted cerulean mid-sky, warm parchment-gold horizon
+        // Project Nomads warm smoky amber-taupe & golden-ochre sky palette (unified atmospheric harmony!)
         float nightMask = 1.0 - smoothstep(0.02, 0.18, uTimeOfDay);
-        vec3 dayZenith = mix(vec3(0.07, 0.17, 0.34), vec3(0.11, 0.24, 0.44), uTimeOfDay);
-        vec3 dayMid = mix(vec3(0.24, 0.40, 0.58), vec3(0.32, 0.49, 0.66), uTimeOfDay);
-        vec3 dayHoriz = vec3(0.86, 0.78, 0.64);
-        vec3 dayAbyss = vec3(0.64, 0.68, 0.74);
+        vec3 dayZenith = mix(vec3(0.24, 0.24, 0.24), vec3(0.36, 0.34, 0.30), uTimeOfDay);
+        vec3 dayMid = mix(vec3(0.42, 0.38, 0.32), vec3(0.58, 0.50, 0.39), uTimeOfDay);
+        vec3 dayHoriz = vec3(0.84, 0.70, 0.48);
+        vec3 dayAbyss = vec3(0.58, 0.49, 0.36);
 
         vec3 zenithCol = mix(dayZenith, vec3(0.008, 0.016, 0.048), nightMask);
         vec3 midSkyCol = mix(dayMid, vec3(0.022, 0.042, 0.095), nightMask);
@@ -100,8 +100,8 @@ function registerSkyShaders() {
 
         vec3 col;
         if (h >= 0.0) {
-          float t1 = smoothstep(0.0, 0.22, h);
-          float t2 = smoothstep(0.18, 0.82, h);
+          float t1 = smoothstep(0.0, 0.24, h);
+          float t2 = smoothstep(0.20, 0.85, h);
           col = mix(horizCol, midSkyCol, t1);
           col = mix(col, zenithCol, t2);
         } else {
@@ -109,24 +109,24 @@ function registerSkyShaders() {
         }
 
         // High altitude wispy cirrus streaks
-        vec3 sunSkyDir = normalize(vec3(uSunDir.x, 0.125, uSunDir.z));
+        vec3 sunSkyDir = normalize(vec3(uSunDir.x, 0.14, uSunDir.z));
         float sunDot = max(0.0001, dot(d, sunSkyDir));
 
-        // Painted 360-degree panorama, gently desaturated & warm-graded so turquoise clouds read as 1930s oil-painted cumulus
+        // Painted 360-degree panorama graded into warm smoky bronze-taupe clouds (zero cyan/teal clash!)
         vec2 artUv=vec2(fract(atan(d.z,d.x)/6.2831853+.5+uTime*.00008),acos(clamp(d.y,-1.0,1.0))/3.14159265);
         vec3 rawArt=texture2D(uSkyArtwork,artUv).rgb;
         float artLuma = dot(rawArt, vec3(0.299, 0.587, 0.114));
-        vec3 gradedArt = mix(vec3(artLuma), rawArt, 0.62) * vec3(1.04, 0.99, 0.92);
-        vec3 skyArt = (gradedArt * gradedArt) * 0.96;
+        vec3 gradedArt = mix(vec3(artLuma), rawArt, 0.22) * vec3(1.06, 0.94, 0.76);
+        vec3 skyArt = (gradedArt * gradedArt) * 0.92;
         float seamDistance=min(artUv.x,1.0-artUv.x);
         if(seamDistance<.035){
           vec3 seamRaw=.5*(texture2D(uSkyArtwork,vec2(.001,artUv.y)).rgb+texture2D(uSkyArtwork,vec2(.999,artUv.y)).rgb);
           float sLuma = dot(seamRaw, vec3(0.299, 0.587, 0.114));
-          vec3 sGraded = mix(vec3(sLuma), seamRaw, 0.62) * vec3(1.04, 0.99, 0.92);
-          skyArt=mix((sGraded * sGraded) * 0.96,skyArt,smoothstep(0.0,.035,seamDistance));
+          vec3 sGraded = mix(vec3(sLuma), seamRaw, 0.22) * vec3(1.06, 0.94, 0.76);
+          skyArt=mix((sGraded * sGraded) * 0.92,skyArt,smoothstep(0.0,.035,seamDistance));
         }
         float artWeight=smoothstep(.0,.14,artUv.y)*(1.0-smoothstep(.94,1.0,artUv.y))*smoothstep(-.20,.04,h);
-        col=mix(col,skyArt * mix(1.0, 0.08, nightMask), artWeight * mix(0.56, 0.28, nightMask));
+        col=mix(col,skyArt * mix(1.0, 0.08, nightMask), artWeight * mix(0.52, 0.28, nightMask));
 
         // Rich bright twinkling night stars (2 layered starfields: bright hero stars + dense faint star dust)
         if (nightMask > 0.05 && h > 0.01) {
@@ -249,16 +249,17 @@ function registerSkyShaders() {
         float sunGlint = (sa4 * sunAlign) * smoothstep(0.45, 0.92, lit);
 
         float nightMask = 1.0 - smoothstep(0.02, 0.18, uTimeOfDay);
+        // Project Nomads warm smoky bronze-umber troughs & golden-ochre mist sea
         vec3 shadowCol = mix(
-          mix(vec3(0.20, 0.36, 0.66), vec3(0.46, 0.36, 0.54), sunAlign * 0.48),
+          mix(vec3(0.36, 0.30, 0.23), vec3(0.48, 0.38, 0.28), sunAlign * 0.45),
           vec3(0.012, 0.024, 0.068),
           nightMask
         );
-        vec3 litCol = mix(vec3(1.00, 0.96, 0.86), vec3(0.10, 0.17, 0.32), nightMask);
-        vec3 warmRim = mix(vec3(1.00, 0.78, 0.40), vec3(0.28, 0.44, 0.72), nightMask);
+        vec3 litCol = mix(vec3(0.86, 0.74, 0.54), vec3(0.10, 0.17, 0.32), nightMask);
+        vec3 warmRim = mix(vec3(0.95, 0.74, 0.44), vec3(0.28, 0.44, 0.72), nightMask);
         vec3 col = mix(shadowCol, litCol, smoothstep(0.08, 0.95, lit));
-        col = mix(col, warmRim, smoothstep(0.38, 0.92, lit) * 0.58 + sunGlint * 0.62);
-        col += vec3(1.00, 0.84, 0.50) * (sa4 * sa4 * sa4) * smoothstep(0.55, 0.96, lit) * (1.0 - nightMask) * 0.35;
+        col = mix(col, warmRim, smoothstep(0.38, 0.92, lit) * 0.52 + sunGlint * 0.55);
+        col += vec3(0.98, 0.82, 0.52) * (sa4 * sa4 * sa4) * smoothstep(0.55, 0.96, lit) * (1.0 - nightMask) * 0.28;
 
         // Abyssal chaos below the clouds: intermittent deep storm-lightning blooms & sunken ether-engine flashes!
         vec2 cellId = floor(vWorldPos.xz * 0.0024);
@@ -2258,20 +2259,20 @@ export class SkyArchipelagoWorld {
     this.sunDir = new BABYLON.Vector3(isDawn ? 0.62 : -0.66, isNight ? 0.36 : 0.28, -0.69).normalize();
     this.sunDirLight = new BABYLON.DirectionalLight('archSunLight', this.sunDir.scale(-1), this.scene);
     this.sunDirLight.position = this.sunDir.scale(220);
-    this.sunDirLight.intensity = isNight ? 0.52 : isStorm ? 2.05 : isDawn ? 3.55 : 3.35;
-    this.sunDirLight.diffuse = c3(isNight ? '#82aef5' : isStorm ? '#ff9c6e' : isDawn ? '#ffd8c4' : '#ffe4b5');
-    this.sunDirLight.specular = c3(isNight ? '#9ec0ff' : isStorm ? '#ffb284' : '#ffcb88');
+    this.sunDirLight.intensity = isNight ? 0.52 : isStorm ? 2.05 : isDawn ? 3.55 : 3.55;
+    this.sunDirLight.diffuse = c3(isNight ? '#82aef5' : isStorm ? '#ff9c6e' : isDawn ? '#ffd8c4' : '#ffbc6c');
+    this.sunDirLight.specular = c3(isNight ? '#9ec0ff' : isStorm ? '#ffb284' : '#ffbe78');
     this._baseSunIntensity = this.sunDirLight.intensity;
 
     this.rimFillLight = new BABYLON.DirectionalLight('archRimFillLight', new BABYLON.Vector3(0.62, -0.52, 0.58).normalize(), this.scene);
-    this.rimFillLight.intensity = isNight ? 0.24 : isStorm ? 0.34 : 0.42;
-    this.rimFillLight.diffuse = c3(isNight ? '#4d78b8' : isStorm ? '#d47c58' : '#ffc478');
-    this.rimFillLight.specular = c3(isNight ? '#7aa6e0' : '#ffe0b2');
+    this.rimFillLight.intensity = isNight ? 0.24 : isStorm ? 0.34 : 0.38;
+    this.rimFillLight.diffuse = c3(isNight ? '#4d78b8' : isStorm ? '#d47c58' : '#e89d54');
+    this.rimFillLight.specular = c3(isNight ? '#7aa6e0' : '#f0be84');
 
     this.hemiLight = new BABYLON.HemisphericLight('archHemiLight', new BABYLON.Vector3(0, 1, 0), this.scene);
-    this.hemiLight.intensity = isNight ? 0.26 : isStorm ? 0.34 : 0.42;
-    this.hemiLight.diffuse = c3(isNight ? '#2c4670' : isStorm ? '#707e96' : isDawn ? '#c8e4fa' : '#b2d6f5');
-    this.hemiLight.groundColor = c3(isNight ? '#151c29' : isStorm ? '#3c3430' : '#7d5b3b');
+    this.hemiLight.intensity = isNight ? 0.26 : isStorm ? 0.34 : 0.40;
+    this.hemiLight.diffuse = c3(isNight ? '#2c4670' : isStorm ? '#707e96' : isDawn ? '#d8d0c4' : '#c2ab8a');
+    this.hemiLight.groundColor = c3(isNight ? '#151c29' : isStorm ? '#3c3430' : '#4a3522');
     this.scene.environmentIntensity = 1.25;
 
     if (this.scene.getEngine().constructor.name !== 'NullEngine') {
@@ -2299,10 +2300,10 @@ export class SkyArchipelagoWorld {
       this.graphics.pipeline.bloomThreshold = isNight ? 0.82 : 0.96;
     }
 
-    // Crisp atmospheric perspective haze preserving layered island silhouettes
+    // Project Nomads warm golden-ochre atmospheric depth haze (far spires dissolve into golden mist!)
     this.scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-    this.scene.fogColor = c3(isNight ? '#162034' : isStorm ? '#625856' : isDawn ? '#d6d2cc' : '#c8ccd0');
-    this.scene.fogDensity = isNight ? 0.00044 : isStorm ? 0.00048 : isDawn ? 0.00024 : 0.00026;
+    this.scene.fogColor = c3(isNight ? '#162034' : isStorm ? '#625856' : isDawn ? '#d6c8b6' : '#b89e78');
+    this.scene.fogDensity = isNight ? 0.00044 : isStorm ? 0.00048 : isDawn ? 0.00032 : 0.00044;
 
     // Lightweight 1-draw-call Anamorphic Sun Flare Billboard (cinematic glow with zero bloom cost!)
     if (this.scene.getEngine().constructor.name !== 'NullEngine' && typeof document !== 'undefined') {
@@ -2564,19 +2565,22 @@ export class SkyArchipelagoWorld {
     const milRockMat = makeTerrainPBRMaterial(this.scene, 'shatteredMilRockMat', 'aerial_rocks_02', 2, 2, '#c4c8ce');
     applyRockProjection(milRockMat, this.scene, 'military');
 
-    // Reusable Marching-Tetrahedra rock cluster templates (stepped cliff shoulders + 3 asymmetric hanging roots, zero cones!)
+    // Project Nomads monumental cathedral-organ spires & twin-pillar natural rock arches rising from the mist!
     const spireTemplateMasses = [
-      { x: 0,    y: 4,   z: 0,   h: 36, dTop: 5.5, dBot: 16.0, sx: 1.15, sz: 0.88, ry: 0.4 },
-      { x: 0,    y: -14, z: 0,   h: 32, dTop: 16.0, dBot: 2.2, sx: 1.15, sz: 0.88, ry: 0.4 },
-      { x: -5.5, y: -10, z: 3.0, h: 26, dTop: 11.0, dBot: 1.8, sx: 1.0,  sz: 1.0,  ry: 1.3 },
-      { x: 5.2,  y: -12, z: -2.8,h: 24, dTop: 10.5, dBot: 1.8, sx: 0.95, sz: 1.08, ry: -0.9 },
+      { x: 0,    y: 8,   z: 0,   h: 44, dTop: 4.5, dBot: 14.0, sx: 1.15, sz: 0.85, ry: 0.4 },
+      { x: -7.5, y: 1,   z: 2.0, h: 32, dTop: 4.0, dBot: 11.0, sx: 0.95, sz: 0.90, ry: 1.2 },
+      { x: 7.2,  y: -1,  z: -2.0,h: 28, dTop: 3.8, dBot: 10.5, sx: 0.90, sz: 1.05, ry: -0.8 },
+      { x: 0,    y: -15, z: 0,   h: 32, dTop: 18.0, dBot: 2.4, sx: 1.20, sz: 0.92, ry: 0.4 },
+      { x: -6.5, y: -12, z: 3.0, h: 26, dTop: 11.0, dBot: 1.8, sx: 1.0,  sz: 1.0,  ry: 1.3 },
+      { x: 6.2,  y: -13, z: -2.8,h: 24, dTop: 10.5, dBot: 1.8, sx: 0.95, sz: 1.08, ry: -0.9 },
     ];
     const cragTemplateMasses = [
-      { x: -3.5, y: 2,   z: -1.5,h: 18, dTop: 7.0,  dBot: 18.0, sx: 1.12, sz: 0.92, ry: 0.3 },
-      { x: 4.5,  y: 4,   z: 2.0, h: 20, dTop: 5.5,  dBot: 15.0, sx: 0.94, sz: 1.10, ry: 1.5 },
-      { x: -4.0, y: -12, z: -2.0,h: 28, dTop: 17.5, dBot: 2.2,  sx: 1.10, sz: 0.92, ry: 0.3 },
-      { x: 4.8,  y: -10, z: 2.5, h: 24, dTop: 14.5, dBot: 2.0,  sx: 0.94, sz: 1.08, ry: 1.5 },
-      { x: 0.5,  y: -14, z: -5.0,h: 22, dTop: 12.0, dBot: 1.8,  sx: 1.0,  sz: 1.0,  ry: 2.4 },
+      // Twin-pillar natural rock arch silhouette (iconic Project Nomads horizon formation)
+      { x: -11.5, y: 4,   z: 0.0, h: 34, dTop: 6.5,  dBot: 14.0, sx: 1.05, sz: 0.95, ry: 0.2 },
+      { x: 11.5,  y: 2,   z: 0.0, h: 30, dTop: 6.0,  dBot: 13.0, sx: 1.00, sz: 0.95, ry: 1.4 },
+      { x: 0.0,   y: 11,  z: 0.0, h: 9,  dTop: 26.0, dBot: 24.0, sx: 1.05, sz: 0.36, ry: 0.0 },
+      { x: -11.0, y: -15, z: 0.0, h: 24, dTop: 13.5, dBot: 2.0,  sx: 1.05, sz: 0.95, ry: 0.2 },
+      { x: 11.0,  y: -14, z: 0.0, h: 22, dTop: 12.5, dBot: 1.9,  sx: 1.00, sz: 0.95, ry: 1.4 },
     ];
 
     const rockPlacements = [
