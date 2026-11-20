@@ -31,30 +31,32 @@ export class EnemyFortressIsland {
     this.root.position.copyFrom(targetBasePos).addInPlace(new B.Vector3(245, 58, 315));
 
     const isNull = scene.getEngine() instanceof B.NullEngine;
-    let rustTex = null;
+    let rockDiff = null, rockNorm = null, armorDiff = null;
     if (!isNull) {
-      rustTex = createRustedMetalTexture(scene, [84, 72, 66]);
-      rustTex.albedoTex.uScale = rustTex.albedoTex.vScale = 3;
-      rustTex.bumpTex.uScale = rustTex.bumpTex.vScale = 3;
+      rockDiff = new B.Texture('./assets/benchmark/textures/aerial_rocks_02/Diffuse.jpg', scene);
+      rockDiff.uScale = rockDiff.vScale = 3.5; rockDiff.anisotropicFilteringLevel = 8;
+      rockNorm = new B.Texture('./assets/benchmark/textures/aerial_rocks_02/nor_gl.jpg', scene);
+      rockNorm.uScale = rockNorm.vScale = 3.5; rockNorm.gammaSpace = false; rockNorm.level = 0.9;
+      armorDiff = new B.Texture('./assets/textures/nomad/armored-deck-plates.png', scene);
+      armorDiff.uScale = armorDiff.vScale = 4.0; armorDiff.anisotropicFilteringLevel = 8;
     }
 
     const rockMat = new B.PBRMaterial('enemyIslRockMat', scene);
-    rockMat.albedoColor = c3('#4f433c');
-    rockMat.metallic = 0.08;
+    rockMat.albedoColor = c3('#78726c');
+    rockMat.metallic = 0.05;
     rockMat.roughness = 0.88;
-    if (rustTex) {
-      rockMat.albedoTexture = rustTex.albedoTex;
-      rockMat.bumpTexture = rustTex.bumpTex;
-      rockMat.bumpTexture.level = 0.9;
+    if (rockDiff) {
+      rockMat.albedoTexture = rockDiff;
+      rockMat.bumpTexture = rockNorm;
     }
 
     const armorMat = new B.PBRMaterial('enemyIslArmorMat', scene);
-    armorMat.albedoColor = c3('#383432');
-    armorMat.metallic = 0.58;
-    armorMat.roughness = 0.48;
-    if (rustTex) {
-      armorMat.bumpTexture = rustTex.bumpTex;
-      armorMat.bumpTexture.level = 0.85;
+    armorMat.albedoColor = c3('#767b7e');
+    armorMat.metallic = 0.56;
+    armorMat.roughness = 0.46;
+    armorMat.environmentIntensity = 0.70;
+    if (armorDiff) {
+      armorMat.albedoTexture = armorDiff;
     }
 
     const crimsonMat = new B.PBRMaterial('enemyIslCrimsonMat', scene);

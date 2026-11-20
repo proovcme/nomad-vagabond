@@ -19,18 +19,20 @@ export function buildFlak88Turret(scene, name, parent, pos = new BABYLON.Vector3
   const isNull = scene.getEngine() instanceof B.NullEngine;
   let ironTex = null;
   if (!isNull) {
-    if (!scene._sharedWeatheredIronTex) {
-      const t = new B.Texture('./assets/textures/nomad/weathered-iron-v2.jpg', scene);
+    if (!scene._sharedGunmetalTex) {
+      const t = new B.Texture('./assets/textures/nomad/aviation-runway-graphite-v1.jpg', scene);
       t.uScale = t.vScale = 2.5;
-      scene._sharedWeatheredIronTex = t;
+      t.anisotropicFilteringLevel = 8;
+      scene._sharedGunmetalTex = t;
     }
-    ironTex = scene._sharedWeatheredIronTex;
+    ironTex = scene._sharedGunmetalTex;
   }
 
   const armorMat = new B.PBRMaterial(`${name}_armorMat`, scene);
-  armorMat.albedoColor = c3('#595e54');
-  armorMat.metallic = 0.42;
-  armorMat.roughness = 0.58;
+  armorMat.albedoColor = c3('#8c9288');
+  armorMat.metallic = 0.54;
+  armorMat.roughness = 0.46;
+  armorMat.environmentIntensity = 0.72;
   if (ironTex) armorMat.albedoTexture = ironTex;
 
   const barrelMat = new B.PBRMaterial(`${name}_barrelMat`, scene);

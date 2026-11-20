@@ -63,9 +63,9 @@ export class MaterialKit {
     const cloth=/^(shipyardPennantCloth|vagBannerMat)/;
     for(const mat of scene.materials.slice()) {
       if(mat.getClassName()!=='PBRMaterial')continue;
-      if(indDeck.test(mat.name))this.apply(mat,'weathered-iron-v2.jpg',.28,.78,[.34,.31,.28,.58]);
-      else if(metal.test(mat.name))this.apply(mat,'weathered-iron-v2.jpg',.48,.56,[.44,.40,.36,.48]);
-      else if(rust.test(mat.name))this.apply(mat,'weathered-iron-v2.jpg',.26,.76,[.58,.34,.18,.58]);
+      if(indDeck.test(mat.name))this.apply(mat,'armored-deck-plates.png',.34,.58,[.74,.78,.78,.28]);
+      else if(metal.test(mat.name))this.apply(mat,'aviation-runway-graphite-v1.jpg',.48,.52,[.58,.56,.52,.42]);
+      else if(rust.test(mat.name))this.apply(mat,'weathered-iron-v2.jpg',.28,.74,[.56,.38,.24,.64]);
       else if(cloth.test(mat.name)){
         mat.albedoTexture=this.texture('ochre-aircraft-canvas.png');mat.albedoColor.set(1,1,1);mat.metallic=0;mat.roughness=.95;mat.bumpTexture=null;this.changed.push(mat.name);
       }
@@ -73,13 +73,13 @@ export class MaterialKit {
     const runway=scene.getMeshByName('vagCarrierRunway');
     if(runway){
       const mat=new BABYLON.PBRMaterial('aviationRunwaySteel',scene);
-      this.apply(mat,'aviation-runway-graphite-v1.jpg',.34,.82,[.78,.76,.72,.22]);
+      this.apply(mat,'aviation-runway-graphite-v1.jpg',.28,.78,[.84,.82,.78,.22]);
       runway.material=mat;runway.receiveShadows=true;
     }
-    const wall=new BABYLON.PBRMaterial('paintedHangarWallOlive',scene);this.apply(wall,'weathered-iron-v2.jpg',.18,.86,[.54,.48,.42,.52]);
+    const wall=new BABYLON.PBRMaterial('paintedHangarWallOlive',scene);this.apply(wall,'aviation-runway-graphite-v1.jpg',.24,.74,[.58,.56,.50,.48]);
     for(const mesh of scene.meshes)if(/^vagHangar(?:Back|Side|Ceil)/.test(mesh.name))mesh.material=wall;
     const floor=scene.getMeshByName('hangarInnerFloor');
-    if(floor){const mat=new BABYLON.PBRMaterial('aviationHangarFloorSteel',scene);this.apply(mat,'aviation-runway-graphite-v1.jpg',.38,.78,[.82,.78,.72,.18]);floor.material=mat;}
+    if(floor){const mat=new BABYLON.PBRMaterial('aviationHangarFloorSteel',scene);this.apply(mat,'armored-deck-plates.png',.36,.62,[.78,.80,.78,.24]);floor.material=mat;}
     scene.onDisposeObservable.addOnce(()=>this.dispose());
   }
   texture(file){

@@ -8,20 +8,30 @@ function c3(hex) {
   return BABYLON.Color3.FromHexString(hex);
 }
 
-function getWeatheredIronMat(scene, key, hex, metallic = 0.56, roughness = 0.48) {
+function getWeatheredIronMat(scene, key, hex, metallic = 0.56, roughness = 0.44) {
   scene._dieselMats ||= {};
   if (!scene._dieselMats[key] || scene._dieselMats[key].isDisposed) {
     const m = new BABYLON.PBRMaterial(`diesel_${key}`, scene);
     m.albedoColor = c3(hex);
     m.metallic = metallic;
     m.roughness = roughness;
+    m.environmentIntensity = 0.72;
     if (!(scene.getEngine() instanceof BABYLON.NullEngine)) {
-      if (!scene._sharedWeatheredIronTex) {
-        const tex = new BABYLON.Texture('./assets/textures/nomad/weathered-iron-v2.jpg', scene);
+      if (!scene._sharedGunmetalTex) {
+        const tex = new BABYLON.Texture('./assets/textures/nomad/aviation-runway-graphite-v1.jpg', scene);
         tex.uScale = tex.vScale = 2.5;
-        scene._sharedWeatheredIronTex = tex;
+        tex.anisotropicFilteringLevel = 8;
+        scene._sharedGunmetalTex = tex;
       }
-      m.albedoTexture = scene._sharedWeatheredIronTex;
+      if (!scene._sharedGunmetalBump) {
+        const bump = new BABYLON.Texture('./assets/benchmark/textures/anti_slip_concrete/nor_gl.jpg', scene);
+        bump.uScale = bump.vScale = 3.5;
+        bump.gammaSpace = false;
+        bump.level = 0.22;
+        scene._sharedGunmetalBump = bump;
+      }
+      m.albedoTexture = scene._sharedGunmetalTex;
+      m.bumpTexture = scene._sharedGunmetalBump;
     }
     scene._dieselMats[key] = m;
   }
@@ -63,8 +73,8 @@ export function buildSculptedRadar(scene, name, parent, pos = new BABYLON.Vector
   if (parent) root.parent = parent;
   root.position.copyFrom(pos);
 
-  const ironMat = getWeatheredIronMat(scene, 'radarIron', '#5c635b', 0.52, 0.52);
-  const darkIronMat = getWeatheredIronMat(scene, 'radarDarkIron', '#3a3f3c', 0.65, 0.44);
+  const ironMat = getWeatheredIronMat(scene, 'radarIron', '#969c94', 0.56, 0.44);
+  const darkIronMat = getWeatheredIronMat(scene, 'radarDarkIron', '#747a76', 0.65, 0.40);
   const brassMat = getMetalMat(scene, 'radarBrass', '#cca052', 0.84, 0.28);
   const copperMat = getMetalMat(scene, 'radarCopper', '#bc6c3c', 0.82, 0.32);
 
@@ -168,8 +178,8 @@ export function buildSculptedSamLauncher(scene, name, parent, pos = new BABYLON.
   if (parent) base.parent = parent;
   base.position.copyFrom(pos);
 
-  const ironMat = getWeatheredIronMat(scene, 'samIron', '#52574f', 0.55, 0.50);
-  const darkMat = getWeatheredIronMat(scene, 'samDark', '#363935', 0.66, 0.42);
+  const ironMat = getWeatheredIronMat(scene, 'samIron', '#90968c', 0.56, 0.44);
+  const darkMat = getWeatheredIronMat(scene, 'samDark', '#707672', 0.64, 0.40);
   const brassMat = getMetalMat(scene, 'samBrass', '#c89b4c', 0.84, 0.30);
   const copperMat = getMetalMat(scene, 'samCopper', '#bc6838', 0.82, 0.32);
   const headMat = getMetalMat(scene, 'samWarhead', '#c94124', 0.32, 0.38);

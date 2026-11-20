@@ -41,36 +41,43 @@ export class EnemyDreadnought {
     );
 
     const isNull = scene.getEngine() instanceof B.NullEngine;
-    let hullTex = null;
+    let envTex = null, armorTex = null, canvasTex = null, bumpTex = null;
     if (!isNull) {
-      hullTex = createRustedMetalTexture(scene, this.isConvoy ? [118, 96, 74] : [82, 74, 68]);
-      hullTex.albedoTex.uScale = 4; hullTex.albedoTex.vScale = 2;
-      hullTex.bumpTex.uScale = 4; hullTex.bumpTex.vScale = 2;
+      envTex = new B.Texture('./assets/textures/nomad/aviation-runway-graphite-v1.jpg', scene);
+      envTex.uScale = 5; envTex.vScale = 2.5; envTex.anisotropicFilteringLevel = 8;
+      armorTex = new B.Texture('./assets/textures/nomad/armored-deck-plates.png', scene);
+      armorTex.uScale = 4; armorTex.vScale = 2; armorTex.anisotropicFilteringLevel = 8;
+      canvasTex = new B.Texture('./assets/textures/nomad/ochre-aircraft-canvas.png', scene);
+      canvasTex.uScale = 3; canvasTex.vScale = 3; canvasTex.anisotropicFilteringLevel = 8;
+      bumpTex = new B.Texture('./assets/benchmark/textures/anti_slip_concrete/nor_gl.jpg', scene);
+      bumpTex.uScale = 6; bumpTex.vScale = 3; bumpTex.gammaSpace = false; bumpTex.level = 0.35;
     }
 
     const envelopeMat = new B.PBRMaterial(`${this.root.name}_envMat`, scene);
-    envelopeMat.albedoColor = c3(this.isConvoy ? '#8a7358' : '#58514b');
-    envelopeMat.metallic = 0.24;
-    envelopeMat.roughness = 0.72;
-    if (hullTex) {
-      envelopeMat.albedoTexture = hullTex.albedoTex;
-      envelopeMat.bumpTexture = hullTex.bumpTex;
-      envelopeMat.bumpTexture.level = 0.85;
+    envelopeMat.albedoColor = c3(this.isConvoy ? '#c8b498' : '#8a8680');
+    envelopeMat.metallic = 0.28;
+    envelopeMat.roughness = 0.62;
+    envelopeMat.environmentIntensity = 0.70;
+    if (envTex) {
+      envelopeMat.albedoTexture = envTex;
+      envelopeMat.bumpTexture = bumpTex;
     }
 
     const armorMat = new B.PBRMaterial(`${this.root.name}_armorMat`, scene);
-    armorMat.albedoColor = c3(this.isConvoy ? '#5a4e42' : '#3a3836');
-    armorMat.metallic = 0.62;
+    armorMat.albedoColor = c3(this.isConvoy ? '#8c8072' : '#6c7274');
+    armorMat.metallic = 0.56;
     armorMat.roughness = 0.44;
-    if (hullTex) {
-      armorMat.bumpTexture = hullTex.bumpTex;
-      armorMat.bumpTexture.level = 0.85;
+    armorMat.environmentIntensity = 0.72;
+    if (armorTex) {
+      armorMat.albedoTexture = armorTex;
+      armorMat.bumpTexture = bumpTex;
     }
 
     const crimsonMat = new B.PBRMaterial(`${this.root.name}_crimsonMat`, scene);
-    crimsonMat.albedoColor = c3('#8f2b22');
-    crimsonMat.metallic = 0.22;
-    crimsonMat.roughness = 0.68;
+    crimsonMat.albedoColor = c3('#b6382b');
+    crimsonMat.metallic = 0.16;
+    crimsonMat.roughness = 0.72;
+    if (canvasTex) crimsonMat.albedoTexture = canvasTex;
 
     const coreMat = new B.StandardMaterial(`${this.root.name}_coreMat`, scene);
     coreMat.emissiveColor = c3(this.isConvoy ? '#ffbe55' : '#ff5e2b');

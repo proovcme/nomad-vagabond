@@ -26,6 +26,19 @@ function mergeGroup(scene, name, meshes, parent, material, castShadow = false, s
   return merged;
 }
 
+function getBiomeTex(scene, key, url, scale = 3.0, isLinear = false) {
+  if (scene.getEngine() instanceof BABYLON.NullEngine) return null;
+  scene._biomeTexCache ||= {};
+  if (!scene._biomeTexCache[key]) {
+    const t = new BABYLON.Texture(url, scene);
+    t.uScale = t.vScale = scale;
+    t.anisotropicFilteringLevel = 8;
+    if (isLinear) t.gammaSpace = false;
+    scene._biomeTexCache[key] = t;
+  }
+  return scene._biomeTexCache[key];
+}
+
 export function buildBiomeIsland(scene, {
   biome = 'desert',
   pos = [0, 50, -320],
@@ -71,9 +84,10 @@ export function buildBiomeIsland(scene, {
     lavaMat.emissiveColor = c3('#ff4e12');
     lavaMat.disableLighting = true;
     const ironMat = new B.PBRMaterial(`volcIronMat_${seed}`, scene);
-    ironMat.albedoColor = c3('#302c2b'); ironMat.metallic = 0.68; ironMat.roughness = 0.48;
+    ironMat.albedoColor = c3('#6e6864'); ironMat.metallic = 0.64; ironMat.roughness = 0.46; ironMat.environmentIntensity = 0.7;
+    ironMat.albedoTexture = getBiomeTex(scene, 'graphite', './assets/textures/nomad/aviation-runway-graphite-v1.jpg', 3.0);
     const copperMat = new B.PBRMaterial(`volcCopperMat_${seed}`, scene);
-    copperMat.albedoColor = c3('#b86234'); copperMat.metallic = 0.80; copperMat.roughness = 0.36;
+    copperMat.albedoColor = c3('#c8723e'); copperMat.metallic = 0.80; copperMat.roughness = 0.34;
 
     const caldera = B.MeshBuilder.CreateDisc(`volcCaldera_${seed}`, { radius: radiusX * 0.34, tessellation: 18 }, scene);
     caldera.parent = group; caldera.rotation.x = Math.PI * 0.5; caldera.position.y = 2.05;
@@ -106,7 +120,9 @@ export function buildBiomeIsland(scene, {
     const brassMat = new B.PBRMaterial(`glacBrassMat_${seed}`, scene);
     brassMat.albedoColor = c3('#c8a258'); brassMat.metallic = 0.78; brassMat.roughness = 0.32;
     const stoneMat = new B.PBRMaterial(`glacStoneMat_${seed}`, scene);
-    stoneMat.albedoColor = c3('#c8d4dc'); stoneMat.metallic = 0.10; stoneMat.roughness = 0.78;
+    stoneMat.albedoColor = c3('#dce8f0'); stoneMat.metallic = 0.08; stoneMat.roughness = 0.72;
+    stoneMat.albedoTexture = getBiomeTex(scene, 'granite', './assets/benchmark/textures/aerial_rocks_02/Diffuse.jpg', 3.0);
+    stoneMat.bumpTexture = getBiomeTex(scene, 'graniteNor', './assets/benchmark/textures/aerial_rocks_02/nor_gl.jpg', 3.0, true);
 
     const crystalParts = [], stoneParts = [], brassParts = [];
     for (let k = 0; k < 8; k++) {
@@ -127,11 +143,14 @@ export function buildBiomeIsland(scene, {
   } else if (biome === 'desert') {
     // Red Canyon Outpost: terraced adobe/limestone Interbellum radio towers + 2 spinning canvas-and-brass windmills!
     const adobeMat = new B.PBRMaterial(`desAdobeMat_${seed}`, scene);
-    adobeMat.albedoColor = c3('#d8b88c'); adobeMat.metallic = 0.02; adobeMat.roughness = 0.88;
+    adobeMat.albedoColor = c3('#e4c89e'); adobeMat.metallic = 0.02; adobeMat.roughness = 0.86;
+    adobeMat.albedoTexture = getBiomeTex(scene, 'sand', './assets/benchmark/textures/coast_sand_01/Diffuse.jpg', 3.5);
+    adobeMat.bumpTexture = getBiomeTex(scene, 'sandNor', './assets/benchmark/textures/coast_sand_01/nor_gl.jpg', 3.5, true);
     const roofMat = new B.PBRMaterial(`desRoofMat_${seed}`, scene);
-    roofMat.albedoColor = c3('#9e422a'); roofMat.metallic = 0.08; roofMat.roughness = 0.82;
+    roofMat.albedoColor = c3('#b44d32'); roofMat.metallic = 0.08; roofMat.roughness = 0.80;
     const sailMat = new B.PBRMaterial(`desSailMat_${seed}`, scene);
-    sailMat.albedoColor = c3('#f0e2be'); sailMat.metallic = 0.0; sailMat.roughness = 0.90; sailMat.backFaceCulling = false;
+    sailMat.albedoColor = c3('#f4e8ca'); sailMat.metallic = 0.0; sailMat.roughness = 0.90; sailMat.backFaceCulling = false;
+    sailMat.albedoTexture = getBiomeTex(scene, 'canvas', './assets/textures/nomad/ochre-aircraft-canvas.png', 2.0);
 
     const adobeParts = [], roofParts = [];
     put(B.MeshBuilder.CreateBox('dDepot', { width: 14, height: 6.5, depth: 10 }, scene), adobeParts, -6, 4.8, 4);
@@ -163,7 +182,10 @@ export function buildBiomeIsland(scene, {
   } else {
     // Ancient Sanctuary: fluted ivory marble columns + levitating rotating emerald-and-brass Aether Obelisk!
     const marbleMat = new B.PBRMaterial(`ancMarbleMat_${seed}`, scene);
-    marbleMat.albedoColor = c3('#dfd8c4'); marbleMat.metallic = 0.05; marbleMat.roughness = 0.82;
+    marbleMat.albedoColor = c3('#efe8d6'); marbleMat.metallic = 0.06; marbleMat.roughness = 0.72;
+    marbleMat.albedoTexture = getBiomeTex(scene, 'granite', './assets/benchmark/textures/aerial_rocks_02/Diffuse.jpg', 2.5);
+    marbleMat.bumpTexture = getBiomeTex(scene, 'graniteNor', './assets/benchmark/textures/aerial_rocks_02/nor_gl.jpg', 2.5, true);
+    if (marbleMat.bumpTexture) marbleMat.bumpTexture.level = 0.35;
     const brassMat = new B.PBRMaterial(`ancBrassMat_${seed}`, scene);
     brassMat.albedoColor = c3('#cfa352'); brassMat.metallic = 0.84; brassMat.roughness = 0.28;
     const glowMat = new B.StandardMaterial(`ancGlowMat_${seed}`, scene);

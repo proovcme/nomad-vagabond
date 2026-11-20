@@ -202,7 +202,11 @@ function createMaterial(scene, name, tint) {
 
 async function bakeTerrainTexture(scene, geometry, material) {
   if (typeof document === 'undefined' || scene.getEngine().constructor.name === 'NullEngine') return;
-  const paths = ['./assets/textures/nomad/painted-meadow-v3.jpg','./assets/textures/nomad/painted-rust-cliff-v3.jpg','./assets/textures/nomad/painted-meadow-v3.jpg'];
+  const paths = [
+    './assets/benchmark/textures/aerial_grass_rock/Diffuse.jpg',
+    './assets/benchmark/textures/aerial_rocks_02/Diffuse.jpg',
+    './assets/benchmark/textures/coast_sand_01/Diffuse.jpg',
+  ];
   const images = await Promise.all(paths.map(path => new Promise((resolve, reject) => {
     const image = new Image(); image.onload = () => resolve(image); image.onerror = reject;
     image.src = path;
@@ -287,7 +291,7 @@ export function buildGeneratedIsland(scene, options = {}) {
   topMat.albedoColor.set(1, 1, 1);
   const rockMat = createMaterial(scene, `${prefix}_rockMat`, '#f5efe6');
   if (scene.getEngine().constructor.name !== 'NullEngine') {
-    const texture = new BABYLON.Texture('./assets/textures/nomad/painted-rust-cliff-v3.jpg', scene);
+    const texture = new BABYLON.Texture('./assets/benchmark/textures/aerial_rocks_02/Diffuse.jpg', scene);
     texture.anisotropicFilteringLevel = 8;
     rockMat.albedoTexture = texture;
   }

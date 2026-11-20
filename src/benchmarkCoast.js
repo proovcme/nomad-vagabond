@@ -516,23 +516,20 @@ export class BenchmarkCoast {
     padRoot.parent = this.group;
     padRoot.position.copyFrom(this.padLocalPos);
 
-    // Concrete anti-slip PBR deck
+    // Riveted Interbellum aviation deck slab
     const deckMat = new BABYLON.PBRMaterial('benchPadDeckMat', this.scene);
-    deckMat.albedoTexture = new BABYLON.Texture('./assets/benchmark/textures/anti_slip_concrete/Diffuse.jpg', this.scene);
-    deckMat.albedoTexture.uScale = 9;
-    deckMat.albedoTexture.vScale = 9;
+    deckMat.albedoTexture = new BABYLON.Texture('./assets/textures/nomad/aviation-runway-graphite-v1.jpg', this.scene);
+    deckMat.albedoTexture.uScale = 3;
+    deckMat.albedoTexture.vScale = 3;
+    deckMat.albedoTexture.anisotropicFilteringLevel = 8;
+    deckMat.albedoColor = BABYLON.Color3.FromHexString('#d6d0c4');
     deckMat.bumpTexture = new BABYLON.Texture('./assets/benchmark/textures/anti_slip_concrete/nor_gl.jpg', this.scene);
-    deckMat.bumpTexture.uScale = 9;
-    deckMat.bumpTexture.vScale = 9;
+    deckMat.bumpTexture.uScale = 6;
+    deckMat.bumpTexture.vScale = 6;
+    deckMat.bumpTexture.level = 0.35;
     deckMat.invertNormalMapY = true;
-    deckMat.metallicTexture = new BABYLON.Texture('./assets/benchmark/textures/anti_slip_concrete/arm.jpg', this.scene);
-    deckMat.metallicTexture.uScale = 9;
-    deckMat.metallicTexture.vScale = 9;
-    deckMat.useAmbientOcclusionFromMetallicTextureRed = true;
-    deckMat.useRoughnessFromMetallicTextureGreen = true;
-    deckMat.useMetallnessFromMetallicTextureBlue = true;
-    deckMat.metallic = 0.1;
-    deckMat.roughness = 0.85;
+    deckMat.metallic = 0.16;
+    deckMat.roughness = 0.70;
 
     const deck = BABYLON.MeshBuilder.CreateBox('benchPadDeck', { width: 13.0, height: 0.65, depth: 13.0 }, this.scene);
     deck.parent = padRoot;
@@ -557,19 +554,15 @@ export class BenchmarkCoast {
     decalPlane.material = decalMat;
     decalPlane.receiveShadows = true;
 
-    // Weathered rusty steel support pilings & edge beams
+    // Riveted steel support pilings & edge beams
     const steelMat = new BABYLON.PBRMaterial('benchPadSteelMat', this.scene);
-    steelMat.albedoTexture = new BABYLON.Texture('./assets/benchmark/textures/metal_grate_rusty/Diffuse.jpg', this.scene);
+    steelMat.albedoTexture = new BABYLON.Texture('./assets/textures/nomad/armored-deck-plates.png', this.scene);
     steelMat.albedoTexture.uScale = 2;
     steelMat.albedoTexture.vScale = 2;
-    steelMat.bumpTexture = new BABYLON.Texture('./assets/benchmark/textures/metal_grate_rusty/nor_gl.jpg', this.scene);
-    steelMat.invertNormalMapY = true;
-    steelMat.metallicTexture = new BABYLON.Texture('./assets/benchmark/textures/metal_grate_rusty/arm.jpg', this.scene);
-    steelMat.useAmbientOcclusionFromMetallicTextureRed = true;
-    steelMat.useRoughnessFromMetallicTextureGreen = true;
-    steelMat.useMetallnessFromMetallicTextureBlue = true;
-    steelMat.metallic = 0.72;
-    steelMat.roughness = 0.68;
+    steelMat.albedoTexture.anisotropicFilteringLevel = 8;
+    steelMat.albedoColor = BABYLON.Color3.FromHexString('#c4cac8');
+    steelMat.metallic = 0.44;
+    steelMat.roughness = 0.54;
 
     const pilingOffsets = [[-5.8, -5.8], [-5.8, 5.8], [5.8, -5.8], [5.8, 5.8], [-5.8, 0]];
     pilingOffsets.forEach(([px, pz], idx) => {

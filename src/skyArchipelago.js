@@ -755,9 +755,11 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   if (!asteroidBase || !asteroidBase.group) return;
   const rockMat = makeTerrainPBRMaterial(scene, 'vagabondRockPBR', 'aerial_rocks_02', 1, 1, '#8c8a84');
   applyRockProjection(rockMat, scene, 'military');
-  const mossRockMat = makeTerrainPBRMaterial(scene, 'vagabondMossRockPBR', 'aerial_grass_rock', 1, 1, '#b8b29e');
-  if (!(scene.getEngine() instanceof BABYLON.NullEngine)) mossRockMat.albedoTexture = new BABYLON.Texture('./assets/textures/nomad/autumn-meadow-albedo.png',scene);
-  mossRockMat.bumpTexture = null;
+  const mossRockMat = makeTerrainPBRMaterial(scene, 'vagabondMossRockPBR', 'aerial_grass_rock', 6, 6, '#bfc4a4');
+  mossRockMat.useMetallnessFromMetallicTextureBlue = false;
+  mossRockMat.metallic = 0.0;
+  mossRockMat.roughness = 0.90;
+  if (mossRockMat.bumpTexture) mossRockMat.bumpTexture.level = 0.75;
   // Upgraded sunlit Interbellum riveted concrete-steel deck slabs (replaces dark polka-dot concrete)
   const concreteMat = new BABYLON.PBRMaterial('vagConcretePBR', scene);
   concreteMat.albedoColor = c3('#ddd6c8');
