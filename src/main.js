@@ -163,7 +163,13 @@ function spawnEnemySquadron(centerPos, escort = false, { includeAce = false } = 
           configureImportedAircraftMaterial(m.material,scene.getEngine(),d.variant);
           m.alwaysSelectAsActiveMesh = true;
         }
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn(`[EnemyGLB] Failed to load ${d.file}:`, err);
+        if (!enemy.alive || root.isDisposed?.()) return;
+        const fb = BABYLON.MeshBuilder.CreateCylinder(`enemyFallback_${idx}`, { diameterTop: 0.4, diameterBottom: 1.8, height: 6.5, tessellation: 6 }, scene);
+        fb.rotation.x = Math.PI * 0.5;
+        fb.parent = root;
+      });
     }
   });
 }
@@ -891,7 +897,10 @@ async function startRun(seedStr, { skipPrologue = false } = {}) {
     document.body.classList.add('in-prologue');
     prologue.showLoading();
   }
-  await Promise.allSettled([ship.readyPromise, player.readyPromise, world.landmarks?.readyPromise, world.fleet?.readyPromise, world.bakedLighting?.readyPromise, ...world.islands?.map(i=>i.readyPromise) || []]);
+  const loadResults = await Promise.allSettled([ship.readyPromise, player.readyPromise, world.landmarks?.readyPromise, world.fleet?.readyPromise, world.bakedLighting?.readyPromise, ...world.islands?.map(i=>i.readyPromise) || []]);
+  for (const r of loadResults) {
+    if (r.status === 'rejected') console.warn('[startRun] Asset/subsystem load warning:', r.reason);
+  }
   if (generation !== runGeneration) return;
   // Texture upload/shader compilation completes before the opening's clock starts.
   await scene.whenReadyAsync();
@@ -1338,9 +1347,8 @@ document.getElementById('new-seed-defeat-btn').addEventListener('click', () => {
 });
 document.getElementById('new-seed-victory-btn').addEventListener('click', () => {
   victoryModal.style.display = 'none';
-  const order = ['dreadnought', 'night', 'convoy', 'bastion'];
-  if (activeMissionId && order.includes(activeMissionId)) {
-    const nextId = order[(order.indexOf(activeMissionId) + 1) % order.length];
+  const nextId = activeMissionId ? LEVEL_REGISTRY[activeMissionId]?.nextLevelId : null;
+  if (nextId && LEVEL_REGISTRY[nextId]) {
     startStandaloneMission(nextId);
   } else {
     activeMissionId = null;
@@ -3897,8 +3905,9 @@ if (urlParams.get('qa') === '1') {
   document.body.append(panel);
 }
 
-// Developer Level & Performance Inspector (?dev=1)
-if (urlParams.get('dev') === '1') {
+// Developer Level & Performance Inspector (?dev=1 — restricted to localhost/127.0.0.1 only)
+const isLocalDevHost = ['localhost', '127.0.0.1', '::1', ''].includes(window.location?.hostname || '');
+if (urlParams.get('dev') === '1' && isLocalDevHost) {
   const devBox = document.createElement('div');
   devBox.id = 'dev-inspector';
   devBox.style.cssText = 'position:fixed;top:10px;left:10px;z-index:200;background:rgba(12,18,14,0.92);border:1px solid #d9aa58;color:#efe6cf;font:11px/1.45 "Courier New",monospace;padding:8px 10px;border-radius:4px;min-width:230px;';

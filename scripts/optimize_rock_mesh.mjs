@@ -1,6 +1,6 @@
 // Offline static-mesh simplification; runtime needs no meshoptimizer decoder.
 import fs from 'node:fs';import path from 'node:path';
-import {MeshoptSimplifier as M} from '/tmp/nomad-mesh-tools/node_modules/meshoptimizer/index.js';
+import {MeshoptSimplifier as M} from 'meshoptimizer';
 await M.ready;
 const input='assets/benchmark/models/boulder_01/boulder_01_1k.gltf',dir=path.dirname(input),doc=JSON.parse(fs.readFileSync(input));
 const binPath=path.join(dir,doc.buffers[0].uri),bin=fs.readFileSync(binPath),backup='artifacts/deploy-20261114/optimization/boulder-original';

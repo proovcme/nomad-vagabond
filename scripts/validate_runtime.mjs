@@ -4,7 +4,7 @@ const require=createRequire(import.meta.url);
 globalThis.BABYLON=require('../vendor/babylon.js');
 const gradient={addColorStop(){}};
 const ctx=new Proxy({createLinearGradient:()=>gradient,createRadialGradient:()=>gradient,createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)}),getImageData:(x,y,w,h)=>({data:new Uint8ClampedArray(w*h*4)}),measureText:()=>({width:100})},{get:(t,k)=>t[k]||(()=>{})});
-const result={textContent:''};
+const result={textContent:'',style:{}};
 const element=()=>({width:256,height:256,style:{},getContext:()=>ctx,addEventListener(){},removeEventListener(){},setAttribute(){},appendChild(){},classList:{add(){},remove(){},toggle(){}},getBoundingClientRect:()=>({width:100,height:100})});
 globalThis.document={createElement:element,getElementById:()=>result,body:{appendChild(){},append(){}}};
 globalThis.window={addEventListener(){},removeEventListener(){},devicePixelRatio:1};

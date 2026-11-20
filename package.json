@@ -1,0 +1,16 @@
+{
+  "name": "nomad-vagabond",
+  "version": "0.9.0",
+  "private": true,
+  "description": "Бродяга — 3D Interbellum & Dieselpunk sky-archipelago flight & bastion defense game on Babylon.js",
+  "scripts": {
+    "audit": "node scripts/audit_all.mjs",
+    "test:runtime": "node scripts/validate_runtime.mjs",
+    "bench": "node scripts/perf_bench.mjs",
+    "build": "python3 scripts/build_release.py"
+  },
+  "devDependencies": {
+    "meshoptimizer": "^0.22.0",
+    "playwright": "^1.49.0"
+  }
+}

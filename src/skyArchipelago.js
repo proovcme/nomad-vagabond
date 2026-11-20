@@ -396,14 +396,16 @@ async function instantiateGLBInto(scene, rootUrl, file, parent, pos, scale, rotY
       rootNode.parent = holder;
     }
     const childMeshes = holder.getChildMeshes();
-    const skipShadow = /\/(fern_|Lantern_|boulder_|grass_)/i.test(rootUrl) || /fern_|Lantern_|boulder_|grass_/i.test(fileName);
+    // Skip shadow-map casting for alpha-tested foliage/trees & small clutter props (keeps shadow pass fast!)
+    const skipShadow = rootUrl.includes('/trees/') || /\/(fern_|Lantern_|boulder_|grass_|crate|barrel)/i.test(rootUrl) || /fern_|Lantern_|boulder_|grass_|pine_|fir_|alder_|crate|barrel/i.test(file);
     for (const m of childMeshes) {
       m.receiveShadows = true;
       if (!rootUrl.includes('/trees/') && !rootUrl.includes('/fern_')) makeSolid(m);
       if (shadowGen && !skipShadow && m.getTotalVertices() > 0) shadowGen.addShadowCaster(m, false);
     }
     return holder;
-  } catch (_) {
+  } catch (err) {
+    console.warn(`[instantiateGLBInto] Failed to load ${rootUrl}${file}:`, err);
     return null;
   }
 }

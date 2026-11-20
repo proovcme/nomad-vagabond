@@ -76,6 +76,7 @@ pass(`Validated ${Object.keys(LEVEL_REGISTRY).length} levels across ${Object.key
 
 console.log('\n=== 4. AUTOMATED RUNTIME VALIDATORS ===');
 const validators = [
+  'scripts/validate_runtime.mjs',
   'scripts/validate_lighting.mjs',
   'scripts/validate_collisions.mjs',
   'scripts/validate_aircraft_takeoff.mjs',

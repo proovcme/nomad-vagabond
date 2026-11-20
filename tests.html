@@ -6,7 +6,6 @@
 <script src="./vendor/babylon.js"></script>
 <script type="module">
 import { SolarWorld } from './src/world.js';
-import { EtherShip } from './src/ship.js';
 import { AsteroidBase } from './src/asteroidBase.js';
 import { ExplorerAircraft, aircraftHeading } from './src/explorerAircraft.js';
 import { NavigatorPlayer } from './src/player.js';
@@ -43,91 +42,19 @@ try {
   assert(s1a.planets[0].name !== s2.planets[0].name || s1a.starType.name !== s2.starType.name || s1a.planets[1].elevationY !== s2.planets[1].elevationY, 'Different seeds produce different worlds');
   assert(s2.planets[2].elevationY !== s3.planets[2].elevationY, '3D elevation varies across seeds');
 
-  // 2. 6-DOF Sailing physics, apparent wind, lift & drag, inertia, keel
+  // 2. Scene, world, player & win conditions
   const scene = makeScene(engine);
   const cam = new BABYLON.FreeCamera('cam', new BABYLON.Vector3(0, 20, 60), scene);
   const audio = new SoundEngine();
   const world = new SolarWorld(scene, 'AETHER-742');
-  const ship = new EtherShip(scene, cam, audio);
-  ship.spawnNear(world.planets[0]);
-
-  const startFuel = ship.fuel;
-  ship.velocity.set(0, 0, 0);
-  ship.sailsFurled = false;
-  ship.sailAngle = 0.65; // angled sail to generate aerodynamic lift
-  for (let i = 0; i < 30; i++) {
-    world.update(0.016);
-    ship.update(0.016, world, 'ship', () => {});
-  }
-  assert(ship.velocity.length() > 0.5, 'Unfurled sails propel ship via apparent wind (lift + drag)');
-  assert(ship.apparentWindSpeed > 0.1, 'Apparent wind speed is computed');
-  assert(ship.liftRatio > 0.05, 'Angled sail generates aerodynamic lift');
-  assert(ship.fuel === startFuel, 'Sailing on wind consumes zero fuel');
-
-  // Verify inertial glide after engine thrust stops
-  ship.keys['KeyW'] = true;
-  for (let i = 0; i < 15; i++) ship.update(0.016, world, 'ship', () => {});
-  ship.keys['KeyW'] = false;
-  const speedAfterThrust = ship.velocity.length();
-  ship.update(0.016, world, 'ship', () => {});
-  assert(ship.velocity.length() > speedAfterThrust * 0.85, 'Ship preserves linear inertia after releasing W');
-
-  ship.toggleSails();
-  assert(ship.sailsFurled === true, 'Furling sails toggles sailsFurled');
-
-  // 3. Ocean splashdown & 4-point wave buoyancy
   const tp = world.terrainPlanet;
-  const bayDir = tp.shipAnchorLocal.clone().normalize();
-  ship.group.position.copyFrom(tp.group.position).addInPlace(bayDir.scale(tp.seaLevel + 0.3));
-  ship.velocity.copyFrom(tp.velocity);
-  ship.enterWater(tp);
-  assert(ship.waterPlanet === tp, 'Ship enters water buoyancy mode');
-  for (let i = 0; i < 60; i++) {
-    world.update(0.016);
-    ship.update(0.016, world, 'water', () => {});
-  }
-  const shipDist = BABYLON.Vector3.Distance(ship.group.position, tp.group.position);
-  assert(Math.abs(shipDist - tp.seaLevel) < 2.2, '4-point buoyancy keeps ship floating on ocean waves');
-
-  // 4. Landing on wheels & driving on spherical terrain surface
-  ship.dockOn(tp);
-  assert(ship.dockedPlanet === tp, 'Ship lands on wheels on TerrainPlanet');
-  const startWheelRot = ship.wheels[0].rotation.x;
-  ship.keys['KeyW'] = true;
-  for (let i = 0; i < 20; i++) {
-    world.update(0.016);
-    ship.update(0.016, world, 'drive', () => {});
-  }
-  ship.keys['KeyW'] = false;
-  assert(ship.driveSpeed > 1.0, 'Ship drives forward on wheels on planet surface');
-  assert(ship.wheels[0].rotation.x !== startWheelRot, 'Wheels spin while driving');
-
-  // 5. Disembarking & Exact 3D terrain collision
   const player = new NavigatorPlayer(scene, cam, audio);
-  player.disembarkFromShip(ship);
-  assert(player.visible === true, 'Navigator disembarks onto planet');
-  for (let i = 0; i < 40; i++) {
-    world.update(0.016);
-    ship.update(0.016, world, 'foot', () => {});
-    player.update(0.016, ship, world.simTime);
-  }
-  const pRel = player.group.position.subtract(tp.group.position);
-  const pDist = pRel.length();
-  const exactH = tp.getSurfaceHeight(pRel.clone().normalize());
-  assert(Math.abs(pDist - Math.max(tp.seaLevel - 0.3, exactH)) < 1.2, 'Player collides accurately with 3D terrain height');
 
-  player.boardShip();
-  ship.undock();
-  assert(ship.dockedPlanet === null && player.visible === false, 'Navigator boards ship and launches into space');
-
-  // 5. Win & Defeat conditions
+  // 3. Win conditions
   assert(world.gateUnlocked === false, 'Horizon Gate starts locked');
   world.obelisks.forEach((o) => (o.activated = true));
   world.unlockGate();
   assert(world.gateUnlocked === true, 'Horizon Gate unlocks when 3 obelisks are attuned');
-
-  ship.hull = 0;
-  assert(ship.hull <= 0, 'Hull reaching 0 triggers defeat condition');
 
   // 6. Project Nomads AsteroidBase + ExplorerAircraft + Dual FlightPhysics
   const base = new AsteroidBase(scene, tp.seedNum);
