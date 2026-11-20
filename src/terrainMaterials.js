@@ -7,7 +7,13 @@ class RockProjection extends BABYLON.MaterialPluginBase {
       tex.anisotropicFilteringLevel = 8;
       scene._sharedRockCliffTex = tex;
     }
+    if (!scene._sharedGrassTopTex) {
+      const gTex = new BABYLON.Texture('./assets/benchmark/textures/aerial_grass_rock/Diffuse.jpg', scene);
+      gTex.anisotropicFilteringLevel = 8;
+      scene._sharedGrassTopTex = gTex;
+    }
     this.texture = scene._sharedRockCliffTex;
+    this.grassTexture = scene._sharedGrassTopTex;
     const STYLE_CODES = { forest: 0.0, industrial: 1.0, military: 2.0, volcanic: 3.0, glacier: 4.0, desert: 5.0, ancient: 6.0 };
     this.styleCode = STYLE_CODES[style] ?? 0.0;
     this._invMatrix = new BABYLON.Matrix();
@@ -25,12 +31,15 @@ class RockProjection extends BABYLON.MaterialPluginBase {
     buffer.updateFloat4('rockStyleParams',this.styleCode,pos.x,pos.y,pos.z);
     buffer.update();
   }
-  getSamplers(samplers) {samplers.push('rockTriplanarSampler');}
-  bindForSubMesh(buffer) {buffer.setTexture('rockTriplanarSampler',this.texture);}
+  getSamplers(samplers) {samplers.push('rockTriplanarSampler', 'grassTopSampler');}
+  bindForSubMesh(buffer) {
+    buffer.setTexture('rockTriplanarSampler', this.texture);
+    buffer.setTexture('grassTopSampler', this.grassTexture);
+  }
   getCustomCode(shaderType) {
     if (shaderType !== 'fragment') return null;
     return {
-      CUSTOM_FRAGMENT_DEFINITIONS: '#ifdef ROCK_PROJECTION\nuniform sampler2D rockTriplanarSampler;\nfloat vAetherVeinMask;\nvec3 vSeamGlowColor;\nfloat vRockMicroRelief;\nfloat vRockStrataSlope;\nfloat vRockCreviceAO;\n#endif',
+      CUSTOM_FRAGMENT_DEFINITIONS: '#ifdef ROCK_PROJECTION\nuniform sampler2D rockTriplanarSampler;\nuniform sampler2D grassTopSampler;\nfloat vAetherVeinMask;\nvec3 vSeamGlowColor;\nfloat vRockMicroRelief;\nfloat vRockStrataSlope;\nfloat vRockCreviceAO;\n#endif',
       CUSTOM_FRAGMENT_UPDATE_ALBEDO: `
         #ifdef ROCK_PROJECTION
         vec3 rockLocal = (rockTextureToLocal*vec4(vPositionW,1.0)).xyz;
@@ -54,6 +63,16 @@ class RockProjection extends BABYLON.MaterialPluginBase {
                        + texture2D(rockTriplanarSampler, rot37 * pDetail.xy).rgb * rockW.z;
 
         vec3 photoRock = mix(colMacro, colDetail, 0.52);
+        // Real dual-scale photogrammetry meadow turf (eliminates smooth plasticine green tops!)
+        vec3 grassMacro = texture2D(grassTopSampler, rockWorld.xz * 0.068).rgb;
+        vec3 grassFine = texture2D(grassTopSampler, rot37 * (rockWorld.xz * 0.195 + vec2(0.41, 0.27))).rgb;
+        vec3 photoGrass = mix(grassMacro, grassFine, 0.54);
+        float grassLuma = dot(photoGrass, vec3(0.299, 0.587, 0.114));
+        // Natural coastal-meadow palette: muted olive-moss + dry golden-ochre grass tufts + dark earth crevices
+        vec3 dryMeadow = photoGrass * vec3(1.18, 1.06, 0.72);
+        vec3 oliveTurf = photoGrass * vec3(0.84, 1.02, 0.74);
+        float dryPatch = smoothstep(0.32, 0.74, 0.5 + 0.5 * sin(rockWorld.x * 0.09 + rockWorld.z * 0.07 + grassMacro.r * 4.0));
+        vec3 realisticTurf = clamp(mix(oliveTurf, dryMeadow, dryPatch * 0.55) * 1.18, 0.0, 1.0);
         // Normalize photogrammetry granite exposure so shadowed cliff faces show crisp sculptural stone detail
         vec3 liftedRock = clamp(photoRock * 1.48 + vec3(0.06, 0.06, 0.07), 0.0, 1.0);
         float cliffLuma = dot(liftedRock, vec3(0.299, 0.587, 0.114));
@@ -133,9 +152,15 @@ class RockProjection extends BABYLON.MaterialPluginBase {
           rockPaint = mix(creviceCol, stoneBody, crackMask);
           rockPaint = mix(rockPaint, ironStreak, mineralStreak * 0.28);
           rockPaint = mix(rockPaint, liftedRock * vec3(0.96, 0.96, 0.94), 0.45) * strataWave;
-          // Rich emerald-olive moss & overhanging turf on upper plateau edges
-          vec3 plateauTurf = vec3(0.26, 0.48, 0.24) * (0.76 + 0.38 * cliffLuma);
-          rockPaint = mix(rockPaint, plateauTurf, clamp(topLedge * 0.68 + mossSpill * 0.58, 0.0, 0.80));
+          // Crisp height-blended photogrammetry coastal turf & exposed granite outcrops (zero plasticine green!)
+          float turfHeight = topLedge * 0.85 + mossSpill * 0.55 + (grassLuma - cliffLuma) * 0.42;
+          float turfMask = smoothstep(0.34, 0.56, turfHeight) * (1.0 - smoothstep(0.68, 0.88, cliffLuma) * 0.65);
+          // Warm dry soil/pebble collar right at the rock-to-turf edge
+          float soilEdge = smoothstep(0.22, 0.42, turfHeight) * (1.0 - turfMask);
+          rockPaint = mix(rockPaint, vec3(0.34, 0.29, 0.23) * (0.7 + 0.5 * grassLuma), soilEdge * 0.68);
+          rockPaint = mix(rockPaint, realisticTurf, turfMask * 0.90);
+          // Boost micro-relief on turf so blades & soil crevices catch grazing sunlight
+          vRockMicroRelief = mix(vRockMicroRelief, (grassFine.g - grassMacro.g) * 2.2, turfMask);
           // Cool atmospheric slate roots underneath (never crushed black)
           rockPaint = mix(rockPaint, vec3(0.22, 0.28, 0.38), clamp(overhang * 0.38 + rootDepth * 0.28, 0.0, 0.52));
         } else if (rockStyleParams.x > 0.5) {
@@ -154,8 +179,11 @@ class RockProjection extends BABYLON.MaterialPluginBase {
           vec3 limestoneBody = mix(slateTone, warmStone, macroPatch);
           rockPaint = mix(creviceCol, limestoneBody, crackMask);
           rockPaint = mix(rockPaint, liftedRock * vec3(0.96, 0.96, 0.92), 0.42) * strataWave;
-          vec3 alpineMoss = vec3(0.22, 0.62, 0.26) * (0.74 + 0.40 * cliffLuma);
-          rockPaint = mix(rockPaint, alpineMoss, clamp(topLedge * 0.78 + mossSpill * 0.48, 0.0, 0.84));
+          // Natural photogrammetry alpine turf with exposed limestone outcrops
+          float fTurfHeight = topLedge * 0.92 + mossSpill * 0.48 + (grassLuma - cliffLuma) * 0.38;
+          float fTurfMask = smoothstep(0.32, 0.54, fTurfHeight) * (1.0 - smoothstep(0.72, 0.90, cliffLuma) * 0.55);
+          rockPaint = mix(rockPaint, realisticTurf * vec3(0.94, 1.06, 0.92), fTurfMask * 0.92);
+          vRockMicroRelief = mix(vRockMicroRelief, (grassFine.g - grassMacro.g) * 2.2, fTurfMask);
           rockPaint = mix(rockPaint, vec3(0.20, 0.28, 0.38), clamp(overhang * 0.36 + rootDepth * 0.24, 0.0, 0.48));
         }
         surfaceAlbedo = toLinearSpace(clamp(rockPaint * vRockCreviceAO, 0.0, 1.0));

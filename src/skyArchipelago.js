@@ -160,19 +160,19 @@ function registerSkyShaders() {
         float s24 = s16 * s8;
         float godRays = s16 * (1.0 - smoothstep(0.9968, 0.9988, sunDot)) * 0.14;
 
-        vec3 dayMie = vec3(0.96, 0.62, 0.36) * s4 * 0.28 * (1.0 - smoothstep(0.05, 0.62, abs(h - 0.10)))
-                    + vec3(0.98, 0.84, 0.60) * (s24 * 0.38 + godRays);
+        vec3 dayMie = vec3(0.94, 0.64, 0.40) * s4 * 0.18 * (1.0 - smoothstep(0.05, 0.56, abs(h - 0.10)))
+                    + vec3(0.96, 0.84, 0.64) * (s24 * 0.24 + godRays * 0.72);
         vec3 nightMie = vec3(0.22, 0.36, 0.62) * (s8 * s4) * 0.35;
         col += mix(dayMie, nightMie, nightMask);
 
         float horizBand = exp(-abs(h - 0.008) * 9.0);
-        col = mix(col, mix(vec3(0.90, 0.80, 0.66), vec3(0.07, 0.11, 0.20), nightMask), horizBand * (0.18 + 0.22 * s2) * mix(1.0, 0.45, nightMask));
+        col = mix(col, mix(vec3(0.88, 0.78, 0.65), vec3(0.07, 0.11, 0.20), nightMask), horizBand * (0.15 + 0.16 * s2) * mix(1.0, 0.45, nightMask));
 
-        float coronaSoft = smoothstep(0.9945, 0.9984, sunDot);
-        float solarCore = smoothstep(0.9982, 0.9992, sunDot);
-        col = mix(col, mix(vec3(0.98, 0.88, 0.68), vec3(0.45, 0.64, 0.92), nightMask), coronaSoft * mix(0.55, 0.40, nightMask));
-        col = mix(col, mix(vec3(1.00, 0.97, 0.90), vec3(0.84, 0.92, 1.00), nightMask), solarCore);
-        col += mix(vec3(0.28, 0.24, 0.16), vec3(0.16, 0.22, 0.34), nightMask) * solarCore;
+        float coronaSoft = smoothstep(0.9960, 0.9988, sunDot);
+        float solarCore = smoothstep(0.9986, 0.9994, sunDot);
+        col = mix(col, mix(vec3(0.96, 0.86, 0.68), vec3(0.45, 0.64, 0.92), nightMask), coronaSoft * mix(0.42, 0.36, nightMask));
+        col = mix(col, mix(vec3(1.00, 0.96, 0.88), vec3(0.84, 0.92, 1.00), nightMask), solarCore);
+        col += mix(vec3(0.16, 0.14, 0.10), vec3(0.14, 0.20, 0.32), nightMask) * solarCore;
 
         gl_FragColor = vec4(col, 1.0);
         #include<imageProcessingCompatibility>
@@ -765,11 +765,11 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   if (!asteroidBase || !asteroidBase.group) return;
   const rockMat = makeTerrainPBRMaterial(scene, 'vagabondRockPBR', 'aerial_rocks_02', 1, 1, '#8c8a84');
   applyRockProjection(rockMat, scene, 'military');
-  const mossRockMat = makeTerrainPBRMaterial(scene, 'vagabondMossRockPBR', 'aerial_grass_rock', 6, 6, '#bfc4a4');
+  const mossRockMat = makeTerrainPBRMaterial(scene, 'vagabondMossRockPBR', 'aerial_grass_rock', 7, 7, '#a2a684');
   mossRockMat.useMetallnessFromMetallicTextureBlue = false;
   mossRockMat.metallic = 0.0;
-  mossRockMat.roughness = 0.90;
-  if (mossRockMat.bumpTexture) mossRockMat.bumpTexture.level = 0.75;
+  mossRockMat.roughness = 0.92;
+  if (mossRockMat.bumpTexture) mossRockMat.bumpTexture.level = 0.95;
   // Upgraded sunlit Interbellum riveted concrete-steel deck slabs (replaces dark polka-dot concrete)
   const concreteMat = new BABYLON.PBRMaterial('vagConcretePBR', scene);
   concreteMat.albedoColor = c3('#ddd6c8');
@@ -1324,9 +1324,19 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   }
 
   const bushPlacements = [
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-26.0, 20.8, 19.5],  s: 2.1, r: 0.5 },
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-16.0, 20.8, -20.5], s: 2.0, r: 1.8 },
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-36.0, 20.8, 5.0],   s: 2.2, r: 1.1 },
+    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-26.0, 20.6, 19.5],  s: 2.2, r: 0.5 },
+    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-16.0, 20.6, -20.5], s: 2.1, r: 1.8 },
+    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-36.0, 20.6, 5.0],   s: 2.3, r: 1.1 },
+    // Additional coastal grass tufts along cliff shoulders & upper deck rim for 3D landscape micro-detail
+    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [3.5,  20.4, -18.5],  s: 2.0, r: 0.9 },
+    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [5.5,  20.4, -12.5],  s: 1.8, r: 2.3 },
+    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [6.0,  20.4, 15.5],   s: 2.1, r: 1.4 },
+    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-4.5, 20.5, 21.8],   s: 2.2, r: 0.3 },
+    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-12.0, 20.5, 23.0],  s: 1.9, r: 2.7 },
+    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-8.0, 20.5, -22.8],  s: 2.0, r: 1.6 },
+    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-32.0, 20.5, -18.5], s: 2.1, r: 0.8 },
+    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-2.0, 19.8, -22.0],  s: 2.2, r: 2.1 },
+    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [2.0,  19.8, 22.0],   s: 2.0, r: 0.4 },
   ];
   for (const bp of bushPlacements) {
     instantiateGLBInto(scene, bp.dir, bp.file, asteroidBase.group, new BABYLON.Vector3(...bp.pos), bp.s, bp.r, false);
@@ -2274,20 +2284,20 @@ export class SkyArchipelagoWorld {
       const fTex = new BABYLON.DynamicTexture('sunAnamorphicFlareTex', { width: 256, height: 128 }, this.scene, false);
       const fCtx = fTex.getContext();
       fCtx.clearRect(0, 0, 256, 128);
-      const rg = fCtx.createRadialGradient(128, 64, 2, 128, 64, 58);
-      rg.addColorStop(0.0, 'rgba(255, 248, 232, 0.62)');
-      rg.addColorStop(0.30, 'rgba(248, 218, 168, 0.24)');
-      rg.addColorStop(0.68, 'rgba(232, 178, 118, 0.06)');
+      const rg = fCtx.createRadialGradient(128, 64, 2, 128, 64, 54);
+      rg.addColorStop(0.0, 'rgba(255, 246, 226, 0.40)');
+      rg.addColorStop(0.32, 'rgba(244, 214, 166, 0.15)');
+      rg.addColorStop(0.68, 'rgba(228, 178, 122, 0.04)');
       rg.addColorStop(1.0, 'rgba(220, 160, 100, 0)');
       fCtx.fillStyle = rg;
       fCtx.fillRect(0, 0, 256, 128);
       // Restrained warm anamorphic streak
       const lg = fCtx.createLinearGradient(0, 64, 256, 64);
       lg.addColorStop(0.0, 'rgba(245, 210, 155, 0)');
-      lg.addColorStop(0.5, 'rgba(255, 240, 206, 0.26)');
+      lg.addColorStop(0.5, 'rgba(255, 238, 204, 0.18)');
       lg.addColorStop(1.0, 'rgba(245, 210, 155, 0)');
       fCtx.fillStyle = lg;
-      fCtx.fillRect(0, 60, 256, 8);
+      fCtx.fillRect(0, 61, 256, 6);
       fTex.update();
       fTex.hasAlpha = true;
       const fMat = new BABYLON.StandardMaterial('sunAnamorphicFlareMat', this.scene);
@@ -2297,7 +2307,7 @@ export class SkyArchipelagoWorld {
       fMat.backFaceCulling = false;
       fMat.depthWrite = false;
       fMat.alphaMode = BABYLON.Engine.ALPHA_ADD;
-      const flare = BABYLON.MeshBuilder.CreatePlane('sunAnamorphicFlare', { width: 300, height: 112 }, this.scene);
+      const flare = BABYLON.MeshBuilder.CreatePlane('sunAnamorphicFlare', { width: 240, height: 92 }, this.scene);
       flare.material = fMat;
       flare.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
       flare.renderingGroupId = 0;
