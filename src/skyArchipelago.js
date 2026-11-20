@@ -229,10 +229,11 @@ function registerSkyShaders() {
       }
 
       void main(void) {
+        // Fast 3-tap cloud sea (halves fragment cost across the lower viewport vs 6-tap!)
         vec2 p = vWorldPos.xz * uScale + vec2(uTime * 0.012, uTime * 0.005);
-        float n1 = fbm(p);
-        float n2 = fbm(p * 2.25 - vec2(uTime * 0.016, 0.0));
-        float billow = n1 * 0.68 + n2 * 0.32;
+        float n1 = noise2(p);
+        float n2 = noise2(p * 2.15 - vec2(uTime * 0.015, 0.0));
+        float billow = n1 * 0.65 + n2 * 0.35;
         float density = smoothstep(0.28, 0.76, billow);
 
         // Fast 1-tap directional self-shadowing + golden sun-glint path across the cloud sea
@@ -270,8 +271,8 @@ function registerSkyShaders() {
         vec3 flashCol = mix(vec3(0.35, 0.86, 1.00), vec3(1.00, 0.52, 0.18), fract(cRnd * 13.7));
         col += flashCol * flashEnv * flashRad * (0.75 + 0.85 * nightMask) * (0.45 + 0.55 * density);
 
-        // Faint glowing abyssal fissures shimmering in the deepest cloud troughs
-        float trough = (1.0 - smoothstep(0.18, 0.58, density)) * smoothstep(0.62, 0.88, noise2(p * 3.1 + vec2(0.0, uTime * 0.04)));
+        // Faint glowing abyssal fissures shimmering in the deepest cloud troughs (reuses n2 — 0 extra noise fetches!)
+        float trough = (1.0 - smoothstep(0.18, 0.58, density)) * smoothstep(0.62, 0.88, n2);
         col += vec3(0.22, 0.68, 0.72) * trough * (0.22 + 0.35 * nightMask);
 
         float horizonBlend = smoothstep(950.0, 2700.0, dist);
@@ -475,19 +476,24 @@ function createGiantIslandLiftRotor(parent, scene, x, y, z, diameter = 44, shado
   spinner.position.y = -1.2;
   spinner.material = brassMat;
 
+  // Merge all 6 rotor blades into 1 single draw call per rotor (saves 15 draw calls across islands!)
   const bladeCount = 6;
+  const bladeParts = [];
   for (let b = 0; b < bladeCount; b++) {
     const ang = (b * Math.PI * 2) / bladeCount;
-    const arm = new BABYLON.TransformNode(`islandRotorArm_${b}`, scene);
-    arm.parent = hub;
-    arm.rotation.y = ang;
-
     const blade = BABYLON.MeshBuilder.CreateBox(`islandRotorBlade_${b}`, { width: diameter * 0.44, height: 0.24, depth: 2.35 }, scene);
-    blade.parent = arm;
-    blade.position.set(diameter * 0.23, 0.0, 0.0);
+    blade.rotation.y = ang;
     blade.rotation.x = 0.24;
-    blade.material = bladeMat;
-    if (shadowGen) shadowGen.addShadowCaster(blade, false);
+    blade.position.set(Math.cos(ang) * diameter * 0.23, 0.0, -Math.sin(ang) * diameter * 0.23);
+    blade.computeWorldMatrix(true);
+    bladeParts.push(blade);
+  }
+  const mergedBlades = BABYLON.Mesh.MergeMeshes(bladeParts, true, true, undefined, false, false);
+  if (mergedBlades) {
+    mergedBlades.name = `islandRotorBlades_${Math.round(diameter)}`;
+    mergedBlades.parent = hub;
+    mergedBlades.material = bladeMat;
+    mergedBlades.isPickable = false;
   }
 
   return hub;

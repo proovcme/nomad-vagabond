@@ -27,7 +27,7 @@ export const QUALITY_PRESETS = {
     shadowPCF: true,
     ssao: false,
     bloom: false,
-    msaa: 2,
+    msaa: 1,
     scaleFactor: 1.0,
     envIntensity: 0.88,
   },

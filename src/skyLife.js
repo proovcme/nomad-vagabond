@@ -35,86 +35,42 @@ export class SkyLife {
       { center: new B.Vector3(55, 118, -75), count: 3, rMin: 75, rMax: 135, speed: 0.15, scale: 1.85, dir: 1 },
     ];
 
+    // Single master bird mesh instanced across all 16 soaring seabirds (1 draw call instead of 80!)
+    const masterBird = new B.Mesh('skyBirdMaster', scene);
+    const bvd = new B.VertexData();
+    bvd.positions = [
+      0, 0.04, -0.95,    -0.22, 0.0, -0.15,   0.22, 0.0, -0.15,
+      0, 0.12, -0.10,    -0.32, 0.02, 0.85,   0.32, 0.02, 0.85,
+      // Left gull wing (swept graceful dihedral)
+      -0.14, 0.03, -0.36, -1.25, 0.18, -0.14, -2.25, 0.04, 0.36, -1.15, 0.08, 0.42, -0.14, 0.02, 0.36,
+      // Right gull wing
+       0.14, 0.03, -0.36,  1.25, 0.18, -0.14,  2.25, 0.04, 0.36,  1.15, 0.08, 0.42,  0.14, 0.02, 0.36,
+    ];
+    bvd.indices = [
+      0, 1, 3,  0, 3, 2,  0, 2, 1,  1, 4, 3,  3, 4, 5,  3, 5, 2,
+      6, 9, 7,  6, 10, 9,  7, 9, 8,
+      11, 12, 14,  11, 14, 15,  12, 13, 14,
+    ];
+    bvd.normals = [];
+    B.VertexData.ComputeNormals(bvd.positions, bvd.indices, bvd.normals);
+    bvd.applyToMesh(masterBird);
+    masterBird.material = bodyMat;
+    masterBird.isPickable = false;
+    masterBird.setEnabled(false);
+
     let birdIdx = 0;
     for (const fl of flocks) {
       for (let i = 0; i < fl.count; i++) {
         const idx = birdIdx++;
-        const root = new B.TransformNode(`skyBird_${idx}`, scene);
+        const root = masterBird.createInstance(`skyBird_${idx}`);
         root.scaling.setAll(fl.scale * (0.88 + (idx % 4) * 0.08));
-
-        // Streamlined bird body + tail fan
-        const body = new B.Mesh(`skyBirdBody_${idx}`, scene);
-        const bvd = new B.VertexData();
-        bvd.positions = [
-          0, 0.04, -0.95,    // beak tip (-Z forward)
-          -0.22, 0.0, -0.15, // left shoulder
-          0.22, 0.0, -0.15,  // right shoulder
-          0, 0.12, -0.10,    // back ridge
-          -0.32, 0.02, 0.85, // tail left
-          0.32, 0.02, 0.85,  // tail right
-        ];
-        bvd.indices = [
-          0, 1, 3,  0, 3, 2,  0, 2, 1,
-          1, 4, 3,  3, 4, 5,  3, 5, 2,
-        ];
-        bvd.normals = [
-          0, 1, 0,  0, 1, 0,  0, 1, 0,
-          0, 1, 0,  0, 1, 0,  0, 1, 0,
-        ];
-        bvd.applyToMesh(body);
-        body.material = bodyMat;
-        body.parent = root;
-        body.isPickable = false;
-
-        const wings = [];
-        for (const side of [-1, 1]) {
-          // Inner wing (cream/white)
-          const innerPivot = new B.TransformNode(`skyBirdWingInnerPivot_${idx}_${side}`, scene);
-          innerPivot.parent = root;
-          innerPivot.position.set(side * 0.14, 0.03, -0.12);
-
-          const innerMesh = new B.Mesh(`skyBirdWing_${idx}_${side}`, scene);
-          const ivd = new B.VertexData();
-          ivd.positions = [
-            0, 0, -0.36,
-            side * 1.15, 0.08, -0.18,
-            side * 1.05, 0.02, 0.42,
-            0, 0, 0.38,
-          ];
-          ivd.indices = side > 0 ? [0, 1, 2, 0, 2, 3] : [0, 2, 1, 0, 3, 2];
-          ivd.normals = [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0];
-          ivd.applyToMesh(innerMesh);
-          innerMesh.material = bodyMat;
-          innerMesh.parent = innerPivot;
-          innerMesh.isPickable = false;
-
-          // Outer wingtip (dark ink plumage, articulated secondary joint)
-          const outerPivot = new B.TransformNode(`skyBirdWingOuterPivot_${idx}_${side}`, scene);
-          outerPivot.parent = innerPivot;
-          outerPivot.position.set(side * 1.08, 0.05, 0.05);
-
-          const outerMesh = new B.Mesh(`skyBirdWingTip_${idx}_${side}`, scene);
-          const ovd = new B.VertexData();
-          ovd.positions = [
-            0, 0, -0.22,
-            side * 1.15, -0.04, 0.35,
-            0, 0, 0.34,
-          ];
-          ovd.indices = side > 0 ? [0, 1, 2] : [0, 2, 1];
-          ovd.normals = [0, 1, 0, 0, 1, 0, 0, 1, 0];
-          ovd.applyToMesh(outerMesh);
-          outerMesh.material = wingTipMat;
-          outerMesh.parent = outerPivot;
-          outerMesh.isPickable = false;
-
-          wings.push({ innerPivot, outerPivot, mesh: innerMesh, side });
-        }
+        root.isPickable = false;
 
         const frac = i / Math.max(1, fl.count);
         const radius = fl.rMin + (fl.rMax - fl.rMin) * ((i * 0.618034) % 1);
         this.birds.push({
           root,
-          wings,
+          wings: [],
           phase: frac * Math.PI * 2 + idx * 0.73,
           center: fl.center.clone().add(new B.Vector3(0, (i % 5) * 3.2, 0)),
           radius,
