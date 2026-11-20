@@ -187,27 +187,28 @@ export class SkyCelestials {
         float land=fbm(face*4.2+vec2(3.0,1.0));
         float broad=noise2(face*2.4+vec2(7.1,3.4));
         float strata=sin(p.y*17.0+land*7.5)*.018;
-        vec3 ivory=vec3(.84,.83,.67),turquoise=vec3(.26,.57,.55),slate=vec3(.16,.36,.38);
-        vec3 warmFace=vec3(.81,.61,.40),warmShade=vec3(.43,.39,.35);
-        vec3 geology=mix(turquoise,ivory,smoothstep(.29,.65,land+broad*.13));
-        geology=mix(geology,warmFace,uWarm*.76);
-        float craters=basin(face,vec2(-.32,.30),.23)+basin(face,vec2(.38,.14),.14)+basin(face,vec2(.02,-.44),.18)+basin(face,vec2(-.49,-.27),.09);
-        geology+=craters+strata;
+        // Noble pale lunar marble & atmospheric slate-grey maria (not spotted green/teal asteroid)
+        vec3 ivory=vec3(.86,.84,.78),mare=vec3(.56,.58,.62),slate=vec3(.30,.35,.43);
+        vec3 warmFace=vec3(.80,.70,.58),warmShade=vec3(.44,.42,.40);
+        vec3 geology=mix(mare,ivory,smoothstep(.26,.68,land+broad*.15));
+        geology=mix(geology,warmFace,uWarm*.68);
+        float craters=(basin(face,vec2(-.32,.30),.23)+basin(face,vec2(.38,.14),.14)+basin(face,vec2(.02,-.44),.18)+basin(face,vec2(-.49,-.27),.09))*0.55;
+        geology+=craters+strata*0.65;
         vec3 light=normalize(uViewDirection*.58-uRight*.63+uUp*.54);
         float sunlight=smoothstep(-.40,.78,dot(n,light));
-        geology=mix(mix(slate,warmShade,uWarm),geology,.38+.62*sunlight);
-        // Ancient diagonal fault: dark incision with a thin mineral-lit inner seam, never neon.
+        geology=mix(mix(slate,warmShade,uWarm),geology,.42+.58*sunlight);
+        // Ancient diagonal fault: subtle dark chasm with muted mineral rim
         float bent=face.x*.76+face.y*.65-.035+(noise2(face*10.0)-.5)*.034;
         float scar=abs(bent);
         float broken=(1.0-smoothstep(.012,.030,scar))*(1.0-uWarm*.75);
-        geology=mix(geology,vec3(.075,.23,.245),broken*.82);
+        geology=mix(geology,vec3(.18,.22,.28),broken*.72);
         float mineral=(1.0-smoothstep(.002,.006,scar))*(1.0-uWarm);
-        geology=mix(geology,vec3(.43,.65,.58),mineral*.62);
-        // Daylight atmospheric wash softens the terminator and avoids an icon-like hard outline.
+        geology=mix(geology,vec3(.64,.66,.64),mineral*.45);
+        // High-altitude aerial perspective wash integrates the moon naturally into the Adriatic sky
         float invFace=1.0-facing;
         float limb=invFace*invFace*invFace;
-        geology=mix(geology,vec3(.47,.69,.71),limb*.35);
-        float alpha=smoothstep(.0,.12,facing)*.93;
+        geology=mix(geology,vec3(.52,.64,.74),0.22+limb*.36);
+        float alpha=smoothstep(.0,.12,facing)*.88;
         // Fast linear conversion (avoids 3x per-pixel pow() near the sun)
         vec3 gClamp=max(geology,vec3(0.0));
         gl_FragColor=vec4(gClamp*gClamp,alpha);

@@ -2402,15 +2402,16 @@ export class ExplorerAircraft {
 
     if (isPiloted) {
       const cls = this.variant;
-      const camBack = cls === 'cargo' ? 17.5 : (cls === 'bomber' ? 16.0 : 12.0);
-      const camUp = cls === 'cargo' ? 6.2 : (cls === 'bomber' ? 5.6 : 4.0);
+      // Heroic Porco Rosso close-quarter framing so the 1930s aircraft commands the frame!
+      const camBack = cls === 'cargo' ? 13.5 : (cls === 'bomber' ? 12.6 : 9.4);
+      const camUp = cls === 'cargo' ? 4.6 : (cls === 'bomber' ? 4.3 : 3.1);
       this._updateChaseCamera(dt, forward, up, camBack, camUp);
     }
   }
 
   _updateChaseCamera(dt, forward, up, backDist, upDist) {
     backDist *= Math.max(1, 1.15 / this.scene.getEngine().getAspectRatio(this.camera));
-    backDist += clamp((this.airspeed - 25) * 0.04, 0, 2.2);
+    backDist += clamp((this.airspeed - 25) * 0.025, 0, 1.3);
 
     // Smoothly return free-look mouse orbit toward center when not dragging
     if (!this.isDragging) {
