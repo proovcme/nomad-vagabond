@@ -242,16 +242,17 @@ class AutumnLeaves extends BABYLON.MaterialPluginBase {
     return shaderType === 'fragment' ? {
       CUSTOM_FRAGMENT_UPDATE_ALBEDO:`
       #ifdef AUTUMN_LEAVES
-      float leafLight = clamp(dot(surfaceAlbedo, vec3(.2126,.7152,.0722))*2.1+.28, .46, 1.0);
+      float leafLight = clamp(dot(surfaceAlbedo, vec3(.2126,.7152,.0722))*1.65+.22, .34, 1.0);
       float leafVariation = .5+.5*sin(vPositionW.x*.13+vPositionW.z*.17+vPositionW.y*.09);
-      vec3 leafPaint = mix(vec3(.98,.30,.08),vec3(1.0,.82,.16),leafVariation);
+      // Muted russet-sienna & warm ochre foliage matching photogrammetry rock & Interbellum brass
+      vec3 leafPaint = mix(vec3(.52,.24,.13),vec3(.68,.48,.22),leafVariation);
       surfaceAlbedo = toLinearSpace(leafPaint)*leafLight;
       #endif
       `,
       CUSTOM_FRAGMENT_BEFORE_FINALCOLORCOMPOSITION:`
       #if defined(AUTUMN_LEAVES) && !defined(UNLIT)
       float leafSun = smoothstep(-0.2, 0.45, dot(normalize(vNormalW), normalize(vec3(-0.60, 0.34, -0.72))));
-      finalDiffuse += surfaceAlbedo * mix(vec3(0.12, 0.18, 0.34), vec3(0.48, 0.34, 0.12), leafSun);
+      finalDiffuse += surfaceAlbedo * mix(vec3(0.08, 0.11, 0.18), vec3(0.20, 0.15, 0.08), leafSun);
       #endif
       `
     } : null;
@@ -285,18 +286,19 @@ class SunlitCanopy extends BABYLON.MaterialPluginBase {
     return shaderType === 'fragment' ? {
       CUSTOM_FRAGMENT_UPDATE_ALBEDO:`
       #ifdef SUNLIT_CANOPY
-      float canopyLuma = clamp(dot(surfaceAlbedo, vec3(.2126,.7152,.0722))*2.3+.24, .42, 1.0);
+      float canopyLuma = clamp(dot(surfaceAlbedo, vec3(.2126,.7152,.0722))*1.60+.18, .28, 1.0);
       float sunTip = .5+.5*sin(vPositionW.x*.19-vPositionW.z*.15+vPositionW.y*.24);
-      vec3 emeraldJade = vec3(.12, .68, .40);
-      vec3 sunlitLime = vec3(.64, .92, .24);
-      vec3 canopyCol = mix(emeraldJade, sunlitLime, sunTip * .76);
+      // Natural desaturated coastal pine & olive-sage canopy (harmonizes with granite & olive turf, zero neon!)
+      vec3 deepPine = vec3(.14, .22, .14);
+      vec3 sunlitSage = vec3(.32, .40, .23);
+      vec3 canopyCol = mix(deepPine, sunlitSage, sunTip * .72);
       surfaceAlbedo = toLinearSpace(canopyCol) * canopyLuma;
       #endif
       `,
       CUSTOM_FRAGMENT_BEFORE_FINALCOLORCOMPOSITION:`
       #if defined(SUNLIT_CANOPY) && !defined(UNLIT)
       float canopySun = smoothstep(-0.2, 0.45, dot(normalize(vNormalW), normalize(vec3(-0.60, 0.34, -0.72))));
-      finalDiffuse += surfaceAlbedo * mix(vec3(0.10, 0.22, 0.38), vec3(0.46, 0.42, 0.14), canopySun);
+      finalDiffuse += surfaceAlbedo * mix(vec3(0.06, 0.10, 0.16), vec3(0.18, 0.16, 0.08), canopySun);
       #endif
       `
     } : null;

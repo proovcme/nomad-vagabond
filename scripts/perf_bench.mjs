@@ -52,7 +52,25 @@ await page.waitForFunction(() => window.__perfStats && window.__perfStats.fps > 
 const loadMs = Date.now() - t0;
 await page.waitForTimeout(1400);
 
-const menu = await page.evaluate(() => window.__perfStats);
+async function sampleFrames(count = 30) {
+  return page.evaluate(async (n) => {
+    const times = [];
+    let prev = performance.now();
+    for (let i = 0; i < n; i++) {
+      await new Promise((r) => requestAnimationFrame(r));
+      const now = performance.now();
+      times.push(now - prev);
+      prev = now;
+    }
+    times.sort((a, b) => a - b);
+    const medMs = +times[Math.floor(times.length * 0.5)].toFixed(1);
+    const p95Ms = +times[Math.min(times.length - 1, Math.floor(times.length * 0.95))].toFixed(1);
+    const st = window.__perfStats || {};
+    return { medMs, p95Ms, draws: st.drawCalls, tris: Math.round(st.triangles || 0), stage: st.stage, mode: st.controlMode };
+  }, count);
+}
+
+const menu = await sampleFrames(30);
 // Verify runtime invariants: beacon rotates and distant Vagabond interior PointLights are culled!
 const runtimeCheck = await page.evaluate(async () => {
   const sc = BABYLON.EngineStore.LastCreatedEngine?.scenes?.[0];
@@ -70,12 +88,12 @@ const runtimeCheck = await page.evaluate(async () => {
     activePointLights,
   };
 });
-console.log('MENU:', JSON.stringify({ loadMs, frameMs: menu.frameMs, draws: menu.drawCalls, tris: Math.round(menu.triangles), ...runtimeCheck }));
+console.log('MENU:', JSON.stringify({ loadMs, medMs: menu.medMs, p95Ms: menu.p95Ms, draws: menu.draws, tris: menu.tris, ...runtimeCheck }));
 
 await page.click('#mission-dreadnought-btn');
 await page.waitForTimeout(2600);
-const m2 = await page.evaluate(() => window.__perfStats);
-console.log('DREADNOUGHT:', JSON.stringify({ stage: m2.stage, mode: m2.controlMode, frameMs: m2.frameMs, draws: m2.drawCalls, tris: Math.round(m2.triangles) }));
+const m2 = await sampleFrames(30);
+console.log('DREADNOUGHT:', JSON.stringify({ stage: m2.stage, mode: m2.mode, medMs: m2.medMs, p95Ms: m2.p95Ms, draws: m2.draws, tris: m2.tris }));
 
 console.log('ERRORS:', errors.length);
 if (errors.length) console.error(errors.join('\n'));
@@ -83,7 +101,7 @@ if (errors.length) console.error(errors.join('\n'));
 await browser.close();
 server.close();
 
-if (errors.length > 0 || menu.drawCalls > 650 || menu.triangles > 450000 || runtimeCheck.beaconDelta < 0.05 || runtimeCheck.radarDelta < 0.03 || runtimeCheck.activePointLights > 0) {
+if (errors.length > 0 || menu.draws > 650 || menu.tris > 450000 || runtimeCheck.beaconDelta < 0.05 || runtimeCheck.radarDelta < 0.03 || runtimeCheck.activePointLights > 0) {
   console.error('PERF/RUNTIME ASSERTION FAILED!', runtimeCheck);
   process.exit(1);
 }

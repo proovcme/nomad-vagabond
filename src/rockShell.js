@@ -22,9 +22,10 @@ export function buildRockShell(scene, base, material, rockMasses, shadowGenerato
       const t=Math.max(0,Math.min(1,dy/m.h+0.5));
       const radius=m.rBottom+(m.rTop-m.rBottom)*t;
       const radial=Math.hypot(lx,lz);
-      // Small-scale coherent ledges; amplitude stays under a grid cell.
+      // Real 3D sculptural geological ribs & stepped cliff strata shelves (not just flat polyhedrons!)
       const a=Math.atan2(lz,lx);
-      const crag=Math.sin(a*5+m.phase)*0.50+Math.sin(a*9+dy*0.32+m.phase)*0.24;
+      const strata=Math.sin(dy*0.42+a*2.0+m.phase)*0.55;
+      const crag=Math.sin(a*5+m.phase)*0.82+Math.sin(a*9+dy*0.30+m.phase)*0.38+strata;
       const side=(radial-radius-crag)*Math.min(m.sx,m.sz);
       const sdf=Math.hypot(Math.max(side,0),Math.max(outsideCap,0))+Math.min(Math.max(side,outsideCap),0);
       if(sdf<union)union=sdf;
@@ -34,8 +35,8 @@ export function buildRockShell(scene, base, material, rockMasses, shadowGenerato
     const stairChannel = Math.max(-20 - x, x - 13, Math.abs(z + 12.4) - 3.2, rampY - 0.6 - y);
     return Math.max(union, -boxDistance(x,y,z), -stairChannel);
   };
-  // Expanded by one empty cell on all sides to guarantee a capped boundary.
-  const step=2.5, min=[-60,-57,-42], max=[34,27,42];
+  // Expanded by one empty cell on all sides to guarantee a capped boundary; finer 2.1m grid for sharper cliff relief.
+  const step=2.1, min=[-60,-57,-42], max=[34,27,42];
   const nx=Math.round((max[0]-min[0])/step)+1,ny=Math.round((max[1]-min[1])/step)+1,nz=Math.round((max[2]-min[2])/step)+1;
   const index=(x,y,z)=>(z*ny+y)*nx+x;
   const count=nx*ny*nz, values=new Float32Array(count);

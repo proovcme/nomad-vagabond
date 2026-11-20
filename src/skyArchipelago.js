@@ -1008,7 +1008,16 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   endHazard.position.set(54.8, 3.48, 0.0);
   endHazard.material = hazardMat;
 
-  for (let rx = 8; rx <= 50; rx += 6.0) {
+  // Clear high-contrast approach aiming chevron ("V") at runway bow so landing alignment reads from 200m+
+  for (const side of [-1, 1]) {
+    const chev = BABYLON.MeshBuilder.CreateBox(`vagRunwayChev_${side}`, { width: 5.2, height: 0.12, depth: 0.85 }, scene);
+    chev.parent = asteroidBase.group;
+    chev.position.set(49.5, 3.48, side * 3.1);
+    chev.rotation.y = side * 0.52;
+    chev.material = hazardMat;
+  }
+
+  for (let rx = 8; rx <= 44; rx += 6.0) {
     const mark = BABYLON.MeshBuilder.CreateBox(`vagRunwayDash_${rx}`, { width: 3.2, height: 0.12, depth: 0.75 }, scene);
     mark.parent = asteroidBase.group;
     mark.position.set(rx, 3.47, 0.0);
@@ -1279,11 +1288,11 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   asteroidBase._towerBeaconRig = beaconRig;
   asteroidBase._towerBeaconMat = towerBeaconMat;
 
-  // Living Vagabond Deck: Interbellum red/cream Windsock on runway rim + 2 spinning industrial exhaust fans
-  const rwSockPole = BABYLON.MeshBuilder.CreateCylinder('vagRwWindsockPole', { diameter: 0.14, height: 4.8, tessellation: 6 }, scene);
-  rwSockPole.parent = asteroidBase.group; rwSockPole.position.set(49.5, 5.7, 9.6); rwSockPole.material = hullMat;
+  // Living Vagabond Deck: Interbellum red/cream Windsock placed outboard of runway wingtip corridor + 2 spinning exhaust fans
+  const rwSockPole = BABYLON.MeshBuilder.CreateCylinder('vagRwWindsockPole', { diameter: 0.14, height: 4.0, tessellation: 6 }, scene);
+  rwSockPole.parent = asteroidBase.group; rwSockPole.position.set(49.5, 5.2, 11.4); rwSockPole.material = hullMat;
   const rwSockPivot = new BABYLON.TransformNode('vagRwWindsockPivot', scene);
-  rwSockPivot.parent = asteroidBase.group; rwSockPivot.position.set(49.5, 8.0, 9.6);
+  rwSockPivot.parent = asteroidBase.group; rwSockPivot.position.set(49.5, 7.1, 11.4);
   const rwSockMat = new BABYLON.PBRMaterial('vagRwWindsockMat', scene);
   rwSockMat.albedoColor = c3('#c84428'); rwSockMat.roughness = 0.86; rwSockMat.metallic = 0.0;
   const rwSockCone = BABYLON.MeshBuilder.CreateCylinder('vagRwWindsockCone', { diameterTop: 0.24, diameterBottom: 0.62, height: 2.3, tessellation: 8 }, scene);
@@ -1309,15 +1318,15 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   // This GLB has minimum y=-.25: compensate explicitly, then leave 8cm surface clearance.
   instantiateGLBInto(scene, './assets/buildings/', 'ether_generator.glb', asteroidBase.group, new BABYLON.Vector3(-30.0, 22.20, 13.5), 1.0, 0.0, shadowGen);
 
-  // 5. LUSH VEGETATION ON VAGABOND: Strictly grounded on solid plateau rock (clear of radar, turret & cliff edges!)
+  // 5. GROUNDED COASTAL VEGETATION ON VAGABOND: Unified human/architectural scale (0.76..0.94), strictly aft/side ledges
   const treePlacements = [
-    { file: 'pine_hero.glb',     pos: [-38.0, 20.1, -8.0],  s: 1.35, r: 0.4 },
-    { file: 'fir_medium.glb',    pos: [-39.0, 20.1, 2.5],   s: 1.25, r: 1.6 },
-    { file: 'coastal_alder.glb', pos: [-21.5, 20.1, -21.0], s: 1.15, r: 0.9 },
-    { file: 'fir_medium.glb',    pos: [-18.0, 20.1, 21.5],  s: 1.20, r: 1.1 },
-    { file: 'pine_hero.glb',     pos: [-37.0, 20.1, 10.0],  s: 1.20, r: 0.3 },
-    { file: 'coastal_alder.glb', pos: [-14.0, 20.1, -21.5], s: 1.15, r: 1.4 },
-    { file: 'pine_hero.glb',     pos: [-25.5, 20.1, 21.0],  s: 1.25, r: 2.4 },
+    { file: 'pine_hero.glb',     pos: [-38.0, 20.1, -8.0],  s: 0.92, r: 0.4 },
+    { file: 'fir_medium.glb',    pos: [-39.0, 20.1, 2.5],   s: 0.86, r: 1.6 },
+    { file: 'coastal_alder.glb', pos: [-21.5, 20.1, -21.0], s: 0.82, r: 0.9 },
+    { file: 'fir_medium.glb',    pos: [-18.0, 20.1, 21.5],  s: 0.84, r: 1.1 },
+    { file: 'pine_hero.glb',     pos: [-37.0, 20.1, 10.0],  s: 0.88, r: 0.3 },
+    { file: 'coastal_alder.glb', pos: [-14.0, 20.1, -21.5], s: 0.78, r: 1.4 },
+    { file: 'pine_hero.glb',     pos: [-25.5, 20.1, 21.0],  s: 0.90, r: 2.4 },
   ];
   for (const tp of treePlacements) {
     instantiateGLBInto(scene, './assets/benchmark/models/trees/', tp.file, asteroidBase.group, new BABYLON.Vector3(...tp.pos), tp.s, tp.r, shadowGen);
