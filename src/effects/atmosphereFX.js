@@ -38,7 +38,6 @@ export class AtmosphereFX {
     if (this._isNull) return;
 
     this._initPuffPool();
-    this._initWingTrails();
     this._buildForestWaterfall();
     scene.onDisposeObservable.addOnce(() => this.dispose());
   }
@@ -395,10 +394,7 @@ export class AtmosphereFX {
       this._waterfallTex.vOffset = (this._waterfallTex.vOffset + safeDt * 0.42) % 1;
     }
 
-    // 2. Wingtip vortex trails
-    this._updateWingTrails(safeDt, ship, controlMode);
-
-    // 3. Diesel chimney smoke (Vagabond Ether Generator) + periodic steam vent
+    // 2. Diesel chimney smoke (Vagabond Ether Generator) + periodic steam vent
     this._chimneyTimer -= safeDt;
     if (this._chimneyTimer <= 0 && this.asteroidBase?.group) {
       this._chimneyTimer = 0.85 + Math.random() * 0.45;

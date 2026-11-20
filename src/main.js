@@ -2969,28 +2969,7 @@ engine.runRenderLoop(() => {
           }
         }
 
-        // Trailing damage smoke once enemy drops below 55% HP
-        if (!en.damageTrail && en.hp < en.maxHp * 0.55 && typeof BABYLON.TrailMesh === 'function') {
-          if (!demoState._dmgSmokeMat || demoState._dmgSmokeMat.isDisposed) {
-            demoState._dmgSmokeMat = new BABYLON.StandardMaterial('enemyDmgSmokeMat', scene);
-            demoState._dmgSmokeMat.emissiveColor = BABYLON.Color3.FromHexString('#5c3c28');
-            demoState._dmgSmokeMat.disableLighting = true;
-            demoState._dmgSmokeMat.backFaceCulling = false;
-            demoState._dmgSmokeMat.depthWrite = false;
-            demoState._dmgSmokeMat.alpha = 0.40;
-            if (ship?.trailMat?.opacityTexture) demoState._dmgSmokeMat.opacityTexture = ship.trailMat.opacityTexture;
-          }
-          const smokeAnchor = BABYLON.MeshBuilder.CreateBox(`enDmgAnchor_${en.phase}`, { size: 0.1 }, scene);
-          smokeAnchor.parent = en.root;
-          smokeAnchor.position.set(0, 0.2, 1.4);
-          smokeAnchor.isVisible = false;
-          smokeAnchor.isPickable = false;
-          en.root.computeWorldMatrix(true);
-          smokeAnchor.computeWorldMatrix(true);
-          en.damageTrail = new BABYLON.TrailMesh(`enDmgTrail_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`, smokeAnchor, scene, 0.34, 24, true);
-          en.damageTrail.material = demoState._dmgSmokeMat;
-          en.damageTrail.isPickable = false;
-        }
+        // Damaged enemy aircraft emit soft billowing smoke puffs via AtmosphereFX (no cloth TrailMesh ribbon!)
 
         // Player projectile hits & enemy pilot countermeasure flares against homing rockets
         for (let pi = ship.projectiles.length - 1; pi >= 0; pi--) {

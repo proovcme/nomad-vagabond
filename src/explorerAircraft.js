@@ -710,38 +710,28 @@ export class ExplorerAircraft {
       this.specialMuzzleNodes.push(spNode);
     });
 
-    // Continuous ribbon trails behind engine nacelles & wingtips (never discrete particle balls!)
+    // Keep nozzle anchors for damaged engine smoke (smoke.js) and ONLY TWO wingtip nodes for soft vapor contrails (no middle trail, no cloth ribbons!)
     if (this.engineTrails) {
       for (const t of this.engineTrails) t.dispose();
     }
     this.engineTrails = [];
     this.nozzles = [];
-    if (typeof BABYLON.TrailMesh === 'function') {
-      const propSources = glbProps.length ? glbProps : [{ position: new BABYLON.Vector3(0, 1.8, -3.6) }];
-      propSources.forEach((prop, idx) => {
-        const noz = new BABYLON.TransformNode(`acGlbNozzle_${variant}_${idx}`, this.scene);
-        noz.parent = glbRoot;
-        noz.position.set(prop.position.x, prop.position.y - 0.12, prop.position.z + 1.25);
-        this.nozzles.push(noz);
-        const exhaustRibbon = new BABYLON.TrailMesh(`acGlbExhaustRibbon_${variant}_${idx}`, noz, this.scene, 0.13, 22, true);
-        exhaustRibbon.material = this.trailMat;
-        exhaustRibbon.isPickable = false;
-        exhaustRibbon.isVisible = false;
-        this.engineTrails.push(exhaustRibbon);
-      });
-      if (this.aircraftLightSockets) {
-        for (const sideKey of ['port', 'starboard']) {
-          const sock = this.aircraftLightSockets[sideKey]?.surface;
-          if (!sock) continue;
-          const tipNode = new BABYLON.TransformNode(`acGlbWingtipNode_${variant}_${sideKey}`, this.scene);
-          tipNode.parent = glbRoot;
-          tipNode.position.set(sock[0], sock[1], sock[2] + 0.25);
-          const wingRibbon = new BABYLON.TrailMesh(`acGlbWingTrail_${variant}_${sideKey}`, tipNode, this.scene, 0.055, 22, true);
-          wingRibbon.material = this.trailMat;
-          wingRibbon.isPickable = false;
-          wingRibbon.isVisible = false;
-          this.engineTrails.push(wingRibbon);
-        }
+    this.wingtipNodes = [];
+    const propSources = glbProps.length ? glbProps : [{ position: new BABYLON.Vector3(0, 1.8, -3.6) }];
+    propSources.forEach((prop, idx) => {
+      const noz = new BABYLON.TransformNode(`acGlbNozzle_${variant}_${idx}`, this.scene);
+      noz.parent = glbRoot;
+      noz.position.set(prop.position.x, prop.position.y - 0.12, prop.position.z + 1.25);
+      this.nozzles.push(noz);
+    });
+    if (this.aircraftLightSockets) {
+      for (const sideKey of ['port', 'starboard']) {
+        const sock = this.aircraftLightSockets[sideKey]?.surface;
+        if (!sock) continue;
+        const tipNode = new BABYLON.TransformNode(`acGlbWingtipNode_${variant}_${sideKey}`, this.scene);
+        tipNode.parent = glbRoot;
+        tipNode.position.set(sock[0], sock[1], sock[2] + 0.25);
+        this.wingtipNodes.push(tipNode);
       }
     }
 
@@ -1372,50 +1362,56 @@ export class ExplorerAircraft {
     }
     this.trailMat = trailMat;
     this.engineTrails = [];
-    if (typeof BABYLON.TrailMesh === 'function' && this.nozzles) {
-      this.nozzles.forEach((noz, idx) => {
-        const trail = new BABYLON.TrailMesh(`acTrail_${idx}`, noz, this.scene, 0.14, 34, true);
-        trail.material = trailMat;
-        trail.isPickable = false;
-        trail.isVisible = false;
-        this.engineTrails.push(trail);
-      });
-    }
+    this.wingtipNodes = [];
 
-    const ps = new BABYLON.ParticleSystem('acExhaustPS', 120, this.scene);
-    const tex = new BABYLON.DynamicTexture('acExhaustTex', 32, this.scene, false);
+    // Soft aerodynamic vapor contrails strictly from the TWO wingtips (zero cloth ribbons, zero middle trail!)
+    const ps = new BABYLON.ParticleSystem('acWingtipContrails', 320, this.scene);
+    const tex = new BABYLON.DynamicTexture('acWingtipVaporTex', 64, this.scene, false);
     const ctx = tex.getContext();
-    const grad = ctx.createRadialGradient(16, 16, 1, 16, 16, 15);
-    grad.addColorStop(0, 'rgba(220, 230, 240, 0.28)');
-    grad.addColorStop(0.5, 'rgba(195, 208, 222, 0.10)');
-    grad.addColorStop(1, 'rgba(160, 175, 190, 0)');
+    const grad = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
+    grad.addColorStop(0, 'rgba(244, 248, 255, 0.42)');
+    grad.addColorStop(0.45, 'rgba(222, 232, 244, 0.18)');
+    grad.addColorStop(1, 'rgba(200, 214, 230, 0)');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 32, 32);
+    ctx.fillRect(0, 0, 64, 64);
     tex.update();
+    tex.hasAlpha = true;
     ps.particleTexture = tex;
     ps.emitter = new BABYLON.Vector3(0, 0, 0);
-    let nozzleToggle = 0;
-    ps.startPositionFunction = (_worldMatrix, positionToUpdate) => {
-      const list = this.nozzles && this.nozzles.length ? this.nozzles : [this.visual];
-      const noz = list[nozzleToggle % list.length];
-      nozzleToggle++;
-      const p = noz.getAbsolutePosition ? noz.getAbsolutePosition() : this.group.position;
-      positionToUpdate.set(
-        p.x + (Math.random() - 0.5) * 0.10,
-        p.y + (Math.random() - 0.5) * 0.10,
-        p.z + (Math.random() - 0.5) * 0.10
-      );
-    };
-    ps.color1 = new BABYLON.Color4(0.86, 0.90, 0.95, 0.22);
-    ps.color2 = new BABYLON.Color4(0.75, 0.80, 0.86, 0.12);
-    ps.colorDead = new BABYLON.Color4(0.60, 0.66, 0.72, 0);
-    ps.minSize = 0.38;
-    ps.maxSize = 0.95;
+    ps.isLocal = false;
+    ps.blendMode = BABYLON.ParticleSystem.BLENDMODE_STANDARD;
     ps.minLifeTime = 0.55;
-    ps.maxLifeTime = 1.15;
+    ps.maxLifeTime = 0.95;
+    ps.minSize = 0.26;
+    ps.maxSize = 0.46;
+    ps.addSizeGradient(0.0, 0.24, 0.34);
+    ps.addSizeGradient(0.5, 0.52, 0.68);
+    ps.addSizeGradient(1.0, 0.95, 1.25);
+    ps.minEmitPower = 0.1;
+    ps.maxEmitPower = 0.4;
+    ps.updateSpeed = 1 / 60;
+    let tipToggle = 0;
+    ps.startPositionFunction = (_worldMatrix, positionToUpdate) => {
+      const tips = this.wingtipNodes && this.wingtipNodes.length >= 2 ? this.wingtipNodes : null;
+      if (tips) {
+        const tip = tips[tipToggle % 2];
+        tipToggle++;
+        tip.computeWorldMatrix(true);
+        const p = tip.getAbsolutePosition();
+        positionToUpdate.set(p.x, p.y, p.z);
+      } else {
+        const side = (tipToggle++ % 2 === 0) ? -4.8 : 4.8;
+        this.group.computeWorldMatrix(true);
+        BABYLON.Vector3.TransformCoordinatesToRef(new BABYLON.Vector3(side, 0.2, 0.4), this.group.getWorldMatrix(), positionToUpdate);
+      }
+    };
+    ps.startDirectionFunction = (_worldMatrix, dirToUpdate) => {
+      dirToUpdate.set((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.4);
+    };
+    ps.color1 = new BABYLON.Color4(0.92, 0.95, 1.0, 0.22);
+    ps.color2 = new BABYLON.Color4(0.84, 0.89, 0.96, 0.12);
+    ps.colorDead = new BABYLON.Color4(0.80, 0.86, 0.92, 0);
     ps.emitRate = 0;
-    ps.minEmitPower = 0.2;
-    ps.maxEmitPower = 0.9;
     ps.start();
     this.exhaustPS = ps;
   }
@@ -2261,24 +2257,8 @@ export class ExplorerAircraft {
         if (isPiloted && this._takeoffPitchGrace <= 0) {
           this._rotateLocal(new BABYLON.Vector3(0, 0, 1), 0.14 * dt);
         }
-        if (!this._playerDmgTrail && typeof BABYLON.TrailMesh === 'function' && !(this.scene.getEngine() instanceof BABYLON.NullEngine)) {
-          if (!this._playerDmgSmokeMat || this._playerDmgSmokeMat.isDisposed) {
-            const sm = new BABYLON.StandardMaterial('acPlayerDmgSmokeMat', this.scene);
-            sm.emissiveColor = c3('#523a2c');
-            sm.diffuseColor = new BABYLON.Color3(0, 0, 0);
-            sm.disableLighting = true;
-            sm.backFaceCulling = false;
-            sm.depthWrite = false;
-            sm.alpha = 0.36;
-            if (this.trailMat?.opacityTexture) sm.opacityTexture = this.trailMat.opacityTexture;
-            this._playerDmgSmokeMat = sm;
-          }
-          const anchor = this.nozzles?.[0] || this.group;
-          this._playerDmgTrail = new BABYLON.TrailMesh('acPlayerDmgTrail', anchor, this.scene, 0.26, 22, true);
-          this._playerDmgTrail.material = this._playerDmgSmokeMat;
-          this._playerDmgTrail.isPickable = false;
-        }
-      } else if (this._playerDmgTrail) {
+      }
+      if (this._playerDmgTrail) {
         this._playerDmgTrail.dispose();
         this._playerDmgTrail = null;
       }
@@ -2367,40 +2347,30 @@ export class ExplorerAircraft {
     const flicker = 0.92 + Math.sin(performance.now() * 0.045) * 0.08;
     const rocketVis = activeThrust ? (1.15 - dens * 0.35) * (isBoost ? 1.65 : 1.05) * flicker : 0.04;
     for (const f of this.rocketFlames) {f.scaling.y = rocketVis;f.isVisible = !world.isSkyWorld;}
+    // Drive ONLY TWO soft vapor wingtip contrails (zero middle trail, zero cloth ribbons!)
     if (this.exhaustPS) {
-      this.exhaustPS.emitRate = 0;
-    }
-    if (this.engineTrails && this.trailMat) {
-      this._trailColors ||= {
-        boost: c3('#e8dfd0'),
-        cruise: c3('#dce6f0'),
-        spaceBoost: c3('#ffd282'),
-        spaceCruise: c3('#7ad8f0'),
-        smoke1: c3('#ff5a36'),
-        smoke2: c3('#ffd152'),
-        smoke3: c3('#38e8ff'),
-      };
       this._trailWarmup = (this._trailWarmup || 0) + 1;
-      const showTrail = this._trailWarmup > 8 && !this.dockedAsteroid && !this.dockedPlanet && (Boolean(this.showSmokeMode) || isBoost || this.isHighG || this.airspeed > 15);
-      if (showTrail !== Boolean(this._trailsVisible)) {
-        this._trailsVisible = showTrail;
-        for (const t of this.engineTrails) {
-          if (showTrail) { t.reset?.(); t.start?.(); }
-          else { t.stop?.(); }
-          t.isVisible = showTrail;
-        }
-      }
-      if (showTrail) {
-        if (this.showSmokeMode > 0) {
-          this.trailMat.alpha = 0.52;
-          this.trailMat.emissiveColor.copyFrom(this._trailColors[`smoke${this.showSmokeMode}`] || this._trailColors.smoke1);
-        } else if (dens >= 0.25) {
-          this.trailMat.alpha = (isBoost || this.isHighG) ? 0.28 : clamp((this.airspeed - 24) / 48, 0.0, 0.18);
-          this.trailMat.emissiveColor.copyFrom(isBoost ? this._trailColors.boost : this._trailColors.cruise);
+      const showVapor = this._trailWarmup > 8 && !this.dockedAsteroid && !this.dockedPlanet && (Boolean(this.showSmokeMode) || isBoost || this.isHighG || this.airspeed > 22);
+      if (!showVapor) {
+        this.exhaustPS.emitRate = 0;
+      } else {
+        const rate = this.showSmokeMode > 0 ? 150 : (isBoost || this.isHighG ? 135 : Math.round(clamp((this.airspeed - 22) * 3.2, 24, 95)));
+        this.exhaustPS.emitRate = rate;
+        if (this.showSmokeMode === 1) {
+          this.exhaustPS.color1 = new BABYLON.Color4(1.0, 0.38, 0.22, 0.55);
+          this.exhaustPS.color2 = new BABYLON.Color4(1.0, 0.52, 0.30, 0.32);
+        } else if (this.showSmokeMode === 2) {
+          this.exhaustPS.color1 = new BABYLON.Color4(1.0, 0.84, 0.34, 0.55);
+          this.exhaustPS.color2 = new BABYLON.Color4(1.0, 0.90, 0.55, 0.32);
+        } else if (this.showSmokeMode === 3) {
+          this.exhaustPS.color1 = new BABYLON.Color4(0.24, 0.92, 1.0, 0.55);
+          this.exhaustPS.color2 = new BABYLON.Color4(0.55, 0.96, 1.0, 0.32);
         } else {
-          this.trailMat.alpha = isBoost ? 0.38 : (activeThrust ? 0.22 : 0.08);
-          this.trailMat.emissiveColor.copyFrom(isBoost ? this._trailColors.spaceBoost : this._trailColors.spaceCruise);
+          const a = (isBoost || this.isHighG) ? 0.34 : 0.20;
+          this.exhaustPS.color1 = new BABYLON.Color4(0.92, 0.95, 1.0, a);
+          this.exhaustPS.color2 = new BABYLON.Color4(0.84, 0.89, 0.96, a * 0.55);
         }
+        this.exhaustPS.colorDead = new BABYLON.Color4(0.85, 0.90, 0.95, 0.0);
       }
     }
 
