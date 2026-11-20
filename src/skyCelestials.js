@@ -204,11 +204,11 @@ export class SkyCelestials {
         geology=mix(geology,vec3(.18,.22,.28),broken*.72);
         float mineral=(1.0-smoothstep(.002,.006,scar))*(1.0-uWarm);
         geology=mix(geology,vec3(.64,.66,.64),mineral*.45);
-        // High-altitude warm amber-taupe atmospheric wash integrates the moon seamlessly into the Project Nomads sky
+        // High-altitude aerial perspective wash integrates the moon naturally into the Adriatic sky
         float invFace=1.0-facing;
         float limb=invFace*invFace*invFace;
-        geology=mix(geology,vec3(.68,.58,.46),0.26+limb*.38);
-        float alpha=smoothstep(.0,.12,facing)*.84;
+        geology=mix(geology,vec3(.52,.64,.74),0.22+limb*.36);
+        float alpha=smoothstep(.0,.12,facing)*.88;
         // Fast linear conversion (avoids 3x per-pixel pow() near the sun)
         vec3 gClamp=max(geology,vec3(0.0));
         gl_FragColor=vec4(gClamp*gClamp,alpha);

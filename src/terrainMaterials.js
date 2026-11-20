@@ -148,26 +148,26 @@ class RockProjection extends BABYLON.MaterialPluginBase {
           vAetherVeinMask = max(vAetherVeinMask, (1.0 - smoothstep(0.12, 0.26, cliffLuma)) * 0.95);
           vSeamGlowColor = vec3(1.00, 0.36, 0.06);
         } else if (rockStyleParams.x > 1.5) {
-          // MILITARY BASTION ('military' — Vagabond): Project Nomads warm sunset granite, smoky umber crevices & bronze-olive coastal turf
-          vec3 creviceCol = vec3(0.20, 0.16, 0.14);
-          vec3 darkSlate = mix(vec3(0.36, 0.32, 0.28), vec3(0.62, 0.56, 0.48), cliffLuma);
-          vec3 paleGranite = mix(vec3(0.62, 0.52, 0.40), vec3(0.92, 0.82, 0.66), cliffLuma);
+          // MILITARY BASTION ('military' — Vagabond): Crisp weathered coastal granite & blue-grey slate with pale chalk ridges, rust veins & alpine turf!
+          vec3 creviceCol = vec3(0.18, 0.23, 0.30);
+          vec3 darkSlate = mix(vec3(0.38, 0.43, 0.49), vec3(0.64, 0.68, 0.72), cliffLuma);
+          vec3 paleGranite = mix(vec3(0.62, 0.62, 0.58), vec3(0.92, 0.90, 0.82), cliffLuma);
           vec3 stoneBody = mix(darkSlate, paleGranite, macroPatch);
-          vec3 ironStreak = vec3(0.76, 0.48, 0.28);
+          vec3 ironStreak = vec3(0.76, 0.52, 0.36);
           rockPaint = mix(creviceCol, stoneBody, crackMask);
           rockPaint = mix(rockPaint, ironStreak, mineralStreak * 0.28);
-          rockPaint = mix(rockPaint, liftedRock * vec3(1.02, 0.92, 0.80), 0.45) * strataWave;
+          rockPaint = mix(rockPaint, liftedRock * vec3(0.96, 0.96, 0.94), 0.45) * strataWave;
           // Crisp height-blended photogrammetry coastal turf & exposed granite outcrops (zero plasticine green!)
           float turfHeight = topLedge * 0.85 + mossSpill * 0.55 + (grassLuma - cliffLuma) * 0.42;
           float turfMask = smoothstep(0.34, 0.56, turfHeight) * (1.0 - smoothstep(0.68, 0.88, cliffLuma) * 0.65);
           // Warm dry soil/pebble collar right at the rock-to-turf edge
           float soilEdge = smoothstep(0.22, 0.42, turfHeight) * (1.0 - turfMask);
-          rockPaint = mix(rockPaint, vec3(0.38, 0.26, 0.18) * (0.7 + 0.5 * grassLuma), soilEdge * 0.72);
-          rockPaint = mix(rockPaint, realisticTurf * vec3(1.06, 0.94, 0.74), turfMask * 0.90);
+          rockPaint = mix(rockPaint, vec3(0.34, 0.29, 0.23) * (0.7 + 0.5 * grassLuma), soilEdge * 0.68);
+          rockPaint = mix(rockPaint, realisticTurf, turfMask * 0.90);
           // Boost micro-relief on turf so blades & soil crevices catch grazing sunlight
           vRockMicroRelief = mix(vRockMicroRelief, grassRelief, turfMask);
-          // Warm smoky umber underside roots (Project Nomads chiaroscuro!)
-          rockPaint = mix(rockPaint, vec3(0.22, 0.18, 0.16), clamp(overhang * 0.44 + rootDepth * 0.30, 0.0, 0.58));
+          // Cool atmospheric slate roots underneath (never crushed black)
+          rockPaint = mix(rockPaint, vec3(0.22, 0.28, 0.38), clamp(overhang * 0.38 + rootDepth * 0.28, 0.0, 0.52));
         } else if (rockStyleParams.x > 0.5) {
           // INDUSTRIAL FOUNDRY ('industrial'): Weathered dark iron-slate basalt, scorched copper-rust bands & slate undersides
           vec3 creviceCol = vec3(0.14, 0.17, 0.22);
