@@ -3,7 +3,7 @@ class RockProjection extends BABYLON.MaterialPluginBase {
   constructor(material, scene, style = 'forest') {
     super(material, 'RockProjection', 200, {ROCK_PROJECTION:false}, true);
     if (!scene._sharedRockCliffTex) {
-      const tex = new BABYLON.Texture('./assets/textures/nomad/golden-cliff-albedo.png', scene);
+      const tex = new BABYLON.Texture('./assets/benchmark/textures/aerial_rocks_02/Diffuse.jpg', scene);
       tex.anisotropicFilteringLevel = 8;
       scene._sharedRockCliffTex = tex;
     }
@@ -40,107 +40,123 @@ class RockProjection extends BABYLON.MaterialPluginBase {
         vec3 rockW = pow(rockN, vec3(5.0));
         rockW /= max(dot(rockW, vec3(1.0)), 0.001);
 
-        // Macro + medium + fine triplanar sampling of hand-painted golden-cliff-albedo.png
-        vec3 pMacro = rockWorld * 0.026;
+        // Dual-scale anti-tiling triplanar sampling of real photogrammetry granite (aerial_rocks_02)
+        vec3 pMacro = rockWorld * 0.022;
         vec3 colMacro = texture2D(rockTriplanarSampler, pMacro.zy).rgb * rockW.x
                       + texture2D(rockTriplanarSampler, pMacro.xz).rgb * rockW.y
                       + texture2D(rockTriplanarSampler, pMacro.xy).rgb * rockW.z;
 
-        vec3 pDetail = rockWorld * 0.078 + vec3(0.37, 0.71, 0.19);
-        vec3 colDetail = texture2D(rockTriplanarSampler, pDetail.zy).rgb * rockW.x
-                       + texture2D(rockTriplanarSampler, pDetail.xz).rgb * rockW.y
-                       + texture2D(rockTriplanarSampler, pDetail.xy).rgb * rockW.z;
+        // Rotated fine detail octave breaks up all repeating patterns
+        mat2 rot37 = mat2(0.798, -0.602, 0.602, 0.798);
+        vec3 pDetail = rockWorld * 0.074 + vec3(0.37, 0.71, 0.19);
+        vec3 colDetail = texture2D(rockTriplanarSampler, rot37 * pDetail.zy).rgb * rockW.x
+                       + texture2D(rockTriplanarSampler, rot37 * pDetail.xz).rgb * rockW.y
+                       + texture2D(rockTriplanarSampler, rot37 * pDetail.xy).rgb * rockW.z;
 
-        // Preserve the hand-painted block cracks of golden-cliff-albedo.png (6-tap triplanar, zero pixel shimmer)
-        vec3 paintedCliff = mix(colMacro, colDetail, 0.44);
-        float cliffLuma = dot(paintedCliff, vec3(0.299, 0.587, 0.114));
-        float crackMask = smoothstep(0.18, 0.56, cliffLuma);
-        // Deep carved fracture AO + vertical rain-wash weathering streaks
-        float rainStreak = 0.88 + 0.12 * sin(rockWorld.x * 0.65 + rockWorld.z * 0.55 + colDetail.r * 5.0);
-        vRockCreviceAO = mix(0.48, 1.06, crackMask) * rainStreak;
-        vRockMicroRelief = dot(colDetail - colMacro, vec3(0.333));
-        vRockStrataSlope = cos(rockWorld.y * 0.58 + cliffLuma * 4.8);
+        vec3 photoRock = mix(colMacro, colDetail, 0.52);
+        // Normalize photogrammetry granite exposure so shadowed cliff faces show crisp sculptural stone detail
+        vec3 liftedRock = clamp(photoRock * 1.48 + vec3(0.06, 0.06, 0.07), 0.0, 1.0);
+        float cliffLuma = dot(liftedRock, vec3(0.299, 0.587, 0.114));
+        float crackMask = smoothstep(0.14, 0.52, cliffLuma);
 
-        // Distinct horizontal sedimentary strata bands (layered sandstone / basalt shelves)
-        float strataRaw = sin(rockWorld.y * 0.48 + cliffLuma * 3.4) * 0.6 + sin(rockWorld.y * 1.15 - colDetail.g * 4.2) * 0.4;
-        float strataWave = 0.84 + 0.16 * smoothstep(-0.7, 0.7, strataRaw);
-        float topLedge = smoothstep(0.42, 0.82, vNormalW.y) * smoothstep(-8.0, 6.0, rockLocal.y);
-        float overhang = clamp(-vNormalW.y * 0.72 + 0.08, 0.0, 1.0);
+        // Large-scale 3D geological patch variation (dark slate veins vs pale granite faces vs rust streaks)
+        float macroPatch = 0.5 + 0.5 * sin(rockWorld.x * 0.048 + rockWorld.z * 0.036 + colMacro.r * 3.5)
+                                     * cos(rockWorld.y * 0.062 - rockWorld.x * 0.028 + colMacro.g * 3.0);
+        float mineralStreak = smoothstep(0.58, 0.88, 0.5 + 0.5 * sin(rockWorld.x * 0.14 - rockWorld.z * 0.11 + colDetail.b * 4.5));
+        float rainStreak = 0.86 + 0.14 * sin(rockWorld.x * 0.65 + rockWorld.z * 0.55 + colDetail.r * 5.0);
+        vRockCreviceAO = mix(0.42, 1.08, crackMask) * rainStreak;
+        vRockMicroRelief = dot(colDetail - colMacro, vec3(0.333)) * 1.45;
+        vRockStrataSlope = cos(rockWorld.y * 0.54 + cliffLuma * 5.2);
 
-        // Subtle glowing ancient aether-crystal veins deep inside the fractured hanging roots (why the islands float!)
-        float rootDepth = smoothstep(-2.0, -14.0, rockLocal.y);
-        float veinCrack = (1.0 - smoothstep(0.10, 0.24, cliffLuma)) * smoothstep(0.25, 0.75, abs(sin(rockWorld.y * 0.35 + rockWorld.x * 0.18)));
+        // Sharp geological strata shelves & cliff-top moss spill
+        float strataRaw = sin(rockWorld.y * 0.46 + cliffLuma * 3.8) * 0.58 + sin(rockWorld.y * 1.25 - colDetail.g * 4.5) * 0.42;
+        float strataWave = 0.82 + 0.18 * smoothstep(-0.65, 0.65, strataRaw);
+        float topLedge = smoothstep(0.36, 0.78, vNormalW.y) * smoothstep(-6.0, 8.0, rockLocal.y);
+        float mossSpill = smoothstep(12.5, 19.5, rockLocal.y) * smoothstep(0.10, 0.55, vNormalW.y + 0.22 * sin(rockWorld.x * 0.35 + rockWorld.z * 0.35));
+        float overhang = clamp(-vNormalW.y * 0.78 + 0.08, 0.0, 1.0);
+        float rootDepth = smoothstep(-1.5, -15.0, rockLocal.y);
+
+        // Subtle glowing ancient aether-crystal veins deep inside the fractured hanging roots
+        float veinCrack = (1.0 - smoothstep(0.10, 0.23, cliffLuma)) * smoothstep(0.25, 0.75, abs(sin(rockWorld.y * 0.35 + rockWorld.x * 0.18)));
         vAetherVeinMask = rootDepth * veinCrack;
-        vSeamGlowColor = rockStyleParams.x > 0.5 ? vec3(0.18, 0.78, 0.85) : vec3(0.32, 0.92, 0.76);
+        vSeamGlowColor = vec3(0.24, 0.86, 0.82);
 
         vec3 rockPaint;
         if (rockStyleParams.x > 5.5) {
-          // ANCIENT SANCTUARY ('ancient'): Weathered ivory-travertine marble, verdigris bronze crevices & bright golden-teal aether seams
-          vec3 creviceCol = vec3(0.14, 0.28, 0.30);
-          vec3 marbleBody = mix(vec3(0.68, 0.66, 0.58), vec3(0.92, 0.90, 0.80), cliffLuma);
-          rockPaint = mix(creviceCol, marbleBody, crackMask);
-          rockPaint = mix(rockPaint, paintedCliff * vec3(0.96, 0.94, 0.88), 0.25) * strataWave;
-          rockPaint = mix(rockPaint, vec3(0.18, 0.36, 0.34), topLedge * 0.28);
-          rockPaint = mix(rockPaint, vec3(0.12, 0.22, 0.28), overhang * 0.38);
-          vAetherVeinMask = max(vAetherVeinMask, (1.0 - smoothstep(0.10, 0.22, cliffLuma)) * 0.65);
+          // ANCIENT SANCTUARY ('ancient'): Pale travertine marble, verdigris bronze crevices & glowing aether seams
+          vec3 creviceCol = vec3(0.12, 0.26, 0.28);
+          vec3 marbleBody = mix(vec3(0.66, 0.65, 0.58), vec3(0.92, 0.90, 0.82), cliffLuma);
+          rockPaint = mix(creviceCol, marbleBody, crackMask) * strataWave;
+          rockPaint = mix(rockPaint, photoRock * vec3(1.12, 1.10, 1.02), 0.35);
+          rockPaint = mix(rockPaint, vec3(0.18, 0.38, 0.34), topLedge * 0.32);
+          rockPaint = mix(rockPaint, vec3(0.10, 0.20, 0.26), overhang * 0.42);
+          vAetherVeinMask = max(vAetherVeinMask, (1.0 - smoothstep(0.10, 0.22, cliffLuma)) * 0.68);
           vSeamGlowColor = vec3(0.28, 0.94, 0.82);
         } else if (rockStyleParams.x > 4.5) {
-          // DESERT CANYON ('desert'): Deep terracotta-crimson sandstone, ochre strata & bleached dust ledges
-          vec3 creviceCol = vec3(0.22, 0.11, 0.09);
-          vec3 redBody = mix(vec3(0.58, 0.24, 0.14), vec3(0.88, 0.48, 0.26), cliffLuma);
-          vec3 ochreBand = vec3(0.90, 0.66, 0.36);
+          // DESERT CANYON ('desert'): Deep terracotta-crimson sandstone, ochre bands & sunlit chalk ledges
+          vec3 creviceCol = vec3(0.18, 0.09, 0.08);
+          vec3 redBody = mix(vec3(0.56, 0.22, 0.14), vec3(0.86, 0.46, 0.26), cliffLuma);
+          vec3 ochreBand = vec3(0.90, 0.68, 0.40);
           rockPaint = mix(creviceCol, redBody, crackMask);
-          rockPaint = mix(rockPaint, ochreBand, smoothstep(0.35, 0.85, strataRaw) * 0.38);
-          rockPaint = mix(rockPaint, paintedCliff * vec3(0.96, 0.78, 0.64), 0.26) * strataWave;
-          rockPaint = mix(rockPaint, vec3(0.86, 0.74, 0.56), topLedge * 0.42);
-          rockPaint = mix(rockPaint, vec3(0.20, 0.10, 0.12), overhang * 0.42);
+          rockPaint = mix(rockPaint, ochreBand, smoothstep(0.35, 0.85, strataRaw) * 0.36);
+          rockPaint = mix(rockPaint, photoRock * vec3(1.05, 0.72, 0.56), 0.38) * strataWave;
+          rockPaint = mix(rockPaint, vec3(0.84, 0.72, 0.54), topLedge * 0.40);
+          rockPaint = mix(rockPaint, vec3(0.16, 0.08, 0.10), overhang * 0.44);
           vSeamGlowColor = vec3(1.00, 0.64, 0.22);
         } else if (rockStyleParams.x > 3.5) {
-          // GLACIER ('glacier'): Fractured alpine blue-white ice & frozen slate with bright cyan subsurface crevices
-          vec3 creviceCol = vec3(0.12, 0.38, 0.62);
-          vec3 iceBody = mix(vec3(0.62, 0.80, 0.92), vec3(0.92, 0.97, 1.00), cliffLuma);
+          // GLACIER ('glacier'): Fractured alpine blue-white ice & frozen slate with cyan subsurface glow
+          vec3 creviceCol = vec3(0.10, 0.36, 0.60);
+          vec3 iceBody = mix(vec3(0.58, 0.78, 0.92), vec3(0.92, 0.97, 1.00), cliffLuma);
           rockPaint = mix(creviceCol, iceBody, crackMask);
-          rockPaint = mix(rockPaint, paintedCliff * vec3(0.84, 0.94, 1.00), 0.22) * strataWave;
-          rockPaint = mix(rockPaint, vec3(0.95, 0.98, 1.00), topLedge * 0.62);
-          rockPaint = mix(rockPaint, vec3(0.16, 0.42, 0.68), overhang * 0.46);
-          vAetherVeinMask = max(vAetherVeinMask, (1.0 - smoothstep(0.14, 0.30, cliffLuma)) * 0.45);
+          rockPaint = mix(rockPaint, photoRock * vec3(0.82, 0.96, 1.08), 0.30) * strataWave;
+          rockPaint = mix(rockPaint, vec3(0.95, 0.98, 1.00), topLedge * 0.65);
+          rockPaint = mix(rockPaint, vec3(0.14, 0.40, 0.66), overhang * 0.46);
+          vAetherVeinMask = max(vAetherVeinMask, (1.0 - smoothstep(0.14, 0.30, cliffLuma)) * 0.48);
           vSeamGlowColor = vec3(0.32, 0.88, 1.00);
         } else if (rockStyleParams.x > 2.5) {
           // VOLCANIC OBSIDIAN ('volcanic'): Charred black basalt cliffs with molten magma cracks & ash ledges
-          vec3 creviceCol = vec3(0.06, 0.05, 0.06);
-          vec3 obsidianBody = mix(vec3(0.12, 0.11, 0.13), vec3(0.30, 0.26, 0.26), cliffLuma);
+          vec3 creviceCol = vec3(0.05, 0.04, 0.05);
+          vec3 obsidianBody = mix(vec3(0.11, 0.11, 0.13), vec3(0.28, 0.26, 0.28), cliffLuma);
           rockPaint = mix(creviceCol, obsidianBody, crackMask) * strataWave;
-          rockPaint = mix(rockPaint, vec3(0.38, 0.34, 0.32), topLedge * 0.45);
-          rockPaint = mix(rockPaint, vec3(0.05, 0.04, 0.05), overhang * 0.45);
+          rockPaint = mix(rockPaint, photoRock * vec3(0.36, 0.34, 0.36), 0.35);
+          rockPaint = mix(rockPaint, vec3(0.36, 0.34, 0.33), topLedge * 0.42);
+          rockPaint = mix(rockPaint, vec3(0.04, 0.04, 0.05), overhang * 0.48);
           vAetherVeinMask = max(vAetherVeinMask, (1.0 - smoothstep(0.12, 0.26, cliffLuma)) * 0.95);
           vSeamGlowColor = vec3(1.00, 0.36, 0.06);
         } else if (rockStyleParams.x > 1.5) {
-          // MILITARY BASTION ('military'): Weathered limestone & ochre sandstone with dark slate crevices & dry plateau lichen
-          vec3 creviceCol = vec3(0.14, 0.19, 0.26);
-          vec3 stoneBody = mix(vec3(0.48, 0.40, 0.32), vec3(0.84, 0.72, 0.55), cliffLuma);
-          vec3 rustBand = vec3(0.64, 0.42, 0.28);
+          // MILITARY BASTION ('military' — Vagabond): Crisp weathered coastal granite & blue-grey slate with pale chalk ridges, rust veins & alpine turf!
+          vec3 creviceCol = vec3(0.18, 0.23, 0.30);
+          vec3 darkSlate = mix(vec3(0.38, 0.43, 0.49), vec3(0.64, 0.68, 0.72), cliffLuma);
+          vec3 paleGranite = mix(vec3(0.62, 0.62, 0.58), vec3(0.92, 0.90, 0.82), cliffLuma);
+          vec3 stoneBody = mix(darkSlate, paleGranite, macroPatch);
+          vec3 ironStreak = vec3(0.76, 0.52, 0.36);
           rockPaint = mix(creviceCol, stoneBody, crackMask);
-          rockPaint = mix(rockPaint, rustBand, smoothstep(0.45, 0.90, strataRaw) * 0.24);
-          rockPaint = mix(rockPaint, paintedCliff * vec3(0.90, 0.86, 0.80), 0.34) * strataWave;
-          vec3 dryLichen = vec3(0.36, 0.44, 0.26) * (0.75 + 0.35 * cliffLuma);
-          rockPaint = mix(rockPaint, dryLichen, topLedge * 0.42);
-          rockPaint = mix(rockPaint, vec3(0.12, 0.17, 0.25), overhang * 0.42);
+          rockPaint = mix(rockPaint, ironStreak, mineralStreak * 0.28);
+          rockPaint = mix(rockPaint, liftedRock * vec3(0.96, 0.96, 0.94), 0.45) * strataWave;
+          // Rich emerald-olive moss & overhanging turf on upper plateau edges
+          vec3 plateauTurf = vec3(0.26, 0.48, 0.24) * (0.76 + 0.38 * cliffLuma);
+          rockPaint = mix(rockPaint, plateauTurf, clamp(topLedge * 0.68 + mossSpill * 0.58, 0.0, 0.80));
+          // Cool atmospheric slate roots underneath (never crushed black)
+          rockPaint = mix(rockPaint, vec3(0.22, 0.28, 0.38), clamp(overhang * 0.38 + rootDepth * 0.28, 0.0, 0.52));
         } else if (rockStyleParams.x > 0.5) {
-          // INDUSTRIAL FOUNDRY ('industrial'): Dark volcanic basalt, scorched iron-rust strata & soot undersides
-          vec3 creviceCol = vec3(0.11, 0.13, 0.19);
-          vec3 basaltBody = mix(vec3(0.34, 0.32, 0.36), vec3(0.68, 0.55, 0.44), cliffLuma);
+          // INDUSTRIAL FOUNDRY ('industrial'): Weathered dark iron-slate basalt, scorched copper-rust bands & slate undersides
+          vec3 creviceCol = vec3(0.14, 0.17, 0.22);
+          vec3 basaltBody = mix(vec3(0.34, 0.37, 0.42), vec3(0.66, 0.62, 0.58), cliffLuma);
           rockPaint = mix(creviceCol, basaltBody, crackMask);
-          rockPaint = mix(rockPaint, paintedCliff * vec3(0.80, 0.72, 0.64), 0.30) * strataWave;
-          rockPaint = mix(rockPaint, vec3(0.11, 0.14, 0.22), overhang * 0.44);
+          rockPaint = mix(rockPaint, vec3(0.68, 0.40, 0.24), mineralStreak * 0.34);
+          rockPaint = mix(rockPaint, liftedRock * vec3(0.84, 0.82, 0.84), 0.42) * strataWave;
+          rockPaint = mix(rockPaint, vec3(0.18, 0.22, 0.28), overhang * 0.40);
         } else {
-          // FOREST SANCTUARY ('forest'): Layered honey-terracotta sandstone, deep crevices & lush emerald moss shelves
-          vec3 creviceCol = vec3(0.16, 0.22, 0.32);
-          vec3 limestoneBody = mix(vec3(0.60, 0.44, 0.29), vec3(0.88, 0.74, 0.52), cliffLuma);
+          // FOREST SANCTUARY ('forest'): Bright alpine limestone-granite cliffs with vivid emerald moss & hanging ivy shelves
+          vec3 creviceCol = vec3(0.20, 0.27, 0.36);
+          vec3 slateTone = mix(vec3(0.46, 0.52, 0.56), vec3(0.80, 0.82, 0.78), cliffLuma);
+          vec3 warmStone = mix(vec3(0.64, 0.58, 0.48), vec3(0.92, 0.86, 0.72), cliffLuma);
+          vec3 limestoneBody = mix(slateTone, warmStone, macroPatch);
           rockPaint = mix(creviceCol, limestoneBody, crackMask);
-          rockPaint = mix(rockPaint, paintedCliff * vec3(0.92, 0.88, 0.82), 0.34) * strataWave;
-          vec3 alpineMoss = vec3(0.19, 0.58, 0.24) * (0.70 + 0.42 * cliffLuma);
-          rockPaint = mix(rockPaint, alpineMoss, topLedge * 0.68);
-          rockPaint = mix(rockPaint, vec3(0.14, 0.22, 0.34), overhang * 0.38);
+          rockPaint = mix(rockPaint, liftedRock * vec3(0.96, 0.96, 0.92), 0.42) * strataWave;
+          vec3 alpineMoss = vec3(0.22, 0.62, 0.26) * (0.74 + 0.40 * cliffLuma);
+          rockPaint = mix(rockPaint, alpineMoss, clamp(topLedge * 0.78 + mossSpill * 0.48, 0.0, 0.84));
+          rockPaint = mix(rockPaint, vec3(0.20, 0.28, 0.38), clamp(overhang * 0.36 + rootDepth * 0.24, 0.0, 0.48));
         }
         surfaceAlbedo = toLinearSpace(clamp(rockPaint * vRockCreviceAO, 0.0, 1.0));
         #endif
@@ -160,10 +176,10 @@ class RockProjection extends BABYLON.MaterialPluginBase {
         vec3 microNormalW = normalize(vNormalW + vec3(vRockMicroRelief * 0.48, vRockStrataSlope * 0.34, -vRockMicroRelief * 0.42));
         float ndl = dot(microNormalW, sunDirW);
         float diffuseLift = smoothstep(-0.08, 0.45, ndl);
-        vec3 warmRockSun = vec3(0.22, 0.13, 0.03) * diffuseLift;
-        vec3 coolShadow = vec3(0.02, 0.05, 0.12) * (1.0 - smoothstep(-0.15, 0.20, ndl));
-        vec3 skyUnderBounce = vec3(0.08, 0.09, 0.13) * clamp(-vNormalW.y * 0.65 + 0.20, 0.0, 1.0);
-        finalDiffuse += surfaceAlbedo * (warmRockSun + coolShadow + skyUnderBounce) + vSeamGlowColor * vAetherVeinMask * 0.48;
+        vec3 warmRockSun = vec3(0.28, 0.18, 0.06) * diffuseLift;
+        vec3 coolShadow = vec3(0.10, 0.15, 0.24) * (1.0 - smoothstep(-0.15, 0.25, ndl));
+        vec3 skyUnderBounce = vec3(0.14, 0.17, 0.22) * clamp(-vNormalW.y * 0.65 + 0.25, 0.0, 1.0);
+        finalDiffuse += surfaceAlbedo * (warmRockSun + coolShadow + skyUnderBounce) + vSeamGlowColor * vAetherVeinMask * 0.58;
         #endif
       `,
     };

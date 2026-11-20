@@ -1,5 +1,6 @@
 import { configureBuildingMaterial } from './buildingMaterials.js?v=mission1';
 import { buildFlak88Turret } from './flak88.js?v=mission1';
+import { buildSculptedRadar } from './props/dieselpunkStructures.js?v=mission1';
 export const BUILDING_DEFINITIONS = Object.freeze({
   generator: { name: 'Эфирный генератор', file: 'ether_generator.glb', cost: 30, output: 4, demand: 0, width: 5.42, height: 4.84, depth: 7, detail: '+4 энергии · ремонт острова' },
   turret: { name: 'Зенитная установка', file: 'flak_turret.glb', cost: 35, output: 0, demand: 2, width: 7, height: 3.1, depth: 4.37, detail: '−2 энергии · защита острова' },
@@ -247,6 +248,14 @@ export class IslandConstruction {
     if (building.type === 'turret') {
       const rig = buildFlak88Turret(this.scene, `builtFlak88_${this.buildings.indexOf(building)}`, building.node, new BABYLON.Vector3(0, 0.32, 0), 0, this.shadowGenerator);
       building.flakRig = rig;
+      fallback.dispose(); fallbackMat.dispose(); building.loaded = true;
+      return;
+    }
+    if (building.type === 'radar') {
+      const rad = buildSculptedRadar(this.scene, `builtRadar_${this.buildings.indexOf(building)}`, building.node, new BABYLON.Vector3(0, 0.0, 0), this.shadowGenerator);
+      rad.root.scaling.setAll(0.76);
+      rad.rotor.name = 'radarRotor'; // picked up automatically by WorldMotion
+      building.radarRig = rad;
       fallback.dispose(); fallbackMat.dispose(); building.loaded = true;
       return;
     }

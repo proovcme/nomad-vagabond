@@ -1,15 +1,14 @@
-import { createRustedMetalTexture } from './textures.js?v=mission1';
+/**
+ * Sculpted Interbellum / Dieselpunk Anti-Aircraft Gun ("Зенитная пушка"):
+ * - Zero boxy cubes: fluted CreateLathe pedestal, tubular outriggers, curved cast-armor wings,
+ *   wide open-top elevation slot + rotating gun mantlet so the barrel NEVER clips through the shield!
+ * - Weathered iron PBR texture + burnished copper hydraulics + tarnished brass handwheels & muzzle brake.
+ */
 
 function c3(hex) {
   return BABYLON.Color3.FromHexString(hex);
 }
 
-/**
- * Builds an authentic WWII 8.8cm FlaK 36/37 ("Flak 88") anti-aircraft gun
- * with cruciform outrigger legs, turntable pedestal, sloped gun shield,
- * dual recoil recuperator cylinders, long tapered barrel, and animated
- * yaw/pitch/recoil nodes.
- */
 export function buildFlak88Turret(scene, name, parent, pos = new BABYLON.Vector3(0, 0, 0), rotY = 0, shadowGen = null) {
   const B = BABYLON;
   const root = new B.TransformNode(`${name}_root`, scene);
@@ -18,49 +17,39 @@ export function buildFlak88Turret(scene, name, parent, pos = new BABYLON.Vector3
   root.rotation.y = rotY;
 
   const isNull = scene.getEngine() instanceof B.NullEngine;
-  let tex = null;
+  let ironTex = null;
   if (!isNull) {
-    tex = createRustedMetalTexture(scene, [88, 90, 82]);
-    tex.albedoTex.uScale = tex.albedoTex.vScale = 2.0;
-    tex.bumpTex.uScale = tex.bumpTex.vScale = 2.0;
+    if (!scene._sharedWeatheredIronTex) {
+      const t = new B.Texture('./assets/textures/nomad/weathered-iron-v2.jpg', scene);
+      t.uScale = t.vScale = 2.5;
+      scene._sharedWeatheredIronTex = t;
+    }
+    ironTex = scene._sharedWeatheredIronTex;
   }
 
-  // Feldgrau matte armor paint
   const armorMat = new B.PBRMaterial(`${name}_armorMat`, scene);
-  armorMat.albedoColor = c3('#575950');
-  armorMat.metallic = 0.28;
-  armorMat.roughness = 0.72;
-  if (tex) {
-    armorMat.albedoTexture = tex.albedoTex;
-    armorMat.bumpTexture = tex.bumpTex;
-    armorMat.bumpTexture.level = 1.25;
-  }
+  armorMat.albedoColor = c3('#595e54');
+  armorMat.metallic = 0.42;
+  armorMat.roughness = 0.58;
+  if (ironTex) armorMat.albedoTexture = ironTex;
 
-  // Blued gunmetal barrel & breech
   const barrelMat = new B.PBRMaterial(`${name}_barrelMat`, scene);
-  barrelMat.albedoColor = c3('#353736');
-  barrelMat.metallic = 0.74;
-  barrelMat.roughness = 0.38;
-  if (tex) {
-    barrelMat.bumpTexture = tex.bumpTex;
-    barrelMat.bumpTexture.level = 0.9;
-  }
+  barrelMat.albedoColor = c3('#343838');
+  barrelMat.metallic = 0.76;
+  barrelMat.roughness = 0.34;
 
-  // Brass handwheels, optical sight & rings
   const brassMat = new B.PBRMaterial(`${name}_brassMat`, scene);
-  brassMat.albedoColor = c3('#c49c50');
-  brassMat.metallic = 0.84;
-  brassMat.roughness = 0.30;
+  brassMat.albedoColor = c3('#caa050');
+  brassMat.metallic = 0.86;
+  brassMat.roughness = 0.28;
 
-  // Burnished copper hydraulic cylinders & pressure manifold
   const copperMat = new B.PBRMaterial(`${name}_copperMat`, scene);
-  copperMat.albedoColor = c3('#b8683a');
-  copperMat.metallic = 0.82;
-  copperMat.roughness = 0.34;
+  copperMat.albedoColor = c3('#ba6838');
+  copperMat.metallic = 0.84;
+  copperMat.roughness = 0.32;
 
-  // Warm amber pressure dial & optical glow
   const gaugeMat = new B.StandardMaterial(`${name}_gaugeMat`, scene);
-  gaugeMat.emissiveColor = c3('#ffb84d');
+  gaugeMat.emissiveColor = c3('#ffbe55');
   gaugeMat.disableLighting = true;
 
   const reg = (mesh, mat, castShadow = true) => {
@@ -72,10 +61,14 @@ export function buildFlak88Turret(scene, name, parent, pos = new BABYLON.Vector3
     return mesh;
   };
 
-  // 1. Cruciform Outrigger Base (4 heavy steel legs + ground leveling pads)
-  const centerHub = reg(B.MeshBuilder.CreateCylinder(`${name}_hub`, { diameterTop: 2.0, diameterBottom: 2.35, height: 0.52, tessellation: 12 }, scene), armorMat);
+  // 1. Fluted Cast-Iron Cruciform Base & Tubular Outrigger Legs (zero cubes!)
+  const hubProf = [
+    new B.Vector3(1.38, 0.0, 0),
+    new B.Vector3(1.28, 0.28, 0),
+    new B.Vector3(1.05, 0.54, 0),
+  ];
+  const centerHub = reg(B.MeshBuilder.CreateLathe(`${name}_hub`, { shape: hubProf, tessellation: 16 }, scene), armorMat);
   centerHub.parent = root;
-  centerHub.position.y = 0.26;
 
   for (let i = 0; i < 4; i++) {
     const ang = (i * Math.PI) / 2 + Math.PI / 4;
@@ -83,158 +76,153 @@ export function buildFlak88Turret(scene, name, parent, pos = new BABYLON.Vector3
     legNode.parent = root;
     legNode.rotation.y = ang;
 
-    const beam = reg(B.MeshBuilder.CreateBox(`${name}_leg_${i}`, { width: 0.44, height: 0.34, depth: 2.75 }, scene), armorMat);
-    beam.parent = legNode;
-    beam.position.set(0, 0.20, 1.85);
+    const strut = reg(B.MeshBuilder.CreateCylinder(`${name}_leg_${i}`, { diameterTop: 0.28, diameterBottom: 0.42, height: 2.65, tessellation: 10 }, scene), armorMat);
+    strut.parent = legNode;
+    strut.rotation.x = Math.PI * 0.5;
+    strut.position.set(0, 0.22, 1.82);
 
-    // Leveling screw jack & circular footpad at the tip of each outrigger
-    const pad = reg(B.MeshBuilder.CreateCylinder(`${name}_pad_${i}`, { diameter: 0.78, height: 0.14, tessellation: 10 }, scene), barrelMat, false);
+    const pad = reg(B.MeshBuilder.CreateCylinder(`${name}_pad_${i}`, { diameterTop: 0.72, diameterBottom: 0.88, height: 0.16, tessellation: 12 }, scene), barrelMat, false);
     pad.parent = legNode;
-    pad.position.set(0, 0.07, 3.15);
+    pad.position.set(0, 0.08, 3.12);
 
-    const jack = reg(B.MeshBuilder.CreateCylinder(`${name}_jack_${i}`, { diameter: 0.22, height: 0.56, tessellation: 8 }, scene), brassMat, false);
+    const jack = reg(B.MeshBuilder.CreateCylinder(`${name}_jack_${i}`, { diameter: 0.22, height: 0.58, tessellation: 10 }, scene), brassMat, false);
     jack.parent = legNode;
-    jack.position.set(0, 0.36, 3.15);
+    jack.position.set(0, 0.38, 3.12);
   }
 
   // 2. Rotating Turntable Pedestal (yawNode)
   const yawNode = new B.TransformNode(`${name}_yaw`, scene);
   yawNode.parent = root;
-  yawNode.position.y = 0.52;
+  yawNode.position.y = 0.54;
 
-  const ring = reg(B.MeshBuilder.CreateCylinder(`${name}_ring`, { diameter: 1.95, height: 0.24, tessellation: 16 }, scene), barrelMat);
+  const ring = reg(B.MeshBuilder.CreateTorus(`${name}_ring`, { diameter: 1.98, thickness: 0.22, tessellation: 20 }, scene), brassMat);
   ring.parent = yawNode;
-  ring.position.y = 0.12;
+  ring.position.y = 0.08;
 
-  const pedestal = reg(B.MeshBuilder.CreateCylinder(`${name}_pedestal`, { diameterTop: 1.05, diameterBottom: 1.48, height: 1.15, tessellation: 12 }, scene), armorMat);
+  const pedProf = [
+    new B.Vector3(0.92, 0.0, 0),
+    new B.Vector3(0.76, 0.35, 0),
+    new B.Vector3(0.62, 1.15, 0),
+    new B.Vector3(0.74, 1.32, 0),
+  ];
+  const pedestal = reg(B.MeshBuilder.CreateLathe(`${name}_pedestal`, { shape: pedProf, tessellation: 16 }, scene), armorMat);
   pedestal.parent = yawNode;
-  pedestal.position.y = 0.78;
 
-  // Twin side trunnion cheeks supporting the elevating cradle
-  for (const sx of [-0.54, 0.54]) {
-    const cheek = reg(B.MeshBuilder.CreateBox(`${name}_cheek_${sx}`, { width: 0.20, height: 1.05, depth: 0.85 }, scene), armorMat);
-    cheek.parent = yawNode;
-    cheek.position.set(sx, 1.55, 0.05);
+  // Curved cast-iron trunnion yokes supporting the elevating barrel (wide clearance: x = ±0.64!)
+  for (const sx of [-0.64, 0.64]) {
+    const yoke = reg(B.MeshBuilder.CreateTube(`${name}_yoke_${sx}`, {
+      path: [new B.Vector3(sx * 0.75, 0.95, 0.05), new B.Vector3(sx, 1.38, 0.02), new B.Vector3(sx, 1.82, 0.0)],
+      radius: 0.14, tessellation: 8, cap: B.Mesh.CAP_ALL,
+    }, scene), armorMat);
+    yoke.parent = yawNode;
   }
 
-  // Sloped WWII Gun Shield (left & right armor plates with central gun slot + angled side wings)
-  for (const sx of [-0.92, 0.92]) {
-    const plate = reg(B.MeshBuilder.CreateBox(`${name}_shield_${sx}`, { width: 1.18, height: 1.85, depth: 0.10 }, scene), armorMat);
-    plate.parent = yawNode;
-    plate.position.set(sx, 1.58, -0.78);
-    plate.rotation.x = 0.22;
+  // Curved Cast-Armor Side Shields with WIDE 1.16m open-top slot (NO top brow -> barrel NEVER clips!)
+  for (const sx of [-1, 1]) {
+    const shieldCurve = [];
+    for (let k = 0; k <= 6; k++) {
+      const t = k / 6;
+      const x = sx * (0.68 + t * 0.96);
+      const z = -0.92 + t * t * 0.58;
+      shieldCurve.push(new B.Vector3(x, 0, z));
+    }
+    const wingMesh = reg(B.MeshBuilder.CreateRibbon(`${name}_curvedShield_${sx}`, {
+      pathArray: [
+        shieldCurve.map((p) => new B.Vector3(p.x, 0.58, p.z + 0.16)),
+        shieldCurve.map((p) => new B.Vector3(p.x, 1.48, p.z)),
+        shieldCurve.map((p) => new B.Vector3(p.x, 2.28, p.z - 0.14)),
+      ],
+      sideOrientation: B.Mesh.DOUBLESIDE,
+    }, scene), armorMat);
+    wingMesh.parent = yawNode;
 
-    const wing = reg(B.MeshBuilder.CreateBox(`${name}_wing_${sx}`, { width: 0.62, height: 1.65, depth: 0.09 }, scene), armorMat);
-    wing.parent = yawNode;
-    wing.position.set(sx * 1.68, 1.52, -0.56);
-    wing.rotation.y = sx > 0 ? -0.45 : 0.45;
-    wing.rotation.x = 0.18;
-  }
-  // Upper shield brow over the barrel slot
-  const brow = reg(B.MeshBuilder.CreateBox(`${name}_shieldBrow`, { width: 0.72, height: 0.36, depth: 0.10 }, scene), armorMat);
-  brow.parent = yawNode;
-  brow.position.set(0, 2.34, -0.92);
-  brow.rotation.x = 0.22;
-
-  // Gunner seat, elevation/traverse brass handwheels & optical AA sight
-  const seatPost = reg(B.MeshBuilder.CreateCylinder(`${name}_seatPost`, { diameter: 0.14, height: 0.75, tessellation: 8 }, scene), barrelMat, false);
-  seatPost.parent = yawNode;
-  seatPost.position.set(0.88, 0.65, 0.52);
-  const seatPan = reg(B.MeshBuilder.CreateCylinder(`${name}_seatPan`, { diameter: 0.56, height: 0.08, tessellation: 10 }, scene), armorMat, false);
-  seatPan.parent = yawNode;
-  seatPan.position.set(0.88, 1.04, 0.52);
-
-  for (const [wx, wy, wz] of [[0.72, 1.42, 0.22], [-0.72, 1.48, 0.18]]) {
-    const wheel = reg(B.MeshBuilder.CreateTorus(`${name}_wheel_${wx}`, { diameter: 0.42, thickness: 0.055, tessellation: 12 }, scene), brassMat, false);
-    wheel.parent = yawNode;
-    wheel.position.set(wx, wy, wz);
-    wheel.rotation.z = Math.PI * 0.5;
+    // Brass top beading along the curved shield edge
+    const bead = reg(B.MeshBuilder.CreateTube(`${name}_shieldBead_${sx}`, {
+      path: shieldCurve.map((p) => new B.Vector3(p.x, 2.29, p.z - 0.14)),
+      radius: 0.045, tessellation: 6,
+    }, scene), brassMat, false);
+    bead.parent = yawNode;
   }
 
-  // Dieselpunk Turntable Accents: Brass Shield Trim, Copper Pressure Tank, Exhaust Stack & Amber Pressure Dial
-  for (const sx of [-0.92, 0.92]) {
-    const trim = reg(B.MeshBuilder.CreateBox(`${name}_shieldTrim_${sx}`, { width: 1.22, height: 0.10, depth: 0.14 }, scene), brassMat, false);
-    trim.parent = yawNode;
-    trim.position.set(sx, 2.48, -0.96);
-    trim.rotation.x = 0.22;
-  }
-  const hydroTank = reg(B.MeshBuilder.CreateCylinder(`${name}_hydroTank`, { diameter: 0.42, height: 1.05, tessellation: 10 }, scene), copperMat, false);
-  hydroTank.parent = yawNode;
-  hydroTank.position.set(-0.82, 1.12, 0.62);
-  hydroTank.rotation.x = Math.PI * 0.5;
-  const exhaustPipe = reg(B.MeshBuilder.CreateCylinder(`${name}_exhaust`, { diameterTop: 0.14, diameterBottom: 0.18, height: 1.45, tessellation: 8 }, scene), barrelMat, false);
-  exhaustPipe.parent = yawNode;
-  exhaustPipe.position.set(-0.98, 1.85, 0.88);
-  exhaustPipe.rotation.x = -0.18;
-  const dialFace = reg(B.MeshBuilder.CreateCylinder(`${name}_dial`, { diameter: 0.22, height: 0.06, tessellation: 10 }, scene), gaugeMat, false);
-  dialFace.parent = yawNode;
-  dialFace.position.set(0.62, 1.65, 0.36);
-  dialFace.rotation.x = Math.PI * 0.5;
+  // Gunner seat, brass elevation handwheels, copper pressure tank, curved exhaust & glowing amber dial
+  const seatPost = reg(B.MeshBuilder.CreateCylinder(`${name}_seatPost`, { diameter: 0.13, height: 0.78, tessellation: 8 }, scene), barrelMat, false);
+  seatPost.parent = yawNode; seatPost.position.set(0.88, 0.65, 0.54);
+  const seatPan = reg(B.MeshBuilder.CreateSphere(`${name}_seatPan`, { diameter: 0.58, segments: 10, slice: 0.4 }, scene), armorMat, false);
+  seatPan.parent = yawNode; seatPan.position.set(0.88, 1.06, 0.54); seatPan.rotation.x = Math.PI;
 
-  // 3. Elevating Cradle (pitchNode: rotates around X to aim skyward up to +80 deg!)
+  for (const [wx, wy, wz] of [[0.78, 1.44, 0.22], [-0.78, 1.48, 0.18]]) {
+    const wheel = reg(B.MeshBuilder.CreateTorus(`${name}_wheel_${wx}`, { diameter: 0.44, thickness: 0.055, tessellation: 14 }, scene), brassMat, false);
+    wheel.parent = yawNode; wheel.position.set(wx, wy, wz); wheel.rotation.z = Math.PI * 0.5;
+  }
+  const hydroTank = reg(B.MeshBuilder.CreateCylinder(`${name}_hydroTank`, { diameter: 0.44, height: 1.05, tessellation: 12 }, scene), copperMat, false);
+  hydroTank.parent = yawNode; hydroTank.position.set(-0.86, 1.05, 0.64); hydroTank.rotation.x = Math.PI * 0.5;
+
+  const exhaust = reg(B.MeshBuilder.CreateTube(`${name}_exhaust`, {
+    path: [new B.Vector3(-0.86, 1.05, 0.92), new B.Vector3(-1.05, 1.45, 1.05), new B.Vector3(-1.08, 2.15, 1.15)],
+    radius: 0.085, tessellation: 8, cap: B.Mesh.CAP_ALL,
+  }, scene), barrelMat, false);
+  exhaust.parent = yawNode;
+
+  const dialFace = reg(B.MeshBuilder.CreateCylinder(`${name}_dial`, { diameter: 0.22, height: 0.05, tessellation: 12 }, scene), gaugeMat, false);
+  dialFace.parent = yawNode; dialFace.position.set(0.68, 1.66, 0.34); dialFace.rotation.x = Math.PI * 0.5;
+
+  // 3. Elevating Cradle (pitchNode: rotates cleanly up to +82° inside the open slot!)
   const pitchNode = new B.TransformNode(`${name}_pitch`, scene);
   pitchNode.parent = yawNode;
-  pitchNode.position.set(0, 1.78, 0.0);
-  pitchNode.rotation.x = 0.38; // Iconic skyward AA resting elevation
+  pitchNode.position.set(0, 1.80, 0.0);
+  pitchNode.rotation.x = 0.38;
 
-  // Armored recoil cradle housing
-  const cradle = reg(B.MeshBuilder.CreateBox(`${name}_cradle`, { width: 0.64, height: 0.62, depth: 2.15 }, scene), armorMat);
-  cradle.parent = pitchNode;
-  cradle.position.set(0, 0, -0.45);
+  // Rounded cast-armor gun mantlet (rotates WITH the barrel so it protects the slot at EVERY elevation!)
+  const mantlet = reg(B.MeshBuilder.CreateCylinder(`${name}_mantlet`, { diameter: 0.96, height: 1.12, tessellation: 14 }, scene), armorMat);
+  mantlet.parent = pitchNode; mantlet.rotation.z = Math.PI * 0.5; mantlet.position.set(0, 0.02, -0.45);
 
-  // Iconic twin copper hydraulic recuperator & recoil cylinders (top & bottom of barrel) + side rotary ammo drum
-  for (const cy of [0.34, -0.30]) {
-    const cyl = reg(B.MeshBuilder.CreateCylinder(`${name}_recup_${cy}`, { diameter: 0.25, height: 2.38, tessellation: 10 }, scene), cy > 0 ? copperMat : barrelMat);
-    cyl.parent = pitchNode;
-    cyl.rotation.x = Math.PI * 0.5;
-    cyl.position.set(0, cy, -0.55);
+  // Twin copper/blued hydraulic recuperator cylinders + brass rotary ammo drum
+  for (const cy of [0.38, -0.32]) {
+    const cyl = reg(B.MeshBuilder.CreateCylinder(`${name}_recup_${cy}`, { diameter: 0.24, height: 2.35, tessellation: 12 }, scene), cy > 0 ? copperMat : barrelMat);
+    cyl.parent = pitchNode; cyl.rotation.x = Math.PI * 0.5; cyl.position.set(0, cy, -0.58);
   }
-  const ammoDrum = reg(B.MeshBuilder.CreateCylinder(`${name}_ammoDrum`, { diameter: 0.62, height: 0.38, tessellation: 12 }, scene), brassMat, false);
-  ammoDrum.parent = pitchNode;
-  ammoDrum.rotation.z = Math.PI * 0.5;
-  ammoDrum.position.set(-0.56, 0.18, 0.32);
+  const ammoDrum = reg(B.MeshBuilder.CreateCylinder(`${name}_ammoDrum`, { diameter: 0.64, height: 0.36, tessellation: 14 }, scene), brassMat, false);
+  ammoDrum.parent = pitchNode; ammoDrum.rotation.z = Math.PI * 0.5; ammoDrum.position.set(-0.56, 0.16, 0.36);
 
-  // Recoiling barrel assembly (slides back along +Z when firing!)
+  // 4. Recoiling Barrel Assembly (slides cleanly along +Z on fire)
   const recoilNode = new B.TransformNode(`${name}_recoil`, scene);
   recoilNode.parent = pitchNode;
 
-  // Breech block & loading tray
-  const breech = reg(B.MeshBuilder.CreateBox(`${name}_breech`, { width: 0.54, height: 0.52, depth: 0.85 }, scene), barrelMat);
-  breech.parent = recoilNode;
-  breech.position.set(0, 0.02, 0.92);
+  // Rounded cylindrical breech block (no ugly square box!)
+  const breech = reg(B.MeshBuilder.CreateCylinder(`${name}_breech`, { diameter: 0.58, height: 0.92, tessellation: 12 }, scene), barrelMat);
+  breech.parent = recoilNode; breech.rotation.x = Math.PI * 0.5; breech.position.set(0, 0.02, 0.88);
+  const breechCap = reg(B.MeshBuilder.CreateSphere(`${name}_breechCap`, { diameter: 0.58, segments: 10 }, scene), brassMat, false);
+  breechCap.parent = recoilNode; breechCap.position.set(0, 0.02, 1.32);
 
-  // Heavy rear jacket of the barrel with cooling jacket rings
-  const barrelRear = reg(B.MeshBuilder.CreateCylinder(`${name}_barrelRear`, { diameterTop: 0.28, diameterBottom: 0.38, height: 2.1, tessellation: 12 }, scene), barrelMat);
-  barrelRear.parent = recoilNode;
-  barrelRear.rotation.x = -Math.PI * 0.5;
-  barrelRear.position.set(0, 0.02, -1.35);
+  // Multi-stage tapered rifled barrel with copper cooling fins & sculpted Lathe muzzle brake
+  const barrelRear = reg(B.MeshBuilder.CreateCylinder(`${name}_barrelRear`, { diameterTop: 0.28, diameterBottom: 0.40, height: 2.15, tessellation: 14 }, scene), barrelMat);
+  barrelRear.parent = recoilNode; barrelRear.rotation.x = -Math.PI * 0.5; barrelRear.position.set(0, 0.02, -1.35);
   for (const fz of [-1.05, -1.45, -1.85]) {
-    const fin = reg(B.MeshBuilder.CreateCylinder(`${name}_coolFin_${fz}`, { diameter: 0.44, height: 0.08, tessellation: 10 }, scene), copperMat, false);
-    fin.parent = recoilNode;
-    fin.rotation.x = -Math.PI * 0.5;
-    fin.position.set(0, 0.02, fz);
+    const fin = reg(B.MeshBuilder.CreateTorus(`${name}_coolFin_${fz}`, { diameter: 0.42, thickness: 0.07, tessellation: 14 }, scene), copperMat, false);
+    fin.parent = recoilNode; fin.rotation.x = Math.PI * 0.5; fin.position.set(0, 0.02, fz);
   }
 
-  // Long slender forward rifled barrel
-  const barrelFront = reg(B.MeshBuilder.CreateCylinder(`${name}_barrelFront`, { diameterTop: 0.19, diameterBottom: 0.27, height: 3.35, tessellation: 12 }, scene), barrelMat);
-  barrelFront.parent = recoilNode;
-  barrelFront.rotation.x = -Math.PI * 0.5;
-  barrelFront.position.set(0, 0.02, -4.05);
+  const barrelFront = reg(B.MeshBuilder.CreateCylinder(`${name}_barrelFront`, { diameterTop: 0.19, diameterBottom: 0.28, height: 3.35, tessellation: 14 }, scene), barrelMat);
+  barrelFront.parent = recoilNode; barrelFront.rotation.x = -Math.PI * 0.5; barrelFront.position.set(0, 0.02, -4.05);
 
-  // Brass reinforcement collar & heavy fluted muzzle brake
-  const collar = reg(B.MeshBuilder.CreateCylinder(`${name}_collar`, { diameter: 0.33, height: 0.18, tessellation: 12 }, scene), brassMat, false);
-  collar.parent = recoilNode;
-  collar.rotation.x = -Math.PI * 0.5;
-  collar.position.set(0, 0.02, -2.42);
+  const collar = reg(B.MeshBuilder.CreateTorus(`${name}_collar`, { diameter: 0.34, thickness: 0.08, tessellation: 14 }, scene), brassMat, false);
+  collar.parent = recoilNode; collar.rotation.x = Math.PI * 0.5; collar.position.set(0, 0.02, -2.42);
 
-  const muzzleRing = reg(B.MeshBuilder.CreateCylinder(`${name}_muzzleBrake`, { diameterTop: 0.34, diameterBottom: 0.24, height: 0.44, tessellation: 10 }, scene), brassMat, false);
-  muzzleRing.parent = recoilNode;
-  muzzleRing.rotation.x = -Math.PI * 0.5;
-  muzzleRing.position.set(0, 0.02, -5.75);
+  const muzzleBrake = reg(B.MeshBuilder.CreateLathe(`${name}_muzzleBrake`, {
+    shape: [
+      new B.Vector3(0.11, 0.0, 0),
+      new B.Vector3(0.18, 0.12, 0),
+      new B.Vector3(0.14, 0.24, 0),
+      new B.Vector3(0.21, 0.38, 0),
+      new B.Vector3(0.17, 0.48, 0),
+    ],
+    tessellation: 14,
+  }, scene), brassMat, false);
+  muzzleBrake.parent = recoilNode; muzzleBrake.rotation.x = -Math.PI * 0.5; muzzleBrake.position.set(0, 0.02, -5.65);
 
   const muzzleNode = new B.TransformNode(`${name}_muzzle`, scene);
   muzzleNode.parent = recoilNode;
-  muzzleNode.position.set(0, 0.02, -6.05);
+  muzzleNode.position.set(0, 0.02, -6.15);
 
   return {
     root,
