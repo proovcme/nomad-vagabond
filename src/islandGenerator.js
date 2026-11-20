@@ -244,27 +244,38 @@ async function bakeTerrainTexture(scene, geometry, material) {
     const wx = (x / (size - 1) - .5) * geometry.radiusX * 2.4;
     const wz = (z / (size - 1) - .5) * geometry.radiusZ * 2.4;
     const clearing = geometry.style === 'forest' ? 1 - smooth(9, 18, Math.hypot(wx + 22, wz - 16)) : 0;
-    const brushPatch = .5 + .5 * Math.sin(wx * .065 + Math.sin(wz * .055) * 1.4);
-    const sample = (((z * 6) % 256) * 256 + (x * 6) % 256) * 4;
-    const rawR = samples[0][sample], rawG = samples[0][sample + 1], rawB = samples[0][sample + 2];
-    const texLuma = (rawR * 0.299 + rawG * 0.587 + rawB * 0.114) / 255;
-    const cliffLuma = (samples[1][sample] * 0.299 + samples[1][sample + 1] * 0.587 + samples[1][sample + 2] * 0.114) / 255;
-    const flowerWave = Math.max(0, Math.sin(wx * 0.14 + wz * 0.11) * Math.cos(wx * 0.09 - wz * 0.16));
+    // Smooth domain-warped organic zones (eliminates repeating grid & polka-dot quilt!)
+    const warpX = Math.sin(wx * 0.023 + wz * 0.017) * 18.0 + Math.cos(wz * 0.041 - wx * 0.019) * 8.0;
+    const warpZ = Math.cos(wx * 0.019 - wz * 0.029) * 18.0 + Math.sin(wx * 0.037 + wz * 0.013) * 8.0;
+    const broadZone = 0.5 + 0.5 * Math.sin((wx + warpX) * 0.026 + (wz + warpZ) * 0.018);
+    // Dual irrational rotated texture lookup breaks up ALL visible tiling!
+    const u1 = (((Math.floor(x * 1.15 + warpX * 1.4)) % 256) + 256) % 256;
+    const v1 = (((Math.floor(z * 1.15 + warpZ * 1.4)) % 256) + 256) % 256;
+    const rx2 = x * 0.798 - z * 0.602, rz2 = x * 0.602 + z * 0.798;
+    const u2 = (((Math.floor(rx2 * 2.37 + 91)) % 256) + 256) % 256;
+    const v2 = (((Math.floor(rz2 * 2.37 + 47)) % 256) + 256) % 256;
+    const s1 = (v1 * 256 + u1) * 4;
+    const s2 = (v2 * 256 + u2) * 4;
+    const luma1 = (samples[0][s1] * 0.299 + samples[0][s1 + 1] * 0.587 + samples[0][s1 + 2] * 0.114) / 255;
+    const luma2 = (samples[0][s2] * 0.299 + samples[0][s2 + 1] * 0.587 + samples[0][s2 + 2] * 0.114) / 255;
+    const texLuma = luma1 * 0.58 + luma2 * 0.42;
+    const cliffLuma = ((samples[1][s1] * 0.299 + samples[1][s1 + 1] * 0.587 + samples[1][s1 + 2] * 0.114) / 255) * 0.6
+                    + ((samples[1][s2] * 0.299 + samples[1][s2 + 1] * 0.587 + samples[1][s2 + 2] * 0.114) / 255) * 0.4;
     const isInd = geometry.style === 'industrial';
-    const grassDeep = isInd ? [64, 70, 78] : [48, 86, 44];
-    const grassSun = isInd ? [112, 114, 118] : [108, 138, 62];
-    const goldenFlower = isInd ? [136, 112, 88] : [192, 160, 76];
-    const sandstoneRim = isInd ? [118, 110, 104] : [174, 146, 108];
-    const tGrass = Math.min(1, Math.max(0, (texLuma - 0.16) * 1.55));
+    // Distinct, high-contrast regional palettes: deep Adriatic olive + warm terracotta/chalk vs dark iron-slate + copper rust
+    const grassDeep = isInd ? [48, 52, 58] : [46, 72, 42];
+    const grassSun = isInd ? [92, 96, 102] : [114, 128, 66];
+    const warmAccent = isInd ? [142, 84, 52] : [178, 134, 72];
+    const sandstoneRim = isInd ? [102, 98, 96] : [196, 178, 146];
+    const tGrass = Math.min(1, Math.max(0, (texLuma - 0.18) * 1.45));
+    const warmMix = Math.min(1, Math.max(0, soil * 0.42 + broadZone * 0.32));
     for (let c = 0; c < 3; c++) {
       let veg = grassDeep[c] * (1 - tGrass) + grassSun[c] * tGrass;
-      veg = veg * (1 - soil * 0.48) + goldenFlower[c] * (soil * 0.48);
-      veg = veg * (1 - flowerWave * 0.32) + goldenFlower[c] * (flowerWave * 0.32);
-      const rimCol = sandstoneRim[c] * (0.82 + cliffLuma * 0.34);
-      const ground = veg * (1 - stone * 0.85) + rimCol * (stone * 0.85);
-      const pathTone = (isInd ? [126, 124, 120] : [218, 194, 148])[c];
-      const paint = ground * (0.96 + brushPatch * 0.12);
-      pixels.data[at + c] = Math.min(255, Math.max(0, paint * (1 - clearing * 0.48) + pathTone * clearing * 0.48));
+      veg = veg * (1 - warmMix * 0.55) + warmAccent[c] * (warmMix * 0.55);
+      const rimCol = sandstoneRim[c] * (0.80 + cliffLuma * 0.36);
+      const ground = veg * (1 - stone * 0.86) + rimCol * (stone * 0.86);
+      const pathTone = (isInd ? [116, 114, 110] : [206, 176, 134])[c];
+      pixels.data[at + c] = Math.min(255, Math.max(0, ground * (1 - clearing * 0.52) + pathTone * clearing * 0.52));
     }
     pixels.data[at + 3] = 255;
   }

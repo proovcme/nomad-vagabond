@@ -83,11 +83,11 @@ class RockProjection extends BABYLON.MaterialPluginBase {
         float cliffLuma = dot(liftedRock, vec3(0.299, 0.587, 0.114));
         float crackMask = smoothstep(0.14, 0.52, cliffLuma);
 
-        // Large-scale 3D geological patch variation (dark slate veins vs pale granite faces vs rust streaks)
-        float macroPatch = 0.5 + 0.5 * sin(rockWorld.x * 0.048 + rockWorld.z * 0.036 + colMacro.r * 3.5)
-                                     * cos(rockWorld.y * 0.062 - rockWorld.x * 0.028 + colMacro.g * 3.0);
-        float mineralStreak = smoothstep(0.58, 0.88, 0.5 + 0.5 * sin(rockWorld.x * 0.14 - rockWorld.z * 0.11 + colDetail.b * 4.5));
-        float rainStreak = 0.86 + 0.14 * sin(rockWorld.x * 0.65 + rockWorld.z * 0.55 + colDetail.r * 5.0);
+        // Broad non-periodic geological variation (domain-warped strata & elevation bands — ZERO patchwork quilt!)
+        float geoWarp = colMacro.r * 5.2 + colDetail.g * 2.1;
+        float macroPatch = smoothstep(0.18, 0.82, 0.5 + 0.5 * sin(rockWorld.y * 0.045 + rockWorld.x * 0.016 + geoWarp));
+        float mineralStreak = smoothstep(0.62, 0.90, 0.5 + 0.5 * sin(rockWorld.y * 0.19 - rockWorld.z * 0.022 + colMacro.b * 4.2));
+        float rainStreak = 0.88 + 0.12 * sin(rockWorld.x * 0.34 + rockWorld.z * 0.28 + colDetail.r * 4.0);
         vRockCreviceAO = mix(0.42, 1.08, crackMask) * rainStreak;
         vRockMicroRelief = dot(colDetail - colMacro, vec3(0.333)) * 1.45;
         vRockStrataSlope = cos(rockWorld.y * 0.54 + cliffLuma * 5.2);
@@ -169,21 +169,21 @@ class RockProjection extends BABYLON.MaterialPluginBase {
           // Cool atmospheric slate roots underneath (never crushed black)
           rockPaint = mix(rockPaint, vec3(0.22, 0.28, 0.38), clamp(overhang * 0.38 + rootDepth * 0.28, 0.0, 0.52));
         } else if (rockStyleParams.x > 0.5) {
-          // INDUSTRIAL FOUNDRY ('industrial'): Weathered dark iron-slate basalt, scorched copper-rust bands & slate undersides
-          vec3 creviceCol = vec3(0.14, 0.17, 0.22);
-          vec3 basaltBody = mix(vec3(0.34, 0.37, 0.42), vec3(0.66, 0.62, 0.58), cliffLuma);
+          // INDUSTRIAL FOUNDRY ('industrial'): Deep dark charcoal-basalt cliffs with bold oxidized copper-rust strata
+          vec3 creviceCol = vec3(0.10, 0.12, 0.16);
+          vec3 basaltBody = mix(vec3(0.24, 0.27, 0.32), vec3(0.54, 0.52, 0.50), cliffLuma);
           rockPaint = mix(creviceCol, basaltBody, crackMask);
-          rockPaint = mix(rockPaint, vec3(0.68, 0.40, 0.24), mineralStreak * 0.34);
-          rockPaint = mix(rockPaint, liftedRock * vec3(0.84, 0.82, 0.84), 0.42) * strataWave;
-          rockPaint = mix(rockPaint, vec3(0.18, 0.22, 0.28), overhang * 0.40);
+          rockPaint = mix(rockPaint, vec3(0.76, 0.38, 0.18), mineralStreak * 0.44);
+          rockPaint = mix(rockPaint, liftedRock * vec3(0.76, 0.75, 0.78), 0.38) * strataWave;
+          rockPaint = mix(rockPaint, vec3(0.14, 0.17, 0.22), overhang * 0.44);
         } else {
-          // FOREST SANCTUARY ('forest'): Bright alpine limestone-granite cliffs with vivid emerald moss & hanging ivy shelves
-          vec3 creviceCol = vec3(0.20, 0.27, 0.36);
-          vec3 slateTone = mix(vec3(0.46, 0.52, 0.56), vec3(0.80, 0.82, 0.78), cliffLuma);
-          vec3 warmStone = mix(vec3(0.64, 0.58, 0.48), vec3(0.92, 0.86, 0.72), cliffLuma);
+          // FOREST SANCTUARY ('forest'): High-contrast sunlit warm chalk-limestone cliffs with lush olive-terracotta turf
+          vec3 creviceCol = vec3(0.24, 0.26, 0.30);
+          vec3 slateTone = mix(vec3(0.56, 0.56, 0.52), vec3(0.86, 0.84, 0.76), cliffLuma);
+          vec3 warmStone = mix(vec3(0.74, 0.64, 0.50), vec3(0.96, 0.90, 0.76), cliffLuma);
           vec3 limestoneBody = mix(slateTone, warmStone, macroPatch);
           rockPaint = mix(creviceCol, limestoneBody, crackMask);
-          rockPaint = mix(rockPaint, liftedRock * vec3(0.96, 0.96, 0.92), 0.42) * strataWave;
+          rockPaint = mix(rockPaint, liftedRock * vec3(1.02, 0.98, 0.90), 0.38) * strataWave;
           // Natural photogrammetry alpine turf with exposed limestone outcrops
           float fTurfHeight = topLedge * 0.92 + mossSpill * 0.48 + (grassLuma - cliffLuma) * 0.38;
           float fTurfMask = smoothstep(0.32, 0.54, fTurfHeight) * (1.0 - smoothstep(0.72, 0.90, cliffLuma) * 0.55);

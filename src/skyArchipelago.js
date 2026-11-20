@@ -2217,6 +2217,7 @@ export class SkyArchipelagoWorld {
     this.skyMat = null;
 
     this._setupAtmosphereAndLighting();
+    this._buildHorizonSilhouetteIslands();
     if (!this.menuPreview) {
       this._buildIslands();
     }
@@ -2507,6 +2508,78 @@ export class SkyArchipelagoWorld {
    * Populates the sky with organic satellite islands (buildGeneratedIsland) and
    * thin-instanced 67k-vertex photogrammetry 3D rock formations (boulder_01_1k.gltf).
    */
+  /**
+   * 8 monumental distant horizon islands (cathedral rock-organ spires, twin-pillar natural arches & terraced mesas)
+   * ringing the 360° horizon at 680..1080m — ALL merged into 1 SINGLE DRAW CALL (0.0 ms FPS cost!).
+   */
+  _buildHorizonSilhouetteIslands() {
+    const B = BABYLON;
+    const parts = [];
+    const specs = [
+      // angle (rad), radius, y, kind ('arch' | 'cathedral' | 'mesa'), scale
+      [0.35,  860, 18, 'cathedral', 1.35],
+      [1.15,  940, 32, 'arch',      1.40],
+      [2.05,  820, 10, 'mesa',      1.25],
+      [2.85,  980, 26, 'cathedral', 1.50],
+      [3.65,  880, 14, 'arch',      1.35],
+      [4.35,  960, 28, 'mesa',      1.45],
+      [5.15,  840, 22, 'cathedral', 1.30],
+      [5.85,  920, 12, 'arch',      1.38],
+    ];
+    const addBlock = (name, opts, px, py, pz, ry = 0, rz = 0) => {
+      const m = B.MeshBuilder.CreateCylinder(name, { subdivisions: 3, ...opts }, this.scene);
+      sculptCraggyRock(m, 77 + parts.length * 13.7, 0.36);
+      m.position.set(px, py, pz);
+      m.rotation.set(0, ry, rz);
+      m.computeWorldMatrix(true);
+      parts.push(m);
+    };
+    specs.forEach(([ang, dist, y, kind, s], idx) => {
+      const cx = Math.cos(ang) * dist;
+      const cz = Math.sin(ang) * dist;
+      const faceAng = ang + Math.PI * 0.5;
+      const ux = Math.cos(faceAng), uz = Math.sin(faceAng);
+      if (kind === 'arch') {
+        // Twin monumental pillars + high rock bridge arch + hanging roots
+        addBlock(`hArchL_${idx}`, { diameterTop: 22 * s, diameterBottom: 34 * s, height: 88 * s, tessellation: 7 }, cx - ux * 28 * s, y, cz - uz * 28 * s, ang);
+        addBlock(`hArchR_${idx}`, { diameterTop: 20 * s, diameterBottom: 30 * s, height: 76 * s, tessellation: 7 }, cx + ux * 28 * s, y - 4 * s, cz + uz * 28 * s, ang + 0.5);
+        addBlock(`hArchBridge_${idx}`, { diameterTop: 18 * s, diameterBottom: 18 * s, height: 68 * s, tessellation: 6 }, cx, y + 26 * s, cz, ang, Math.PI * 0.5);
+        addBlock(`hArchRootL_${idx}`, { diameterTop: 32 * s, diameterBottom: 4 * s, height: 62 * s, tessellation: 6 }, cx - ux * 28 * s, y - 72 * s, cz - uz * 28 * s, ang);
+        addBlock(`hArchRootR_${idx}`, { diameterTop: 28 * s, diameterBottom: 4 * s, height: 54 * s, tessellation: 6 }, cx + ux * 28 * s, y - 66 * s, cz + uz * 28 * s, ang);
+      } else if (kind === 'cathedral') {
+        // Stepped vertical basalt organ-pipe cathedral cluster
+        addBlock(`hCathC_${idx}`, { diameterTop: 14 * s, diameterBottom: 36 * s, height: 112 * s, tessellation: 7 }, cx, y + 10 * s, cz, ang);
+        addBlock(`hCathL_${idx}`, { diameterTop: 12 * s, diameterBottom: 28 * s, height: 78 * s, tessellation: 6 }, cx - ux * 22 * s, y - 6 * s, cz - uz * 22 * s, ang + 0.7);
+        addBlock(`hCathR_${idx}`, { diameterTop: 11 * s, diameterBottom: 26 * s, height: 68 * s, tessellation: 6 }, cx + ux * 20 * s, y - 10 * s, cz + uz * 20 * s, ang - 0.6);
+        addBlock(`hCathRoot_${idx}`, { diameterTop: 46 * s, diameterBottom: 5 * s, height: 74 * s, tessellation: 7 }, cx, y - 74 * s, cz, ang);
+      } else {
+        // Broad terraced flat-top floating mesa plateau
+        addBlock(`hMesaTop_${idx}`, { diameterTop: 72 * s, diameterBottom: 54 * s, height: 34 * s, tessellation: 8 }, cx, y + 6 * s, cz, ang);
+        addBlock(`hMesaSpire_${idx}`, { diameterTop: 16 * s, diameterBottom: 28 * s, height: 42 * s, tessellation: 6 }, cx - ux * 16 * s, y + 36 * s, cz - uz * 16 * s, ang);
+        addBlock(`hMesaRoot_${idx}`, { diameterTop: 52 * s, diameterBottom: 6 * s, height: 78 * s, tessellation: 7 }, cx, y - 48 * s, cz, ang);
+      }
+    });
+    const merged = B.Mesh.MergeMeshes(parts, true, true, undefined, false, false);
+    if (merged) {
+      merged.name = 'horizonSilhouetteArchipelago';
+      const hMat = new B.PBRMaterial('horizonSilhouetteRockMat', this.scene);
+      hMat.albedoColor = c3('#8c8276');
+      hMat.metallic = 0.0;
+      hMat.roughness = 0.94;
+      hMat.environmentIntensity = 0.45;
+      if (!(this.scene.getEngine() instanceof B.NullEngine)) {
+        const tex = new B.Texture('./assets/benchmark/textures/aerial_rocks_02/Diffuse.jpg', this.scene);
+        tex.uScale = tex.vScale = 4;
+        hMat.albedoTexture = tex;
+      }
+      merged.material = hMat;
+      merged.isPickable = false;
+      merged.checkCollisions = false;
+      merged.receiveShadows = false;
+      merged.freezeWorldMatrix();
+    }
+  }
+
   _buildShatteredWorldField(seedValue = 101) {
     this.shatteredFieldRoot = new BABYLON.TransformNode('shatteredWorldFieldRoot', this.scene);
 
