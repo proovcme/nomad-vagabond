@@ -758,24 +758,40 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   const mossRockMat = makeTerrainPBRMaterial(scene, 'vagabondMossRockPBR', 'aerial_grass_rock', 1, 1, '#b8b29e');
   if (!(scene.getEngine() instanceof BABYLON.NullEngine)) mossRockMat.albedoTexture = new BABYLON.Texture('./assets/textures/nomad/autumn-meadow-albedo.png',scene);
   mossRockMat.bumpTexture = null;
-  const concreteMat = makeTerrainPBRMaterial(scene, 'vagConcretePBR', 'anti_slip_concrete', 8, 8, '#968b7a');
-  concreteMat.useMetallnessFromMetallicTextureBlue = false;
-  concreteMat.metallic = 0.04;
-  concreteMat.roughness = 0.86;
-  concreteMat.environmentIntensity = 0.24;
-  if (concreteMat.bumpTexture) concreteMat.bumpTexture.level = 0.85;
-  const runwayMat = makeTerrainPBRMaterial(scene, 'vagRunwayPBR', 'anti_slip_concrete', 14, 5, '#686a6c');
+  // Upgraded sunlit Interbellum riveted concrete-steel deck slabs (replaces dark polka-dot concrete)
+  const concreteMat = new BABYLON.PBRMaterial('vagConcretePBR', scene);
+  concreteMat.albedoColor = c3('#ddd6c8');
+  concreteMat.metallic = 0.14;
+  concreteMat.roughness = 0.72;
+  concreteMat.environmentIntensity = 0.65;
+  if (scene.getEngine().constructor.name !== 'NullEngine') {
+    concreteMat.albedoTexture = makePBRTexture(scene, './assets/textures/nomad/aviation-runway-graphite-v1.jpg', 1, 1, false);
+    concreteMat.bumpTexture = makePBRTexture(scene, './assets/benchmark/textures/anti_slip_concrete/nor_gl.jpg', 3, 3, true);
+    concreteMat.bumpTexture.level = 0.35;
+    const maxAniso = Math.min(8, scene.getEngine()?.getCaps?.().maxAnisotropy || 4);
+    concreteMat.albedoTexture.anisotropicFilteringLevel = maxAniso;
+  }
+
+  const runwayMat = makeTerrainPBRMaterial(scene, 'vagRunwayPBR', 'anti_slip_concrete', 14, 5, '#8a8d90');
   runwayMat.useMetallnessFromMetallicTextureBlue = false;
-  runwayMat.metallic = 0.06;
-  runwayMat.roughness = 0.82;
-  runwayMat.environmentIntensity = 0.26;
-  if (runwayMat.bumpTexture) runwayMat.bumpTexture.level = 0.85;
-  const grateMat = makeTerrainPBRMaterial(scene, 'vagabondGratePBR', 'metal_grate_rusty', 8, 8, '#a28d76');
-  grateMat.useMetallnessFromMetallicTextureBlue = false;
+  runwayMat.metallic = 0.08;
+  runwayMat.roughness = 0.78;
+  runwayMat.environmentIntensity = 0.42;
+  if (runwayMat.bumpTexture) runwayMat.bumpTexture.level = 0.65;
+
+  // Upgraded Interbellum riveted steel-teal armored deck plates for the upper construction pad & gun collars
+  const grateMat = new BABYLON.PBRMaterial('vagabondGratePBR', scene);
+  grateMat.albedoColor = c3('#d4d8d6');
   grateMat.metallic = 0.34;
-  grateMat.roughness = 0.66;
-  grateMat.environmentIntensity = 0.34;
-  if (grateMat.bumpTexture) grateMat.bumpTexture.level = 0.90;
+  grateMat.roughness = 0.54;
+  grateMat.environmentIntensity = 0.70;
+  if (scene.getEngine().constructor.name !== 'NullEngine') {
+    grateMat.albedoTexture = makePBRTexture(scene, './assets/textures/nomad/armored-deck-plates.png', 1, 1, false);
+    grateMat.bumpTexture = makePBRTexture(scene, './assets/benchmark/textures/metal_grate_rusty/nor_gl.jpg', 2, 2, true);
+    grateMat.bumpTexture.level = 0.28;
+    const maxAniso = Math.min(8, scene.getEngine()?.getCaps?.().maxAnisotropy || 4);
+    grateMat.albedoTexture.anisotropicFilteringLevel = maxAniso;
+  }
 
   if (asteroidBase.rockMesh) {
     asteroidBase.rockMesh.material = rockMat;
@@ -1064,12 +1080,15 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
 
   const tPad = BABYLON.MeshBuilder.CreateCylinder('vagTurretPad', { diameterTop: 15.0, diameterBottom: 13.0, height: 1.6, tessellation: 16 }, scene);
   tPad.parent = turretPlat;
+  applyWorldRockUVs(tPad, 16, 13.8, 25, 1, 1, 7.0);
   tPad.material = concreteMat;
   tPad.receiveShadows = true;
   if (shadowGen) shadowGen.addShadowCaster(tPad, false);
 
   const turretCollar = BABYLON.MeshBuilder.CreateCylinder('vagTurretMountCollar',{diameter:8.8,height:.18,tessellation:16},scene);
-  turretCollar.parent=turretPlat;turretCollar.position.y=.89;turretCollar.material=concreteMat;turretCollar.receiveShadows=true;
+  turretCollar.parent=turretPlat;turretCollar.position.y=.89;applyWorldRockUVs(turretCollar,16,14.7,25,1,1,4.2);turretCollar.material=grateMat;turretCollar.receiveShadows=true;
+  const turretRim = BABYLON.MeshBuilder.CreateTorus('vagTurretPadRim', { diameter: 14.8, thickness: 0.24, tessellation: 24 }, scene);
+  turretRim.parent = turretPlat; turretRim.position.y = 0.80; turretRim.material = copperMat; turretRim.isPickable = false;
   // Authentic WWII 8.8cm FlaK 36/37 anti-aircraft battery with animated yaw, skyward elevation & barrel recoil
   const mainFlak = buildFlak88Turret(scene, 'vagFlak88Main', turretPlat, new BABYLON.Vector3(0, 0.98, 0), 0.35, shadowGen);
   asteroidBase.flakTurrets = [mainFlak];
@@ -1085,12 +1104,15 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
 
   const rPad = BABYLON.MeshBuilder.CreateCylinder('vagRadarPad', { diameterTop: 14.0, diameterBottom: 12.2, height: 1.6, tessellation: 16 }, scene);
   rPad.parent = radarPlat;
+  applyWorldRockUVs(rPad, 14, 15.2, -26, 1, 1, 7.0);
   rPad.material = concreteMat;
   rPad.receiveShadows = true;
   if (shadowGen) shadowGen.addShadowCaster(rPad, false);
 
   const radarCollar = BABYLON.MeshBuilder.CreateCylinder('vagRadarMountCollar',{diameter:7.2,height:.18,tessellation:16},scene);
-  radarCollar.parent=radarPlat;radarCollar.position.y=.89;radarCollar.material=concreteMat;radarCollar.receiveShadows=true;
+  radarCollar.parent=radarPlat;radarCollar.position.y=.89;applyWorldRockUVs(radarCollar,14,16.1,-26,1,1,4.0);radarCollar.material=grateMat;radarCollar.receiveShadows=true;
+  const radarRim = BABYLON.MeshBuilder.CreateTorus('vagRadarPadRim', { diameter: 13.8, thickness: 0.22, tessellation: 24 }, scene);
+  radarRim.parent = radarPlat; radarRim.position.y = 0.80; radarRim.material = copperMat; radarRim.isPickable = false;
 
   // Sculpted Interbellum Würzburg-Riese Parabolic Lattice Radar — zero cubes, curved parabolic mesh & copper horn
   const vagRadar = buildSculptedRadar(scene, 'vagRadar', radarPlat, new BABYLON.Vector3(0, 0.95, 0), shadowGen);
@@ -1100,18 +1122,41 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   // ---------------------------------------------------------------------------
   // 4. UPPER LEVEL (y = 20.5): HUGE 50m CONSTRUCTION PLATEAU + TOWER + WORKSHOP
   // ---------------------------------------------------------------------------
-  const upperDeck = BABYLON.MeshBuilder.CreateCylinder('vagUpperCourtyard', { diameter: 50.0, height: 1.0, tessellation: 18 }, scene);
+  const upperDeck = BABYLON.MeshBuilder.CreateCylinder('vagUpperCourtyard', { diameter: 50.0, height: 1.0, tessellation: 24 }, scene);
   upperDeck.parent = asteroidBase.group;
   upperDeck.position.set(-18.0, 20.85, 0.0);
+  applyWorldRockUVs(upperDeck, -18.0, 20.85, 0.0, 1.0, 1.0, 8.5);
   upperDeck.material = concreteMat;
   upperDeck.receiveShadows = true;
 
-  // Huge dedicated flat Construction Zone pad (~28m x 26m) clearly raised above upperDeck (no z-fighting!)
+  // Brass perimeter coaming ring around the 50m upper deck
+  const upperRim = BABYLON.MeshBuilder.CreateTorus('vagUpperDeckRim', { diameter: 49.8, thickness: 0.34, tessellation: 36 }, scene);
+  upperRim.parent = asteroidBase.group;
+  upperRim.position.set(-18.0, 21.35, 0.0);
+  upperRim.material = copperMat;
+  upperRim.isPickable = false;
+
+  // Huge dedicated flat Construction Zone pad (~28m x 26m) in riveted armored deck plating
   const buildZone = BABYLON.MeshBuilder.CreateBox('vagBuildZone', { width: 28.0, height: 0.36, depth: 26.0 }, scene);
   buildZone.parent = asteroidBase.group;
   buildZone.position.set(-10.0, 21.55, 0.0);
+  applyWorldRockUVs(buildZone, -10.0, 21.55, 0.0, 1.0, 1.0, 4.8);
   buildZone.material = grateMat;
   buildZone.receiveShadows = true;
+
+  // Ochre/brass perimeter hazard framing strips around the construction pad
+  const bzTrimParts = [];
+  for (const [tx, tz, tw, td] of [
+    [-10.0, -12.85, 28.2, 0.32], [-10.0, 12.85, 28.2, 0.32],
+    [-23.85, 0.0, 0.32, 26.0],   [3.85, 0.0, 0.32, 26.0],
+  ]) {
+    const strip = BABYLON.MeshBuilder.CreateBox(`vagBzTrim_${tx}_${tz}`, { width: tw, height: 0.08, depth: td }, scene);
+    strip.position.set(tx, 21.74, tz);
+    strip.computeWorldMatrix(true);
+    bzTrimParts.push(strip);
+  }
+  const bzTrim = BABYLON.Mesh.MergeMeshes(bzTrimParts, true, true, undefined, false, false);
+  if (bzTrim) { bzTrim.name = 'vagBuildZoneTrim'; bzTrim.parent = asteroidBase.group; bzTrim.material = hazardMat; bzTrim.isPickable = false; }
 
   [[-23.0, -12.0], [3.0, -12.0], [-23.0, 12.0], [3.0, 12.0]].forEach(([bx, bz], idx) => {
     const pylon = BABYLON.MeshBuilder.CreateCylinder(`vagBuildPylon_${idx}`, { diameter: 0.52, height: 1.8, tessellation: 8 }, scene);
@@ -1128,6 +1173,7 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   // A real raised footing separates the model's base faces from the courtyard.
   const towerFooting = BABYLON.MeshBuilder.CreateBox('vagTowerFooting', {width:11.4,height:.76,depth:10.8},scene);
   towerFooting.parent=asteroidBase.group;towerFooting.position.set(-28,21.49,-15.5);
+  applyWorldRockUVs(towerFooting, -28, 21.49, -15.5, 1, 1, 5.5);
   towerFooting.material=concreteMat;towerFooting.receiveShadows=true;
   // 4. Control Tower & Rotating Aviation Lighthouse Beacon (soft gradient beam + Fresnel lens, 0 lights!)
   instantiateGLBInto(scene, './assets/buildings/', 'control_tower.glb', asteroidBase.group, new BABYLON.Vector3(-28.0, 21.95, -15.5), 1.0, 0.0, shadowGen);
@@ -1203,6 +1249,7 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   // 4B. Upper Workshop & Ether Generator Complex (high-detail dieselpunk GLB)
   const generatorFooting = BABYLON.MeshBuilder.CreateBox('vagGeneratorFooting', {width:14,height:.76,depth:18},scene);
   generatorFooting.parent=asteroidBase.group;generatorFooting.position.set(-30,21.49,13.5);
+  applyWorldRockUVs(generatorFooting, -30, 21.49, 13.5, 1, 1, 5.5);
   generatorFooting.material=concreteMat;generatorFooting.receiveShadows=true;
   // This GLB has minimum y=-.25: compensate explicitly, then leave 8cm surface clearance.
   instantiateGLBInto(scene, './assets/buildings/', 'ether_generator.glb', asteroidBase.group, new BABYLON.Vector3(-30.0, 22.20, 13.5), 1.0, 0.0, shadowGen);
