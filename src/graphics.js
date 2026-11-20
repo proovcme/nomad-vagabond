@@ -26,7 +26,7 @@ export const QUALITY_PRESETS = {
     shadowSize: 1024,
     shadowPCF: true,
     ssao: false,
-    bloom: true,
+    bloom: false,
     msaa: 2,
     scaleFactor: 1.0,
     envIntensity: 0.88,

@@ -1002,26 +1002,32 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   }
   asteroidBase.lsoArms = lsoArms;
 
-  // Yellow-black hazard threshold at the runway bow (x = 55) + centerline dashes (well above runway top y = 3.38)
+  // Yellow-black hazard threshold at the runway bow (x = 55) + aiming chevron ("V") + centerline dashes
   const endHazard = BABYLON.MeshBuilder.CreateBox('vagRunwayThreshold', { width: 2.2, height: 0.14, depth: 19.5 }, scene);
   endHazard.parent = asteroidBase.group;
   endHazard.position.set(54.8, 3.48, 0.0);
   endHazard.material = hazardMat;
 
-  // Clear high-contrast approach aiming chevron ("V") at runway bow so landing alignment reads from 200m+
+  const rwDashParts = [];
   for (const side of [-1, 1]) {
     const chev = BABYLON.MeshBuilder.CreateBox(`vagRunwayChev_${side}`, { width: 5.2, height: 0.12, depth: 0.85 }, scene);
-    chev.parent = asteroidBase.group;
     chev.position.set(49.5, 3.48, side * 3.1);
     chev.rotation.y = side * 0.52;
-    chev.material = hazardMat;
+    chev.computeWorldMatrix(true);
+    rwDashParts.push(chev);
   }
-
   for (let rx = 8; rx <= 44; rx += 6.0) {
     const mark = BABYLON.MeshBuilder.CreateBox(`vagRunwayDash_${rx}`, { width: 3.2, height: 0.12, depth: 0.75 }, scene);
-    mark.parent = asteroidBase.group;
     mark.position.set(rx, 3.47, 0.0);
-    mark.material = hazardMat;
+    mark.computeWorldMatrix(true);
+    rwDashParts.push(mark);
+  }
+  const mergedRwDashes = BABYLON.Mesh.MergeMeshes(rwDashParts, true, true, undefined, false, false);
+  if (mergedRwDashes) {
+    mergedRwDashes.name = 'vagRunwayDashes';
+    mergedRwDashes.parent = asteroidBase.group;
+    mergedRwDashes.material = hazardMat;
+    mergedRwDashes.isPickable = false;
   }
 
   // Runway edge lights & safety railings (with chasing approach-light animation!)
@@ -1222,16 +1228,17 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   const bzTrim = BABYLON.Mesh.MergeMeshes(bzTrimParts, true, true, undefined, false, false);
   if (bzTrim) { bzTrim.name = 'vagBuildZoneTrim'; bzTrim.parent = asteroidBase.group; bzTrim.material = hazardMat; bzTrim.isPickable = false; }
 
+  const pylonParts = [], capParts = [];
   [[-23.0, -12.0], [3.0, -12.0], [-23.0, 12.0], [3.0, 12.0]].forEach(([bx, bz], idx) => {
     const pylon = BABYLON.MeshBuilder.CreateCylinder(`vagBuildPylon_${idx}`, { diameter: 0.52, height: 1.8, tessellation: 8 }, scene);
-    pylon.parent = asteroidBase.group;
-    pylon.position.set(bx, 22.5, bz);
-    pylon.material = hazardMat;
+    pylon.position.set(bx, 22.5, bz); pylon.computeWorldMatrix(true); pylonParts.push(pylon);
     const cap = BABYLON.MeshBuilder.CreateSphere(`vagBuildCap_${idx}`, { diameter: 0.44, segments: 6 }, scene);
-    cap.parent = pylon;
-    cap.position.y = 0.95;
-    cap.material = warmGlowMat;
+    cap.position.set(bx, 23.45, bz); cap.computeWorldMatrix(true); capParts.push(cap);
   });
+  const mPylons = BABYLON.Mesh.MergeMeshes(pylonParts, true, true, undefined, false, false);
+  if (mPylons) { mPylons.name = 'vagBuildPylons'; mPylons.parent = asteroidBase.group; mPylons.material = hazardMat; mPylons.isPickable = false; }
+  const mCaps = BABYLON.Mesh.MergeMeshes(capParts, true, true, undefined, false, false);
+  if (mCaps) { mCaps.name = 'vagBuildCaps'; mCaps.parent = asteroidBase.group; mCaps.material = warmGlowMat; mCaps.isPickable = false; }
 
   // 4A. Upper Control Tower (high-detail riveted dieselpunk GLB matching aircraft fleet)
   // A real raised footing separates the model's base faces from the courtyard.
@@ -1303,10 +1310,13 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   for (const [fx, fy, fz] of [[-23.5, 24.5, 13.5], [-36.5, 24.5, 13.5]]) {
     const fanHub = new BABYLON.TransformNode(`vagExhaustFan_${fx}`, scene);
     fanHub.parent = asteroidBase.group; fanHub.position.set(fx, fy, fz);
+    const fanParts = [];
     for (let b = 0; b < 4; b++) {
       const blade = BABYLON.MeshBuilder.CreateBox(`vagFanBlade_${fx}_${b}`, { width: 1.5, height: 0.26, depth: 0.06 }, scene);
-      blade.parent = fanHub; blade.rotation.z = (b * Math.PI) / 2; blade.material = hullMat; blade.isPickable = false;
+      blade.rotation.z = (b * Math.PI) / 2; blade.computeWorldMatrix(true); fanParts.push(blade);
     }
+    const mergedFan = BABYLON.Mesh.MergeMeshes(fanParts, true, true, undefined, false, false);
+    if (mergedFan) { mergedFan.name = `vagFanBlades_${fx}`; mergedFan.parent = fanHub; mergedFan.material = hullMat; mergedFan.isPickable = false; }
     asteroidBase._exhaustFans.push(fanHub);
   }
 
