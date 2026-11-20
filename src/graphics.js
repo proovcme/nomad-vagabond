@@ -227,10 +227,10 @@ export class GraphicsManager {
       pipe.imageProcessingEnabled = Boolean(this.scene.metadata?.skyLighting); // One final linear→display transform for the entire sky scene
       pipe.bloomEnabled = cfg.bloom;
       if (cfg.bloom) {
-        pipe.bloomThreshold = 0.92;
-        pipe.bloomWeight = 0.18;
-        pipe.bloomKernel = 32;
-        pipe.bloomScale = 0.35;
+        pipe.bloomThreshold = 0.94;
+        pipe.bloomWeight = 0.16;
+        pipe.bloomKernel = key === 'ultra' ? 28 : 18;
+        pipe.bloomScale = key === 'ultra' ? 0.35 : 0.25;
       }
       // Disable post-process sharpen to prevent texture shimmering/moire on tiled PBR surfaces
       pipe.sharpenEnabled = false;

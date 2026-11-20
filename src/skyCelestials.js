@@ -51,6 +51,7 @@ export class SkyCelestials {
       [2.12,.74,13,.08],[2.42,.82,9,-.12],[-1.68,-.98,12,.14],[-1.95,-1.12,8,-.06],
       [0.88,-.34,16,.15],[-0.72,.44,14,-.11],[2.78,.89,7,.05],[-2.28,-1.22,6,-.09],
     ];
+    const chipParts=[];
     fragments.forEach(([x,y,size,depth],index)=>{
       const direction=this.primaryDirection.scale(2200+depth*100).add(right.scale(x*260)).add(up.scale(y*260));
       const chip=BABYLON.MeshBuilder.CreateIcoSphere(`shatteredMoonFragment_${index}`,{radius:1,subdivisions:1,flat:true},scene);
@@ -60,8 +61,12 @@ export class SkyCelestials {
       const normals=[];BABYLON.VertexData.ComputeNormals(positions,chip.getIndices(),normals);chip.updateVerticesData(BABYLON.VertexBuffer.NormalKind,normals);
       chip.position.copyFrom(direction);chip.scaling.set(size,size*.69,size*.83);
       chip.rotation.set(index*.7,index*.91,index*.42);
-      chip.material=this.primaryMaterial;this._configure(chip);this.chips.push(chip);
+      chip.computeWorldMatrix(true);
+      chipParts.push(chip);
     });
+    const mergedChips=BABYLON.Mesh.MergeMeshes(chipParts,true,true,undefined,false,false);
+    if(mergedChips){mergedChips.name='shatteredMoonFragments';mergedChips.material=this.primaryMaterial;this._configure(mergedChips);this.chips.push(mergedChips);}
+    this._fragmentCount=fragments.length;
 
     // Kept clean: split shattered moon + debris arc (no orbital ring)
     this.update(0);
@@ -174,7 +179,7 @@ export class SkyCelestials {
       float noise2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
         return mix(mix(hash2(i),hash2(i+vec2(1,0)),f.x),mix(hash2(i+vec2(0,1)),hash2(i+vec2(1,1)),f.x),f.y);}
       float fbm(vec2 p){return noise2(p)*.66+noise2(p*2.15+vec2(5.1,2.7))*.34;}
-      float basin(vec2 p,vec2 center,float radius){float r=length((p-center)/radius);return exp(-r*r*2.5)*-.13+exp(-pow((r-.93)*8.0,2.0))*.09;}
+      float basin(vec2 p,vec2 center,float radius){float r=length((p-center)/radius);float rim=(r-.93)*8.0;return exp(-r*r*2.5)*-.13+exp(-rim*rim)*.09;}
       void main(){
         vec3 n=normalize(vNormal),p=normalize(vSurface);
         vec2 face=vec2(dot(n,uRight),dot(n,uUp));
@@ -199,11 +204,13 @@ export class SkyCelestials {
         float mineral=(1.0-smoothstep(.002,.006,scar))*(1.0-uWarm);
         geology=mix(geology,vec3(.43,.65,.58),mineral*.62);
         // Daylight atmospheric wash softens the terminator and avoids an icon-like hard outline.
-        float limb=pow(1.0-facing,3.5);
+        float invFace=1.0-facing;
+        float limb=invFace*invFace*invFace;
         geology=mix(geology,vec3(.47,.69,.71),limb*.35);
         float alpha=smoothstep(.0,.12,facing)*.93;
-        // Linear output: the world's final image-processing pass owns display conversion.
-        gl_FragColor=vec4(pow(max(geology,vec3(0.0)),vec3(2.2)),alpha);
+        // Fast linear conversion (avoids 3x per-pixel pow() near the sun)
+        vec3 gClamp=max(geology,vec3(0.0));
+        gl_FragColor=vec4(gClamp*gClamp,alpha);
       }
     `;
   }
@@ -217,7 +224,7 @@ export class SkyCelestials {
   }
 
   get snapshot(){return {meshes:this.meshes.length,triangles:this.meshes.reduce((n,m)=>n+m.getTotalIndices()/3,0),
-    primaryAngularDiameterDegrees:2*Math.atan(260/2200)*180/Math.PI,orbitalFragments:this.chips.length,
+    primaryAngularDiameterDegrees:2*Math.atan(260/2200)*180/Math.PI,orbitalFragments:this._fragmentCount||this.chips.length,
     rootPosition:this.root.position.asArray(),primaryDirection:this.primaryDirection.asArray(),newLights:0,colliders:0};}
 
   dispose(){if(this.disposed)return;this.disposed=true;this.root.dispose();this.materials.forEach(m=>m.dispose());}

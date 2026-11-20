@@ -112,13 +112,14 @@ function registerSkyShaders() {
         vec3 sunSkyDir = normalize(vec3(uSunDir.x, 0.125, uSunDir.z));
         float sunDot = max(0.0001, dot(d, sunSkyDir));
 
-        // Painted 360-degree ether-current panorama (heavily dimmed at night so night sky stays truly dark)
+        // Painted 360-degree ether-current panorama (fast gamma square, zero per-pixel pow())
         vec2 artUv=vec2(fract(atan(d.z,d.x)/6.2831853+.5+uTime*.00008),acos(clamp(d.y,-1.0,1.0))/3.14159265);
-        vec3 skyArt=pow(texture2D(uSkyArtwork,artUv).rgb,vec3(1.92)) * vec3(1.08, 1.04, 1.01);
+        vec3 rawArt=texture2D(uSkyArtwork,artUv).rgb;
+        vec3 skyArt=(rawArt*rawArt) * vec3(1.10, 1.05, 1.01);
         float seamDistance=min(artUv.x,1.0-artUv.x);
         if(seamDistance<.035){
           vec3 seamArt=.5*(texture2D(uSkyArtwork,vec2(.001,artUv.y)).rgb+texture2D(uSkyArtwork,vec2(.999,artUv.y)).rgb);
-          skyArt=mix(pow(seamArt,vec3(1.92)) * vec3(1.08, 1.04, 1.01),skyArt,smoothstep(0.0,.035,seamDistance));
+          skyArt=mix((seamArt*seamArt) * vec3(1.10, 1.05, 1.01),skyArt,smoothstep(0.0,.035,seamDistance));
         }
         float artWeight=smoothstep(.0,.14,artUv.y)*(1.0-smoothstep(.94,1.0,artUv.y))*smoothstep(-.20,.04,h);
         col=mix(col,skyArt * mix(1.0, 0.08, nightMask), artWeight * mix(0.74, 0.30, nightMask));
@@ -238,7 +239,9 @@ function registerSkyShaders() {
         vec2 toFrag = vWorldPos.xz - uCamPos.xz;
         float dist = length(toFrag);
         float sunAlign = max(0.0001, dot(toFrag / max(1.0, dist), sunXZ));
-        float sunGlint = pow(sunAlign, 5.0) * smoothstep(0.45, 0.92, lit);
+        float sa2 = sunAlign * sunAlign;
+        float sa4 = sa2 * sa2;
+        float sunGlint = (sa4 * sunAlign) * smoothstep(0.45, 0.92, lit);
 
         float nightMask = 1.0 - smoothstep(0.02, 0.18, uTimeOfDay);
         vec3 shadowCol = mix(
@@ -250,14 +253,15 @@ function registerSkyShaders() {
         vec3 warmRim = mix(vec3(1.00, 0.78, 0.40), vec3(0.28, 0.44, 0.72), nightMask);
         vec3 col = mix(shadowCol, litCol, smoothstep(0.08, 0.95, lit));
         col = mix(col, warmRim, smoothstep(0.38, 0.92, lit) * 0.58 + sunGlint * 0.62);
-        col += vec3(1.00, 0.84, 0.50) * pow(sunAlign, 12.0) * smoothstep(0.55, 0.96, lit) * (1.0 - nightMask) * 0.35;
+        col += vec3(1.00, 0.84, 0.50) * (sa4 * sa4 * sa4) * smoothstep(0.55, 0.96, lit) * (1.0 - nightMask) * 0.35;
 
         // Abyssal chaos below the clouds: intermittent deep storm-lightning blooms & sunken ether-engine flashes!
         vec2 cellId = floor(vWorldPos.xz * 0.0024);
         vec2 cellF = fract(vWorldPos.xz * 0.0024) - 0.5;
         float cRnd = hash21(cellId);
         float pulseT = fract(uTime * (0.22 + cRnd * 0.25) + cRnd * 19.7);
-        float flashEnv = pow(max(0.0, 1.0 - pulseT * 4.8), 3.0) * step(0.68, cRnd);
+        float flashBase = max(0.0, 1.0 - pulseT * 4.8);
+        float flashEnv = (flashBase * flashBase * flashBase) * step(0.68, cRnd);
         float flashRad = exp(-dot(cellF, cellF) * 16.0);
         vec3 flashCol = mix(vec3(0.35, 0.86, 1.00), vec3(1.00, 0.52, 0.18), fract(cRnd * 13.7));
         col += flashCol * flashEnv * flashRad * (0.75 + 0.85 * nightMask) * (0.45 + 0.55 * density);
@@ -2339,10 +2343,12 @@ export class SkyArchipelagoWorld {
       mistMat.depthWrite = false;
       mistMat.alpha = 0.30;
 
+      // Spread 4 mist wisps across all 4 quadrants (eliminates stacked alpha overdraw when facing the sun!)
       const mistPositions = [
-        [-120, 12, -85, 165, 95, 2.4], [240, 56, -210, 210, 115, 2.6],
-        [-210, -22, -260, 220, 120, 2.8], [95, 72, -310, 175, 95, 1.8],
-        [495, 65, -345, 210, 115, 2.5], [-185, 48, -125, 170, 92, 1.7],
+        [-145, 18, -110, 155, 88, 2.2],
+        [240, 56, -210, 185, 102, 2.5],
+        [-195, 36, 175, 175, 96, 2.1],
+        [185, 42, 165, 168, 92, 1.9],
       ];
       mistPositions.forEach(([mx, my, mz, mw, mh, mSpd], idx) => {
         const wisp = BABYLON.MeshBuilder.CreateGround(`archMistWisp_${idx}`, { width: mw, height: mh }, this.scene);
@@ -2420,13 +2426,13 @@ export class SkyArchipelagoWorld {
   _buildShatteredWorldField(seedValue = 101) {
     this.shatteredFieldRoot = new BABYLON.TransformNode('shatteredWorldFieldRoot', this.scene);
 
-    // 1. Scenic Satellite Islands across the sky vistas (trimmed for fast startup & high FPS, no distant shadow casting)
+    // 1. Scenic Satellite Islands balanced across 360° horizon (prevents 5x draw-call pileup when looking toward the sun!)
     const satelliteIslands = [
       { id: 'sky_sat_0', style: 'forest',     x: -175, y: 58,  z: -155, rx: 24, rz: 19, depth: 30, scaleY: 1.35, rot: [0.11, 0.6, -0.10], tree: 'pine_hero.glb' },
-      { id: 'sky_sat_1', style: 'military',   x: 135,  y: 52,  z: -175, rx: 20, rz: 16, depth: 26, scaleY: 1.30, rot: [-0.10, 2.1, 0.11], tree: 'coastal_alder.glb' },
-      { id: 'sky_sat_2', style: 'forest',     x: 195,  y: 68,  z: -285, rx: 22, rz: 18, depth: 28, scaleY: 1.38, rot: [0.12, 1.4, -0.11], tree: 'pine_hero.glb' },
-      { id: 'sky_sat_5', style: 'industrial', x: -425, y: 24,  z: -425, rx: 24, rz: 19, depth: 30, scaleY: 1.38, rot: [-0.12, 0.4, 0.10], tree: null },
-      { id: 'sky_sat_7', style: 'military',   x: -55,  y: 44,  z: -335, rx: 23, rz: 18, depth: 29, scaleY: 1.36, rot: [-0.11, 1.1, 0.10], tree: 'pine_hero.glb' },
+      { id: 'sky_sat_1', style: 'military',   x: 155,  y: 52,  z: -165, rx: 20, rz: 16, depth: 26, scaleY: 1.30, rot: [-0.10, 2.1, 0.11], tree: 'coastal_alder.glb' },
+      { id: 'sky_sat_2', style: 'forest',     x: 215,  y: 64,  z: 185,  rx: 22, rz: 18, depth: 28, scaleY: 1.38, rot: [0.12, 1.4, -0.11], tree: 'pine_hero.glb' },
+      { id: 'sky_sat_5', style: 'industrial', x: -245, y: 28,  z: 215,  rx: 24, rz: 19, depth: 30, scaleY: 1.38, rot: [-0.12, 0.4, 0.10], tree: null },
+      { id: 'sky_sat_7', style: 'military',   x: 45,   y: 46,  z: 265,  rx: 23, rz: 18, depth: 29, scaleY: 1.36, rot: [-0.11, 1.1, 0.10], tree: 'pine_hero.glb' },
     ];
 
     for (let sIdx = 0; sIdx < satelliteIslands.length; sIdx++) {
@@ -2491,10 +2497,10 @@ export class SkyArchipelagoWorld {
 
     const rockPlacements = [
       { type: 'spire', pos: [-210, 32, -65],  rot: [0.10, 0.8, -0.09], scale: [1.15, 1.25, 1.10], mat: milRockMat, seed: 401 },
-      { type: 'crag',  pos: [-115, 18, -195], rot: [-0.09, 1.9, 0.11], scale: [1.20, 1.15, 1.15], mat: milRockMat, seed: 409 },
+      { type: 'crag',  pos: [-145, 22, 175],  rot: [-0.09, 1.9, 0.11], scale: [1.20, 1.15, 1.15], mat: milRockMat, seed: 409 },
       { type: 'spire', pos: [175,  26, -125], rot: [0.11, 2.4, -0.08], scale: [1.10, 1.20, 1.05], mat: forestRockMat, seed: 419 },
-      { type: 'spire', pos: [255,  52, -355], rot: [-0.10, 1.2, 0.09], scale: [1.25, 1.35, 1.18], mat: forestRockMat, seed: 431 },
-      { type: 'crag',  pos: [-385, 14, -295], rot: [-0.11, 0.7, 0.09], scale: [1.25, 1.18, 1.20], mat: indRockMat, seed: 479 },
+      { type: 'spire', pos: [185,  48, 210],  rot: [-0.10, 1.2, 0.09], scale: [1.25, 1.35, 1.18], mat: forestRockMat, seed: 431 },
+      { type: 'crag',  pos: [-345, 14, -275], rot: [-0.11, 0.7, 0.09], scale: [1.25, 1.18, 1.20], mat: indRockMat, seed: 479 },
     ];
     if (this.levelConfig?.extraSpireField) {
       rockPlacements.push(
