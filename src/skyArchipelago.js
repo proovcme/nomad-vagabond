@@ -11,6 +11,7 @@ import { GraphicsManager } from './graphics.js?v=mission1';
 import { createRustedMetalTexture } from './textures.js?v=mission1';
 import { buildFlak88Turret } from './flak88.js?v=mission1';
 import { buildSculptedRadar, buildSculptedSamLauncher } from './props/dieselpunkStructures.js?v=mission1';
+import { decorateVagabondCarrier, buildAncientWindmillLandmark, buildSkyLighthouseLandmark, buildAetherMonolithLandmark } from './props/nomadLandmarks.js?v=mission1';
 import { AssetManager } from './engine/assetManager.js?v=mission1';
 import { getLevel } from './levels/levelRegistry.js?v=mission1';
 import { buildBiomeIsland } from './islands/biomeIslands.js?v=mission1';
@@ -1562,6 +1563,7 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   // Real CC0 props inside the Hangar Apron (skipped 31k-tri Lantern_01 for fast Vagabond rendering)
   instantiateGLBInto(scene, './assets/benchmark/models/Barrel_01/', 'Barrel_01_1k.gltf', asteroidBase.group, new BABYLON.Vector3(2.5, 3.38, -5.8), 1.1, 0.4, shadowGen);
   instantiateGLBInto(scene, './assets/benchmark/models/old_military_crate/', 'old_military_crate_1k.gltf', asteroidBase.group, new BABYLON.Vector3(1.8, 3.38, 5.8), 1.2, 0.8, shadowGen);
+  decorateVagabondCarrier(asteroidBase, scene, shadowGen);
   finishRockHangar(scene, asteroidBase, shadowGen, rockMasses);
   // Disable redundant legacy space-era point lights on Vagabond so PBR materials don't shade 12 lights per pixel
   for (const lName of ['baseHouseLamp', 'baseGenLight', 'baseDeckLight', 'hangarInteriorLight_1']) {
@@ -1796,6 +1798,11 @@ export class ForestIsland {
     wreckMount.position.set(crashX, crashY + 0.35, crashZ);
     wreckMount.rotation.set(0.36, 0.95, -0.42);
     instantiateGLBInto(this.scene, './assets/aircraft/', 'scrapyard_attacker.glb', wreckMount, new BABYLON.Vector3(0, 0, 0), 1.45, 0, shadowGen);
+
+    // Iconic Project Nomads Ancient Windmill Tower + Stone Archway on the sunlit ridge (visible from 1.5 km!)
+    const wmX = 22, wmZ = -18;
+    const wmY = this.getTopHeightLocal(wmX, wmZ);
+    this.windmillLandmark = buildAncientWindmillLandmark(this.scene, this.group, new BABYLON.Vector3(wmX, wmY - 0.4, wmZ), shadowGen);
   }
 
   async _loadForestVegetation(shadowGen) {
@@ -1902,6 +1909,9 @@ export class ForestIsland {
     }
     if (this.liftRotor) {
       this.liftRotor.rotation.y += dt * 1.4;
+    }
+    if (this.windmillLandmark?.sailHub) {
+      this.windmillLandmark.sailHub.rotation.z -= dt * 0.52;
     }
   }
 }
@@ -2226,6 +2236,8 @@ export class IndustrialIsland {
       if (node) this.detailNodes.push(node);
     }
     this.liftRotor = createGiantIslandLiftRotor(this.group, this.scene, -5.5, -49, 3.0, 44, shadowGen);
+    // Iconic 28m Striped Sky-Lighthouse & Airship Mooring Mast on the Industrial headland
+    this.lighthouseLandmark = buildSkyLighthouseLandmark(this.scene, this.group, new BABYLON.Vector3(34, 2.2, -16), shadowGen);
   }
 
   update(dt) {
@@ -2242,6 +2254,9 @@ export class IndustrialIsland {
     this.group.rotation.x = Math.sin(t * 0.24) * 0.012;
     if (this.liftRotor) {
       this.liftRotor.rotation.y += dt * 1.6;
+    }
+    if (this.lighthouseLandmark?.lanternHub) {
+      this.lighthouseLandmark.lanternHub.rotation.y += dt * 0.72;
     }
   }
 }
@@ -2841,6 +2856,9 @@ export class SkyArchipelagoWorld {
     viaduct.parent = this.shatteredFieldRoot;
     viaduct.position.set(-92, 56, -140);
     viaduct.rotation.set(0.06, 0.52, -0.05);
+    this.monolithLandmark = buildAetherMonolithLandmark(this.scene, this.shatteredFieldRoot, new BABYLON.Vector3(-145, 58, 160));
+    const monoRock = BABYLON.MeshBuilder.CreateCylinder('nomadMonolithIslandBase', { diameterTop: 22, diameterBottom: 5, height: 24, tessellation: 10 }, this.scene);
+    monoRock.parent = this.monolithLandmark.root; monoRock.position.y = -12; monoRock.material = stoneMat; makeSolid(monoRock);
     this.floatingOrbiters.push({
       node: viaduct,
       basePos: new BABYLON.Vector3(-92, 56, -140),
@@ -3154,6 +3172,10 @@ export class SkyArchipelagoWorld {
     }
     if (this.forestIsland) this.forestIsland.update(dt);
     if (this.industrialIsland) this.industrialIsland.update(dt);
+    if (this.monolithLandmark?.crystal) {
+      this.monolithLandmark.crystal.rotation.y += dt * 0.65;
+      this.monolithLandmark.crystal.position.y = 9.5 + Math.sin(this.simTime * 1.6) * 0.85;
+    }
     // Animate LSO officer marshaling wands on the Vagabond runway
     if (this.vagabondBase?.lsoArms?.length) {
       const w = Math.sin(this.simTime * 5.2);

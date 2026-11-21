@@ -1,8 +1,8 @@
 const BUILDING_PALETTES = Object.freeze({
-  generator: {body:'#47413c',panel:'#736759',trim:'#c39e58'},
-  turret: {body:'#413d39',panel:'#665d52',trim:'#b89858'},
-  radar: {body:'#45403b',panel:'#6d6458',trim:'#bfa05e'},
-  tower: {body:'#4a433c',panel:'#786b5b',trim:'#c5a25c'},
+  generator: {body:'#574f44',panel:'#8b7c67',trim:'#d6ae5e'},
+  turret: {body:'#4f4941',panel:'#7d7160',trim:'#ccaa60'},
+  radar: {body:'#534c43',panel:'#847866',trim:'#d4b264'},
+  tower: {body:'#5a5146',panel:'#91816b',trim:'#d9b466'},
 });
 
 function buildingKind(value) {

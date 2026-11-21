@@ -665,9 +665,13 @@ export class NavigatorPlayer {
     const wishDir = forward.scale(moveFwd).addInPlace(right.scale(moveStrafe));
     if (wishDir.lengthSquared() > 0.001) wishDir.normalize();
 
-    // Pure asteroid-local physics: zero external drift when standing still!
+    // Pure asteroid-local physics + Dieselpunk Jetpack (hold Space in mid-air to ascend between decks!)
+    this.jetFuel = this.jetFuel ?? 1.0;
+    this.airTime = this.grounded ? 0 : (this.airTime || 0) + dt;
+    let jetActive = false;
     this.localVel.y -= 18.0 * dt;
     if (this.grounded) {
+      this.jetFuel = Math.min(1.0, this.jetFuel + dt * 0.65);
       const moveSpeed = (this.keys['ShiftLeft'] || this.keys['ShiftRight']) ? 9.2 : 5.4;
       if (wishDir.lengthSquared() > 0.001) {
         const accel = 1 - Math.exp(-12 * dt);
@@ -686,11 +690,22 @@ export class NavigatorPlayer {
       if (this.keys['Space']) {
         this.localVel.y = 9.0;
         this.grounded = false;
+        this.airTime = 0.01;
         this.audio?.playJump?.();
       }
     } else {
-      this.localVel.x += wishDir.x * 12 * dt;
-      this.localVel.z += wishDir.z * 12 * dt;
+      const airCtrl = this.keys['Space'] && this.jetFuel > 0.02 ? 17 : 12;
+      this.localVel.x += wishDir.x * airCtrl * dt;
+      this.localVel.z += wishDir.z * airCtrl * dt;
+      // Smooth air drag so jetpack gliding feels crisp and controllable
+      const drag = Math.exp(-1.6 * dt);
+      this.localVel.x *= drag;
+      this.localVel.z *= drag;
+      if (this.keys['Space'] && this.airTime > 0.14 && this.jetFuel > 0.02) {
+        this.localVel.y = Math.min(13.5, this.localVel.y + 34.0 * dt);
+        this.jetFuel = Math.max(0, this.jetFuel - dt * 0.30);
+        jetActive = true;
+      }
     }
 
     ast.group.computeWorldMatrix(true);
@@ -766,8 +781,8 @@ export class NavigatorPlayer {
     const hSpeed = Math.hypot(this.localVel.x, this.localVel.z);
     this._animateCharacter(dt, hSpeed, this.grounded);
 
-    this.jetFlame.isVisible = false;
-    if (this.jetPS) this.jetPS.emitRate = 0;
+    this.jetFlame.isVisible = jetActive;
+    if (this.jetPS) this.jetPS.emitRate = jetActive ? 75 : 0;
     const worldFwd = new BABYLON.Vector3(-Math.sin(worldYaw), 0, -Math.cos(worldYaw)).normalize();
     const worldRight = new BABYLON.Vector3(Math.cos(worldYaw), 0, -Math.sin(worldYaw)).normalize();
     const pitchQ = BABYLON.Quaternion.RotationAxis(worldRight, -this.pitch);

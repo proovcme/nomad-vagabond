@@ -52,7 +52,7 @@ export class IslandConstruction {
   }
 
   get snapshot() {
-    const powerProduced=this.buildings.reduce((n,b)=>n+DEFINITIONS[b.type].output,0);
+    const powerProduced=this.buildings.reduce((n,b)=>n+this._buildingOutput(b),0);
     const powerUsed=this.buildings.reduce((n,b)=>n+DEFINITIONS[b.type].demand,0);
     const validation=this.validateBuild();
     return {salvage:this.salvage,powerProduced,powerUsed,powerAvailable:powerProduced-powerUsed,
@@ -61,13 +61,92 @@ export class IslandConstruction {
       radars:this.buildings.filter(b=>b.type==='radar').length,
       sams:this.buildings.filter(b=>b.type==='sam').length,
       shields:this.buildings.filter(b=>b.type==='shield').length,
-      buildings:this.buildings.map(({type,socket,position})=>({type,socket,position:{...position}})),
+      buildings:this.buildings.map(({type,socket,position,level})=>({type,socket,level:level||1,position:{...position}})),
       isOpen:this.isOpen,selectedType:this.selectedType,selectedPosition:{...this.selectedPosition},positionPinned:this.positionPinned,
       placementValid:validation.valid,placementReason:validation.reason};
   }
 
+  _buildingOutput(b) {
+    const base = DEFINITIONS[b.type].output;
+    if (!base) return 0;
+    return base + ((b.level || 1) - 1) * 3;
+  }
+
   _power() {
-    return this.buildings.reduce((n,b)=>n+DEFINITIONS[b.type].output-DEFINITIONS[b.type].demand,0);
+    return this.buildings.reduce((n,b)=>n+this._buildingOutput(b)-DEFINITIONS[b.type].demand,0);
+  }
+
+  _canPersist() {
+    return !(this.scene.getEngine() instanceof BABYLON.NullEngine) && typeof localStorage !== 'undefined';
+  }
+
+  _buildingAt(position) {
+    if (!position) return null;
+    return this.buildings.find(b => samePlace(b.position, position)) || null;
+  }
+
+  _upgradeCost(building) {
+    const d = DEFINITIONS[building.type];
+    return Math.round(d.cost * ((building.level || 1) === 1 ? 0.85 : 1.35));
+  }
+
+  saveState() {
+    if (!this._canPersist() || this._isTutorialStage()) return;
+    try {
+      const payload = {
+        salvage: this.salvage,
+        buildings: this.buildings.map(b => ({ type: b.type, position: b.position, level: b.level || 1 })),
+      };
+      localStorage.setItem('vagabond_base_v1', JSON.stringify(payload));
+    } catch {}
+  }
+
+  restoreSavedState() {
+    if (!this._canPersist() || this._restoredOnce || this.buildings.length > 0) return false;
+    this._restoredOnce = true;
+    try {
+      const raw = localStorage.getItem('vagabond_base_v1');
+      if (!raw) return false;
+      const data = JSON.parse(raw);
+      if (Number.isFinite(data?.salvage)) this.salvage = Math.max(this.salvage, Math.floor(data.salvage));
+      const savedStage = this.stage;
+      this.stage = 'free_build';
+      for (const item of data?.buildings || []) {
+        if (!DEFINITIONS[item.type] || !item.position) continue;
+        const d = DEFINITIONS[item.type];
+        this.salvage += d.cost; // refund cost so restore is free
+        if (this.build(item.type, item.position, { silentSave: true })) {
+          const built = this.buildings[this.buildings.length - 1];
+          const targetLvl = Math.min(3, Math.max(1, item.level || 1));
+          while ((built.level || 1) < targetLvl) {
+            this.salvage += this._upgradeCost(built);
+            this.upgrade(built, { silentSave: true });
+          }
+        }
+      }
+      this.stage = savedStage;
+      this._refresh();
+      return true;
+    } catch { return false; }
+  }
+
+  resetSavedBase() {
+    if (this._canPersist()) {
+      try { localStorage.removeItem('vagabond_base_v1'); } catch {}
+    }
+    for (const b of this.buildings) {
+      try { b.placement?.dispose(); } catch {}
+    }
+    this.buildings = [];
+    this.sockets.forEach(s => { s.building = null; });
+    this.base.shieldStrength = 0;
+    if (this.base._shieldDome && !this.base._shieldDome.isDisposed?.()) {
+      this.base._shieldDome.dispose();
+      this.base._shieldDome = null;
+    }
+    this.salvage = Math.max(this.salvage, 120);
+    this._recommendPosition();
+    this._refresh('База очищена. Палуба готова к новой застройке.');
   }
 
   _isTutorialStage() {
@@ -222,8 +301,8 @@ export class IslandConstruction {
       if(this.pointerPending&&!this.positionPinned){const p=this._pickPosition(this.pointerPending);if(p)this.selectPosition(p,false);}
       this.pointerPending=null;
     }
-    const count=this.buildings.filter(b=>b.type==='generator').length;
-    if(count&&Number.isFinite(this.base.integrity))this.base.integrity=Math.min(this.base.maxIntegrity||100,this.base.integrity+Math.max(0,Math.min(dt,.1))*count*1.5);
+    const genPower = this.buildings.filter(b=>b.type==='generator').reduce((s,b)=>s+(b.level||1),0);
+    if(genPower&&Number.isFinite(this.base.integrity))this.base.integrity=Math.min(this.base.maxIntegrity||100,this.base.integrity+Math.max(0,Math.min(dt,.1))*genPower*1.5);
   }
 
   _pickPosition(event) {
@@ -240,7 +319,7 @@ export class IslandConstruction {
     const point=local.origin.add(local.direction.scale(distance));return {x:point.x,z:point.z};
   }
 
-  build(type=this.selectedType, positionOrSocket=undefined) {
+  build(type=this.selectedType, positionOrSocket=undefined, opts={}) {
     const position=typeof positionOrSocket==='number'?DEFAULT_POSITIONS[positionOrSocket]:(positionOrSocket||this.selectedPosition);
     const validation=this.validateBuild(type,position);
     if(!validation.valid){this._refresh(validation.reason);return false;}
@@ -254,15 +333,38 @@ export class IslandConstruction {
     const footing=BABYLON.MeshBuilder.CreateBox(`builtFooting_${this.buildings.length}`,{width:FOOTING,height:.32,depth:FOOTING},this.scene);
     footing.parent=placement;footing.position.y=.16;footing.material=this.scene.getMaterialByName('vagConcretePBR')||fallbackFootingMaterial(this.scene);
     footing.receiveShadows=true;footing.isPickable=false;node.position.y=.40;
-    const building={type,socket:socketIndex,position:location,node,placement,footing,loaded:false};
+    const building={type,level:1,socket:socketIndex,position:location,node,placement,footing,loaded:false};
     if(socketIndex>=0)this.sockets[socketIndex].building=building;
     this.buildings.push(building);
     const fallback=BABYLON.MeshBuilder.CreateBox(`builtFallback_${type}_${this.buildings.length}`,{width:definition.width,height:definition.height,depth:definition.depth},this.scene);
     fallback.parent=node;fallback.position.y=definition.height/2;fallback.checkCollisions=true;
     const mat=new BABYLON.StandardMaterial(`builtFallbackMat_${this.buildings.length}`,this.scene);mat.diffuseColor=BABYLON.Color3.FromHexString('#69787a');fallback.material=mat;fallback.receiveShadows=true;
     if(!(this.scene.getEngine() instanceof BABYLON.NullEngine))this._loadModel(building,fallback,mat);
+    if(!opts.silentSave)this.saveState();
     this.positionPinned=false;this._recommendPosition();
     this._refresh(`${definition.name} построен. ${definition.detail}.`);
+    this.panel.dispatchEvent(new CustomEvent('island-build',{bubbles:true,detail:this.snapshot}));
+    return true;
+  }
+
+  upgrade(building, opts={}) {
+    if(!building||building.level>=3)return false;
+    const cost=this._upgradeCost(building);
+    if(this.salvage<cost){this._refresh(`Не хватает ${cost-this.salvage} лома для улучшения.`);return false;}
+    this.salvage-=cost;
+    building.level=(building.level||1)+1;
+    if(building.type==='shield')this.base.shieldStrength=(this.base.shieldStrength||0)+1;
+    // Add visible brass/aether upgrade collar ring around upgraded building
+    if(!(this.scene.getEngine() instanceof BABYLON.NullEngine)){
+      const B=BABYLON;
+      const ring=B.MeshBuilder.CreateTorus(`builtUpgradeRing_${building.type}_${building.level}`,{diameter:FOOTING-0.4,thickness:0.24,tessellation:20},this.scene);
+      ring.parent=building.placement;ring.position.y=0.35+(building.level-2)*0.45;
+      const rMat=new B.StandardMaterial(`builtUpgradeRingMat_${building.level}`,this.scene);
+      rMat.emissiveColor=B.Color3.FromHexString(building.level===3?'#4be4ff':'#f2c45a');
+      rMat.disableLighting=true;ring.material=rMat;ring.isPickable=false;
+    }
+    if(!opts.silentSave)this.saveState();
+    this._refresh(`${DEFINITIONS[building.type].name} улучшен до ур. ${building.level}!`);
     this.panel.dispatchEvent(new CustomEvent('island-build',{bubbles:true,detail:this.snapshot}));
     return true;
   }
@@ -392,7 +494,11 @@ export class IslandConstruction {
     }
     this.sockets.forEach((socket,index)=>{const button=document.createElement('button');button.dataset.socket=index;button.onclick=()=>this.selectSocket(index);panel.querySelector('[data-sockets]').append(button);});
     this.closeButton=panel.querySelector('[data-close]');this.closeButton.onclick=()=>this.close();
-    panel.querySelector('[data-confirm]').onclick=()=>this.build();
+    panel.querySelector('[data-confirm]').onclick=()=>{
+      const existing=this._buildingAt(this.selectedPosition);
+      if(existing&&!this._isTutorialStage()&&existing.level<3)this.upgrade(existing);
+      else this.build();
+    };
     panel.querySelector('[data-reposition]').onclick=()=>{this.positionPinned=false;this._refresh('Двигайте мышь над палубой и щёлкните по выбранному месту.');this.canvas?.focus();};
     for(const name of ['pointerdown','pointerup','mousedown','mouseup','click','dblclick','wheel','contextmenu'])panel.addEventListener(name,event=>{event.stopPropagation();if(name==='contextmenu')event.preventDefault();});
     document.body.append(panel);
@@ -401,21 +507,27 @@ export class IslandConstruction {
   _refresh(message='') {
     if(this.disposed)return;
     const validation=this.validateBuild(),d=DEFINITIONS[this.selectedType],required=REQUIRED_TYPE[this.stage];
-    const produced=this.buildings.reduce((n,b)=>n+DEFINITIONS[b.type].output,0),used=produced-this._power();
-    this.panel.querySelector('[data-resources]').textContent=`Лом ${this.salvage} · Энергия ${used}/${produced}`;
+    const produced=this.buildings.reduce((n,b)=>n+this._buildingOutput(b),0),used=produced-this._power();
+    this.panel.querySelector('[data-resources]').textContent=`Лом ${this.salvage} · Энергия ${used}/${produced} · Построек ${this.buildings.length}/10`;
     this.panel.querySelectorAll('[data-type]').forEach(button=>{
       const type=button.dataset.type,built=this._isTutorialStage()&&this.buildings.some(b=>b.type===type),blocked=Boolean(required&&required!==type);
       button.disabled=built||blocked;button.title=built?'Уже построено':blocked?`По заданию сейчас нужен: ${DEFINITIONS[required].name}`:DEFINITIONS[type].detail;
       button.style.borderColor=type===this.selectedType?'#efd997':'#6e8067';button.setAttribute('aria-pressed',String(type===this.selectedType));
     });
     this.panel.querySelectorAll('[data-socket]').forEach(button=>{
-      const index=Number(button.dataset.socket),valid=this.validatePlacement(this.selectedType,DEFAULT_POSITIONS[index]).valid;
-      button.textContent=`${index+1}${valid?'':' ×'}`;button.title=valid?'Свободное место':this.validatePlacement(this.selectedType,DEFAULT_POSITIONS[index]).reason;
+      const index=Number(button.dataset.socket),existing=this._buildingAt(DEFAULT_POSITIONS[index]),valid=this.validatePlacement(this.selectedType,DEFAULT_POSITIONS[index]).valid;
+      button.textContent=existing?`${index+1}★${existing.level}`:`${index+1}${valid?'':' ×'}`;
+      button.title=existing?`${DEFINITIONS[existing.type].name} (ур. ${existing.level}) — нажмите для улучшения`:valid?'Свободное место':this.validatePlacement(this.selectedType,DEFAULT_POSITIONS[index]).reason;
       button.style.borderColor=index===this.selectedSocket?'#efd997':'#6e8067';button.setAttribute('aria-pressed',String(index===this.selectedSocket));
     });
+    const existingHere=this._buildingAt(this.selectedPosition);
+    const canUpgrade=Boolean(existingHere&&!this._isTutorialStage()&&(existingHere.level||1)<3);
+    const upgCost=canUpgrade?this._upgradeCost(existingHere):0;
     this.panel.querySelector('[data-position]').textContent=`Место X ${this.selectedPosition.x.toFixed(1)} / Z ${this.selectedPosition.z.toFixed(1)} · ${this.positionPinned?'выбрано':'наведение'}`;
-    this.panel.querySelector('[data-message]').textContent=message||validation.reason;
-    const confirm=this.panel.querySelector('[data-confirm]');confirm.disabled=!validation.valid;confirm.textContent=`Построить · ${d.cost} лома`;
+    this.panel.querySelector('[data-message]').textContent=message||(canUpgrade?`${DEFINITIONS[existingHere.type].name} (ур. ${existingHere.level}). Можно улучшить до ур. ${existingHere.level+1} за ${upgCost} лома.`:validation.reason);
+    const confirm=this.panel.querySelector('[data-confirm]');
+    if(canUpgrade){confirm.disabled=this.salvage<upgCost;confirm.textContent=`Улучшить до ур. ${existingHere.level+1} · ${upgCost} лома`;}
+    else{confirm.disabled=!validation.valid;confirm.textContent=`Построить · ${d.cost} лома`;}
     this.preview.setEnabled(this.isOpen);this.previewOutline.setEnabled(this.isOpen);
     this.preview.position.set(this.selectedPosition.x,DECK.y+.40+d.height/2,this.selectedPosition.z);this.preview.scaling.set(d.width,d.height,d.depth);
     this.previewOutline.position.set(this.selectedPosition.x,DECK.y+.13,this.selectedPosition.z);

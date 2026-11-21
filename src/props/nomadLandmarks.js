@@ -1,0 +1,372 @@
+/**
+ * Project Nomads × Interbellum World-Building Landmarks & Living Carrier Details.
+ * Every static kit merges into 1–3 draw calls so 60 FPS is preserved across all presets.
+ */
+
+function c3(hex) {
+  return BABYLON.Color3.FromHexString(hex);
+}
+
+function getOrCreateMat(scene, name, builder) {
+  const existing = scene.getMaterialByName(name);
+  if (existing) return existing;
+  return builder();
+}
+
+function getNomadPalette(scene) {
+  const steel = getOrCreateMat(scene, 'nomadKitSteelMat', () => {
+    const m = new BABYLON.PBRMaterial('nomadKitSteelMat', scene);
+    m.albedoColor = c3('#4f5459');
+    m.metallic = 0.68;
+    m.roughness = 0.44;
+    return m;
+  });
+  const brass = getOrCreateMat(scene, 'nomadKitBrassMat', () => {
+    const m = new BABYLON.PBRMaterial('nomadKitBrassMat', scene);
+    m.albedoColor = c3('#cfa052');
+    m.metallic = 0.84;
+    m.roughness = 0.28;
+    return m;
+  });
+  const limestone = getOrCreateMat(scene, 'nomadKitLimestoneMat', () => {
+    const m = new BABYLON.PBRMaterial('nomadKitLimestoneMat', scene);
+    m.albedoColor = c3('#b9aa8e');
+    m.metallic = 0.04;
+    m.roughness = 0.88;
+    return m;
+  });
+  const canvas = getOrCreateMat(scene, 'nomadKitCanvasMat', () => {
+    const m = new BABYLON.PBRMaterial('nomadKitCanvasMat', scene);
+    m.albedoColor = c3('#dfd2b4');
+    m.metallic = 0.0;
+    m.roughness = 0.92;
+    m.backFaceCulling = false;
+    return m;
+  });
+  const terracotta = getOrCreateMat(scene, 'nomadKitTerracottaMat', () => {
+    const m = new BABYLON.PBRMaterial('nomadKitTerracottaMat', scene);
+    m.albedoColor = c3('#a44e32');
+    m.metallic = 0.08;
+    m.roughness = 0.76;
+    return m;
+  });
+  const warmGlow = getOrCreateMat(scene, 'nomadKitWarmGlowMat', () => {
+    const m = new BABYLON.StandardMaterial('nomadKitWarmGlowMat', scene);
+    m.emissiveColor = c3('#ffcb74');
+    m.diffuseColor = c3('#ffe5b0');
+    m.disableLighting = true;
+    return m;
+  });
+  const aetherGlow = getOrCreateMat(scene, 'nomadKitAetherGlowMat', () => {
+    const m = new BABYLON.StandardMaterial('nomadKitAetherGlowMat', scene);
+    m.emissiveColor = c3('#4be4ff');
+    m.diffuseColor = c3('#9af4ff');
+    m.disableLighting = true;
+    return m;
+  });
+  return { steel, brass, limestone, canvas, terracotta, warmGlow, aetherGlow };
+}
+
+function mergeGroup(meshes, name, parent, material, shadowGen = null) {
+  if (!meshes.length) return null;
+  for (const m of meshes) m.computeWorldMatrix(true);
+  const merged = BABYLON.Mesh.MergeMeshes(meshes, true, true, undefined, false, false);
+  if (!merged) return null;
+  merged.name = name;
+  merged.parent = parent;
+  merged.material = material;
+  merged.receiveShadows = true;
+  merged.isPickable = false;
+  if (shadowGen) shadowGen.addShadowCaster(merged, false);
+  return merged;
+}
+
+/**
+ * Adds lived-in Sky-Carrier storytelling details to Vagabond:
+ * - Hangar apron cargo crane gantry
+ * - Pressurized copper fuel tanks & mooring bollards
+ * - Warm illuminated cabin portholes carved into the carrier flanks
+ * - Gentle funnel smoke plume (only on real GPU)
+ */
+export function decorateVagabondCarrier(asteroidBase, scene, shadowGen = null) {
+  if (!asteroidBase?.group || !scene) return null;
+  const pal = getNomadPalette(scene);
+  const steelParts = [];
+  const brassParts = [];
+  const glowParts = [];
+
+  // 1. Hangar Apron Cargo Crane (starboard flight-deck edge, clear of runway corridor z=-9..+9)
+  const cx = 8.5, cy = 3.4, cz = 11.4;
+  const mast = BABYLON.MeshBuilder.CreateCylinder('vagCraneMast', { diameterTop: 0.55, diameterBottom: 0.85, height: 8.2, tessellation: 8 }, scene);
+  mast.position.set(cx, cy + 4.1, cz); steelParts.push(mast);
+  const basePed = BABYLON.MeshBuilder.CreateCylinder('vagCraneBase', { diameter: 1.9, height: 0.7, tessellation: 10 }, scene);
+  basePed.position.set(cx, cy + 0.35, cz); steelParts.push(basePed);
+  const boom = BABYLON.MeshBuilder.CreateBox('vagCraneBoom', { width: 8.6, height: 0.45, depth: 0.48 }, scene);
+  boom.position.set(cx - 2.6, cy + 9.5, cz - 1.2);
+  boom.rotation.z = -0.34;
+  boom.rotation.y = 0.28;
+  steelParts.push(boom);
+  const counterweight = BABYLON.MeshBuilder.CreateBox('vagCraneWeight', { width: 1.6, height: 1.2, depth: 1.4 }, scene);
+  counterweight.position.set(cx + 1.5, cy + 7.6, cz + 0.5); brassParts.push(counterweight);
+  const cable = BABYLON.MeshBuilder.CreateCylinder('vagCraneCable', { diameter: 0.08, height: 4.4, tessellation: 6 }, scene);
+  cable.position.set(cx - 6.0, cy + 8.5, cz - 2.2); steelParts.push(cable);
+  const hook = BABYLON.MeshBuilder.CreateTorus('vagCraneHook', { diameter: 0.55, thickness: 0.14, tessellation: 10 }, scene);
+  hook.position.set(cx - 6.0, cy + 6.2, cz - 2.2); brassParts.push(hook);
+
+  // 2. Pressurized Copper Aether Fuel Tanks on the aft-starboard deck edge
+  for (let i = 0; i < 2; i++) {
+    const tz = 15.2 + i * 2.8;
+    const tank = BABYLON.MeshBuilder.CreateCylinder(`vagFuelTank_${i}`, { diameter: 2.1, height: 5.8, tessellation: 12 }, scene);
+    tank.position.set(-45.5, 22.5, tz);
+    tank.rotation.z = Math.PI * 0.5;
+    brassParts.push(tank);
+    for (const sx of [-47.4, -43.6]) {
+      const cradle = BABYLON.MeshBuilder.CreateBox(`vagTankCradle_${i}_${sx}`, { width: 0.35, height: 1.5, depth: 2.2 }, scene);
+      cradle.position.set(sx, 21.8, tz);
+      steelParts.push(cradle);
+    }
+  }
+
+  // 3. Naval Mooring Bollards along runway catwalk edges
+  for (const bx of [16, 28, 40, 50]) {
+    for (const side of [-1, 1]) {
+      const bollard = BABYLON.MeshBuilder.CreateCylinder(`vagBollard_${bx}_${side}`, { diameterTop: 0.42, diameterBottom: 0.34, height: 0.65, tessellation: 8 }, scene);
+      bollard.position.set(bx, 3.12, side * 11.2);
+      brassParts.push(bollard);
+    }
+  }
+
+  // 4. Illuminated Cliffside Cabin Portholes (warm inhabited glow along carrier flanks — 0 PointLights!)
+  const portholes = [
+    [-12, 14.5, -24.5, 0], [-18, 14.5, -26.0, 0], [-24, 14.5, -26.5, 0],
+    [-12, 14.5, 24.5, Math.PI], [-18, 14.5, 26.0, Math.PI], [-24, 14.5, 26.5, Math.PI],
+    [-46, 15.5, -4, -Math.PI * 0.5], [-46, 15.5, 4, -Math.PI * 0.5],
+  ];
+  for (let i = 0; i < portholes.length; i++) {
+    const [px, py, pz, ry] = portholes[i];
+    const frame = BABYLON.MeshBuilder.CreateTorus(`vagPortholeRing_${i}`, { diameter: 1.45, thickness: 0.22, tessellation: 12 }, scene);
+    frame.position.set(px, py, pz);
+    frame.rotation.set(Math.PI * 0.5, ry, 0);
+    brassParts.push(frame);
+    const glass = BABYLON.MeshBuilder.CreateDisc(`vagPortholeGlass_${i}`, { radius: 0.62, tessellation: 10 }, scene);
+    glass.position.set(px, py, pz);
+    glass.rotation.y = ry;
+    glowParts.push(glass);
+  }
+
+  mergeGroup(steelParts, 'vagLivingCarrierSteel', asteroidBase.group, pal.steel, shadowGen);
+  mergeGroup(brassParts, 'vagLivingCarrierBrass', asteroidBase.group, pal.brass, null);
+  mergeGroup(glowParts, 'vagLivingCarrierPortholes', asteroidBase.group, pal.warmGlow, null);
+
+  // 5. Gentle Naval Funnel Smoke Plume (soft painterly puffs, zero GPU overhead)
+  let funnelSmoke = null;
+  if (!(scene.getEngine() instanceof BABYLON.NullEngine) && typeof document !== 'undefined') {
+    const emitter = new BABYLON.TransformNode('vagFunnelSmokeEmitter', scene);
+    emitter.parent = asteroidBase.group;
+    emitter.position.set(-36.2, 32.6, -19.5);
+    const ps = new BABYLON.ParticleSystem('vagFunnelSmokePS', 28, scene);
+    const tex = new BABYLON.DynamicTexture('vagFunnelSmokeTex', { width: 64, height: 64 }, scene, false);
+    const ctx = tex.getContext();
+    const g = ctx.createRadialGradient(32, 32, 3, 32, 32, 30);
+    g.addColorStop(0, 'rgba(218, 206, 188, 0.55)');
+    g.addColorStop(0.55, 'rgba(175, 166, 154, 0.24)');
+    g.addColorStop(1, 'rgba(150, 145, 140, 0.0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+    tex.update();
+    tex.hasAlpha = true;
+    ps.particleTexture = tex;
+    ps.emitter = emitter;
+    ps.minEmitBox = new BABYLON.Vector3(-0.6, 0, -0.6);
+    ps.maxEmitBox = new BABYLON.Vector3(0.6, 0.4, 0.6);
+    ps.color1 = new BABYLON.Color4(0.82, 0.78, 0.72, 0.38);
+    ps.color2 = new BABYLON.Color4(0.65, 0.62, 0.58, 0.24);
+    ps.colorDead = new BABYLON.Color4(0.55, 0.54, 0.52, 0.0);
+    ps.minSize = 1.8;
+    ps.maxSize = 5.4;
+    ps.minLifeTime = 2.4;
+    ps.maxLifeTime = 4.2;
+    ps.emitRate = 6;
+    ps.direction1 = new BABYLON.Vector3(-3.5, 4.2, -1.2);
+    ps.direction2 = new BABYLON.Vector3(-6.2, 6.4, 1.2);
+    ps.minEmitPower = 0.8;
+    ps.maxEmitPower = 1.4;
+    ps.blendMode = BABYLON.ParticleSystem.BLENDMODE_STANDARD;
+    ps.start();
+    funnelSmoke = ps;
+  }
+
+  return { funnelSmoke };
+}
+
+/**
+ * Iconic Ancient Windmill Tower + Stone Archway (Forest Island landmark, visible from 1.5 km!).
+ * Returns { root, sailHub } so update loop can spin the giant canvas sails.
+ */
+export function buildAncientWindmillLandmark(scene, parent, pos, shadowGen = null) {
+  const pal = getNomadPalette(scene);
+  const root = new BABYLON.TransformNode('nomadWindmillLandmark', scene);
+  root.parent = parent;
+  root.position.copyFrom(pos);
+
+  const stoneParts = [];
+  const roofParts = [];
+  const brassParts = [];
+
+  // Tapered limestone mill tower (20m tall)
+  const tower = BABYLON.MeshBuilder.CreateCylinder('wmTower', { diameterTop: 5.4, diameterBottom: 8.6, height: 19.0, tessellation: 12 }, scene);
+  tower.position.set(0, 9.5, 0); stoneParts.push(tower);
+  const gallery = BABYLON.MeshBuilder.CreateCylinder('wmGallery', { diameter: 7.4, height: 0.7, tessellation: 12 }, scene);
+  gallery.position.set(0, 14.5, 0); brassParts.push(gallery);
+  const dome = BABYLON.MeshBuilder.CreateCylinder('wmDome', { diameterTop: 0.6, diameterBottom: 6.4, height: 4.8, tessellation: 12 }, scene);
+  dome.position.set(0, 21.4, 0); roofParts.push(dome);
+  const spire = BABYLON.MeshBuilder.CreateCylinder('wmSpire', { diameterTop: 0.12, diameterBottom: 0.38, height: 3.4, tessellation: 8 }, scene);
+  spire.position.set(0, 25.0, 0); brassParts.push(spire);
+
+  // Adjacent ruined stone archway for Project Nomads ancient-civilization storytelling
+  for (const sx of [-9.5, -15.5]) {
+    const pillar = BABYLON.MeshBuilder.CreateCylinder(`wmArchPillar_${sx}`, { diameterTop: 1.5, diameterBottom: 2.0, height: 8.5, tessellation: 8 }, scene);
+    pillar.position.set(sx, 4.2, 5.5); stoneParts.push(pillar);
+  }
+  const lintel = BABYLON.MeshBuilder.CreateBox('wmArchLintel', { width: 8.2, height: 1.4, depth: 1.8 }, scene);
+  lintel.position.set(-12.5, 8.8, 5.5); lintel.rotation.z = 0.06; stoneParts.push(lintel);
+
+  mergeGroup(stoneParts, 'nomadWindmillStone', root, pal.limestone, shadowGen);
+  mergeGroup(roofParts, 'nomadWindmillRoof', root, pal.terracotta, shadowGen);
+  mergeGroup(brassParts, 'nomadWindmillBrass', root, pal.brass, null);
+
+  // Rotating 4-blade giant canvas sails (15m diameter!)
+  const sailHub = new BABYLON.TransformNode('nomadWindmillSailHub', scene);
+  sailHub.parent = root;
+  sailHub.position.set(0, 17.6, 3.2);
+  const hubCap = BABYLON.MeshBuilder.CreateCylinder('wmHubCap', { diameter: 1.4, height: 1.8, tessellation: 10 }, scene);
+  hubCap.parent = sailHub; hubCap.rotation.x = Math.PI * 0.5; hubCap.material = pal.brass; hubCap.isPickable = false;
+
+  const sparParts = [];
+  const clothParts = [];
+  for (let i = 0; i < 4; i++) {
+    const a = (i * Math.PI) / 2;
+    const spar = BABYLON.MeshBuilder.CreateBox(`wmSpar_${i}`, { width: 0.38, height: 11.2, depth: 0.34 }, scene);
+    spar.position.set(Math.sin(a) * 5.6, Math.cos(a) * 5.6, 0.35);
+    spar.rotation.z = -a;
+    sparParts.push(spar);
+
+    const cloth = BABYLON.MeshBuilder.CreateBox(`wmCloth_${i}`, { width: 2.2, height: 8.6, depth: 0.08 }, scene);
+    cloth.position.set(Math.sin(a) * 6.4 + Math.cos(a) * 1.15, Math.cos(a) * 6.4 - Math.sin(a) * 1.15, 0.42);
+    cloth.rotation.z = -a;
+    clothParts.push(cloth);
+  }
+  mergeGroup(sparParts, 'nomadWindmillSpars', sailHub, pal.steel, null);
+  mergeGroup(clothParts, 'nomadWindmillCanvas', sailHub, pal.canvas, null);
+
+  return { root, sailHub };
+}
+
+/**
+ * Iconic Sky-Lighthouse & Airship Mooring Mast (Industrial Island landmark, 28m tall!).
+ * Returns { root, lanternHub } so update loop can rotate the warm beacon.
+ */
+export function buildSkyLighthouseLandmark(scene, parent, pos, shadowGen = null) {
+  const pal = getNomadPalette(scene);
+  const root = new BABYLON.TransformNode('nomadLighthouseLandmark', scene);
+  root.parent = parent;
+  root.position.copyFrom(pos);
+
+  const stoneParts = [];
+  const redParts = [];
+  const brassParts = [];
+
+  // Alternating limestone & terracotta-red Interbellum lighthouse drum segments
+  const tiers = [
+    { y: 3.5, h: 7.0, dTop: 6.2, dBot: 7.6, red: false },
+    { y: 10.0, h: 6.0, dTop: 5.0, dBot: 6.2, red: true },
+    { y: 15.8, h: 5.6, dTop: 4.0, dBot: 5.0, red: false },
+    { y: 20.6, h: 4.0, dTop: 3.3, dBot: 4.0, red: true },
+  ];
+  tiers.forEach((t, idx) => {
+    const seg = BABYLON.MeshBuilder.CreateCylinder(`lhSeg_${idx}`, { diameterTop: t.dTop, diameterBottom: t.dBot, height: t.h, tessellation: 14 }, scene);
+    seg.position.set(0, t.y, 0);
+    (t.red ? redParts : stoneParts).push(seg);
+  });
+
+  // Brass gallery ring + cupola + airship mooring spire
+  const gallery = BABYLON.MeshBuilder.CreateTorus('lhGallery', { diameter: 4.6, thickness: 0.45, tessellation: 16 }, scene);
+  gallery.position.set(0, 22.8, 0); brassParts.push(gallery);
+  const cupola = BABYLON.MeshBuilder.CreateCylinder('lhCupola', { diameterTop: 0.5, diameterBottom: 3.8, height: 2.8, tessellation: 12 }, scene);
+  cupola.position.set(0, 27.4, 0); brassParts.push(cupola);
+  const mast = BABYLON.MeshBuilder.CreateCylinder('lhMooringMast', { diameterTop: 0.18, diameterBottom: 0.55, height: 7.5, tessellation: 8 }, scene);
+  mast.position.set(0, 32.0, 0); brassParts.push(mast);
+
+  mergeGroup(stoneParts, 'nomadLighthouseStone', root, pal.limestone, shadowGen);
+  mergeGroup(redParts, 'nomadLighthouseRed', root, pal.terracotta, shadowGen);
+  mergeGroup(brassParts, 'nomadLighthouseBrass', root, pal.brass, null);
+
+  // Glowing Fresnel lantern + rotating dual light beam
+  const lanternHub = new BABYLON.TransformNode('nomadLighthouseLantern', scene);
+  lanternHub.parent = root;
+  lanternHub.position.set(0, 24.6, 0);
+  const core = BABYLON.MeshBuilder.CreateCylinder('lhLanternCore', { diameter: 2.5, height: 2.6, tessellation: 12 }, scene);
+  core.parent = lanternHub; core.material = pal.warmGlow; core.isPickable = false;
+
+  const beamMat = getOrCreateMat(scene, 'nomadLighthouseBeamMat', () => {
+    const m = new BABYLON.StandardMaterial('nomadLighthouseBeamMat', scene);
+    m.emissiveColor = c3('#ffd582');
+    m.disableLighting = true;
+    m.alpha = 0.22;
+    m.alphaMode = BABYLON.Engine.ALPHA_ADD;
+    m.backFaceCulling = false;
+    m.depthWrite = false;
+    return m;
+  });
+  for (const s of [-1, 1]) {
+    const beam = BABYLON.MeshBuilder.CreateCylinder(`lhBeam_${s}`, { diameterTop: 0.8, diameterBottom: 11.0, height: 55, tessellation: 10, cap: BABYLON.Mesh.NO_CAP }, scene);
+    beam.parent = lanternHub;
+    beam.rotation.z = s * Math.PI * 0.5;
+    beam.position.x = s * 28.0;
+    beam.material = beamMat;
+    beam.isPickable = false;
+  }
+
+  return { root, lanternHub };
+}
+
+/**
+ * Ancient Aether Monolith Circle (Project Nomads mystery landmark).
+ * Floating glowing cyan obelisk framed by 6 weathered limestone standing stones.
+ */
+export function buildAetherMonolithLandmark(scene, parent, pos) {
+  const pal = getNomadPalette(scene);
+  const root = new BABYLON.TransformNode('nomadMonolithLandmark', scene);
+  root.parent = parent;
+  root.position.copyFrom(pos);
+
+  const stoneParts = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const h = 6.5 + (i % 2) * 2.4;
+    const pillar = BABYLON.MeshBuilder.CreateCylinder(`monoStone_${i}`, { diameterTop: 1.1, diameterBottom: 1.9, height: h, tessellation: 6 }, scene);
+    pillar.position.set(Math.cos(a) * 7.8, h * 0.5, Math.sin(a) * 7.8);
+    pillar.rotation.z = Math.cos(a) * 0.12;
+    pillar.rotation.x = -Math.sin(a) * 0.12;
+    stoneParts.push(pillar);
+  }
+  const dais = BABYLON.MeshBuilder.CreateCylinder('monoDais', { diameterTop: 12.0, diameterBottom: 14.0, height: 1.4, tessellation: 12 }, scene);
+  dais.position.set(0, 0.7, 0);
+  stoneParts.push(dais);
+  mergeGroup(stoneParts, 'nomadMonolithStones', root, pal.limestone, null);
+
+  // Floating rotating Aether Crystal Obelisk
+  const crystal = BABYLON.MeshBuilder.CreatePolyhedron('nomadMonolithCrystal', { type: 1, sizeX: 1.8, sizeY: 5.2, sizeZ: 1.8 }, scene);
+  crystal.parent = root;
+  crystal.position.set(0, 9.5, 0);
+  crystal.material = pal.aetherGlow;
+  crystal.isPickable = false;
+
+  const ring = BABYLON.MeshBuilder.CreateTorus('nomadMonolithRing', { diameter: 6.8, thickness: 0.28, tessellation: 18 }, scene);
+  ring.parent = crystal;
+  ring.rotation.x = 0.45;
+  ring.material = pal.brass;
+  ring.isPickable = false;
+
+  return { root, crystal };
+}

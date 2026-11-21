@@ -15,6 +15,7 @@ import { leadPoint, bombImpactPoint } from './combatAim.js?v=mission1';
 import { SmokeTrail } from './smoke.js?v=mission1';
 import { CollisionWorld } from './collisions.js?v=mission1';
 import { IslandConstruction } from './islandConstruction.js?v=mission1';
+import { ExplorationArtifacts } from './explorationArtifacts.js?v=mission1';
 import { Prologue, PROLOGUE_DURATION } from './prologue.js?v=mission1';
 import { ExplorerAircraft, aircraftHeading, configureImportedAircraftMaterial } from './explorerAircraft.js?v=mission1';
 import { NavigatorPlayer } from './player.js?v=mission1';
@@ -224,6 +225,9 @@ function initWorld(seedStr, { menuPreview = false } = {}) {
     asteroidBase = new AsteroidBase(scene, 742);
     world.registerVagabondBase(asteroidBase);
     construction = new IslandConstruction(scene, asteroidBase, world.shadowGenerator);
+    if (menuPreview || (activeMissionId && activeMissionId !== 'prologue')) {
+      construction.restoreSavedState();
+    }
     islandOrigin = asteroidBase.group.position.clone();
     safeZone = islandOrigin.add(new BABYLON.Vector3(0, 0, 180));
     atmosphereFX = new AtmosphereFX(scene, {
@@ -253,6 +257,7 @@ function initWorld(seedStr, { menuPreview = false } = {}) {
   player.placeOnAsteroid(asteroidBase);
   if (worldMode==='sky' && !menuPreview) {
     world.islandConstruction=construction;
+    world.artifacts=new ExplorationArtifacts(scene,world,{construction,ui,audio});
     world.practicalLights=new PracticalLights(scene,world,asteroidBase,ship);
     world.industrialCranes=new IndustrialCranes(scene,world.industrialIsland.group,world.shadowGenerator);
     world.materialKit=new MaterialKit(scene);
@@ -2623,6 +2628,7 @@ engine.runRenderLoop(() => {
       for (const mesh of ship.group.getChildMeshes()) mesh.checkCollisions = controlMode === 'foot' && mesh.isVisible && !/Flame|Trail|Nozzle|Shadow|LightBulb/i.test(mesh.name);
     }
     construction?.update(dt, {controlMode, stage: demoState?.stage});
+    world.artifacts?.update(dt, controlMode === 'foot' ? player.group.position : ship.group.position, camera, true);
     updateMission(dt);
 
     if (asteroidBase && !freezeCameraForShot) {
