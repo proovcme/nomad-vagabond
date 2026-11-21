@@ -2379,15 +2379,26 @@ export class SkyArchipelagoWorld {
     ipc.vignetteWeight = isNight ? 1.85 : 1.35;
     ipc.vignetteStretch = 0.45;
     ipc.vignetteColor = new BABYLON.Color4(0.04, 0.06, 0.12, 0);
+    // Unified Interbellum 1930s Aviation Poster Color Grading (warm parchment-gold highlights + Adriatic-azure depth, 0ms GPU cost)
+    const curves = new BABYLON.ColorCurves();
+    curves.globalSaturation = isNight ? 4 : isStorm ? -6 : 9;
+    curves.highlightsHue = 38;
+    curves.highlightsDensity = isNight ? 10 : 22;
+    curves.highlightsSaturation = 16;
+    curves.shadowsHue = 205;
+    curves.shadowsDensity = isNight ? 24 : 14;
+    curves.shadowsSaturation = 14;
+    ipc.colorCurves = curves;
+    ipc.colorCurvesEnabled = true;
     if (this.graphics.pipeline) {
       this.graphics.pipeline.bloomWeight = isNight ? 0.28 : 0.12;
       this.graphics.pipeline.bloomThreshold = isNight ? 0.82 : 0.96;
     }
 
-    // Crisp atmospheric perspective haze preserving layered island silhouettes
+    // Crisp atmospheric perspective haze preserving layered Interbellum island silhouettes
     this.scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-    this.scene.fogColor = c3(isNight ? '#162034' : isStorm ? '#625856' : isDawn ? '#d6d2cc' : '#c8ccd0');
-    this.scene.fogDensity = isNight ? 0.00044 : isStorm ? 0.00048 : isDawn ? 0.00024 : 0.00026;
+    this.scene.fogColor = c3(isNight ? '#162034' : isStorm ? '#625856' : isDawn ? '#dcd4c4' : '#d2cfc2');
+    this.scene.fogDensity = isNight ? 0.00044 : isStorm ? 0.00048 : isDawn ? 0.00024 : 0.00025;
 
     // Lightweight 1-draw-call Anamorphic Sun Flare Billboard (cinematic glow with zero bloom cost!)
     if (this.scene.getEngine().constructor.name !== 'NullEngine' && typeof document !== 'undefined') {
@@ -2600,7 +2611,7 @@ export class SkyArchipelagoWorld {
     const B = BABYLON;
     const parts = [];
     const specs = [
-      // angle (rad), radius, y, kind ('arch' | 'cathedral' | 'mesa'), scale
+      // Mid-far ring (820–980m): sculpted craggy silhouettes
       [0.35,  860, 18, 'cathedral', 1.35],
       [1.15,  940, 32, 'arch',      1.40],
       [2.05,  820, 10, 'mesa',      1.25],
@@ -2609,6 +2620,13 @@ export class SkyArchipelagoWorld {
       [4.35,  960, 28, 'mesa',      1.45],
       [5.15,  840, 22, 'cathedral', 1.30],
       [5.85,  920, 12, 'arch',      1.38],
+      // Outer ultra-far low-LOD horizon ring (1280–1620m): distant Interbellum Sky-Citadels & mesas for vast world depth!
+      [0.72, 1380, 46, 'citadel',   1.85],
+      [1.62, 1490, 24, 'mesa',      1.95],
+      [2.48, 1560, 52, 'cathedral', 2.05],
+      [3.25, 1340, 38, 'citadel',   1.75],
+      [4.75, 1520, 28, 'arch',      1.95],
+      [5.55, 1440, 42, 'mesa',      1.85],
     ];
     const addBlock = (name, opts, px, py, pz, ry = 0, rz = 0) => {
       const m = B.MeshBuilder.CreateCylinder(name, { subdivisions: 3, ...opts }, this.scene);
@@ -2623,7 +2641,14 @@ export class SkyArchipelagoWorld {
       const cz = Math.sin(ang) * dist;
       const faceAng = ang + Math.PI * 0.5;
       const ux = Math.cos(faceAng), uz = Math.sin(faceAng);
-      if (kind === 'arch') {
+      if (kind === 'citadel') {
+        // Low-LOD distant floating Interbellum Sky-Citadel (broad terraced plateau + central dome + twin mooring spires)
+        addBlock(`hCitBase_${idx}`, { diameterTop: 94 * s, diameterBottom: 62 * s, height: 32 * s, tessellation: 7 }, cx, y, cz, ang);
+        addBlock(`hCitRoot_${idx}`, { diameterTop: 64 * s, diameterBottom: 7 * s, height: 88 * s, tessellation: 6 }, cx, y - 56 * s, cz, ang);
+        addBlock(`hCitDome_${idx}`, { diameterTop: 10 * s, diameterBottom: 38 * s, height: 42 * s, tessellation: 7 }, cx, y + 34 * s, cz, ang);
+        addBlock(`hCitSpireL_${idx}`, { diameterTop: 3 * s, diameterBottom: 11 * s, height: 58 * s, tessellation: 5 }, cx - ux * 32 * s, y + 36 * s, cz - uz * 32 * s, ang);
+        addBlock(`hCitSpireR_${idx}`, { diameterTop: 3 * s, diameterBottom: 10 * s, height: 48 * s, tessellation: 5 }, cx + ux * 30 * s, y + 31 * s, cz + uz * 30 * s, ang);
+      } else if (kind === 'arch') {
         // Twin monumental pillars + high rock bridge arch + hanging roots
         addBlock(`hArchL_${idx}`, { diameterTop: 22 * s, diameterBottom: 34 * s, height: 88 * s, tessellation: 7 }, cx - ux * 28 * s, y, cz - uz * 28 * s, ang);
         addBlock(`hArchR_${idx}`, { diameterTop: 20 * s, diameterBottom: 30 * s, height: 76 * s, tessellation: 7 }, cx + ux * 28 * s, y - 4 * s, cz + uz * 28 * s, ang + 0.5);
@@ -3078,7 +3103,7 @@ export class SkyArchipelagoWorld {
 
   update(dt, _ship, cameraPos) {
     this.simTime += dt;
-    this.skyLife?.update(dt);
+    this.skyLife?.update(dt, this._skyLifeCtx || {});
     this.landmarks?.update(dt);
     this.practicalLights?.update(dt);
     this.celestials?.update(dt);

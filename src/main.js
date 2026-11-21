@@ -2610,6 +2610,15 @@ engine.runRenderLoop(() => {
     world.motion?.update(dt,Boolean(demoState?.powerOn));
     world.industrialCranes?.update(dt);
     runTime += dt;
+    world._skyLifeCtx = {
+      playerPos: controlMode === 'foot' ? player.group.position : ship.group.position,
+      camera,
+      isPlaying: true,
+      ship,
+      construction,
+      ui,
+      audio,
+    };
     world.update(
       dt,
       () => {
@@ -3948,6 +3957,7 @@ engine.runRenderLoop(() => {
   } else if (gameState === 'menu') {
     world.motion?.update(dt,false);
     world.industrialCranes?.update(dt);
+    world._skyLifeCtx = { isPlaying: false };
     world.update(dt * 0.35, null, camera.position);
     atmosphereFX?.update(dt, { controlMode: 'menu', camera });
     const basePos = asteroidBase ? asteroidBase.group.position : ship.group.position;

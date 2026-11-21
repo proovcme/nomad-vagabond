@@ -174,37 +174,165 @@ export class SkyLife {
     motes.start();
     this.motes = motes;
 
-    // Distant peaceful Interbellum cargo airship barge cruising along the far horizon (1 merged draw call!)
-    const bargeParts = [];
-    const putB = (m, px, py, pz, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) => {
+    // 1. Living Interbellum Supply & Mail Airship «Альбатрос» (painted crimson-and-cream zeppelin with props & resupply!)
+    const airshipRoot = new B.TransformNode('skySupplyAirshipAlbatross', scene);
+    const creamMat = new B.PBRMaterial('albatrossCreamMat', scene);
+    creamMat.albedoColor = B.Color3.FromHexString('#dfd2b6');
+    creamMat.metallic = 0.12; creamMat.roughness = 0.72;
+    const crimsonMat = new B.PBRMaterial('albatrossCrimsonMat', scene);
+    crimsonMat.albedoColor = B.Color3.FromHexString('#a83226');
+    crimsonMat.metallic = 0.18; crimsonMat.roughness = 0.56;
+    const brassMat = new B.PBRMaterial('albatrossBrassMat', scene);
+    brassMat.albedoColor = B.Color3.FromHexString('#cfa04e');
+    brassMat.metallic = 0.85; brassMat.roughness = 0.28;
+    const woodSteelMat = new B.PBRMaterial('albatrossGondolaMat', scene);
+    woodSteelMat.albedoColor = B.Color3.FromHexString('#4a3c32');
+    woodSteelMat.metallic = 0.42; woodSteelMat.roughness = 0.52;
+    const winGlowMat = new B.StandardMaterial('albatrossWindowGlowMat', scene);
+    winGlowMat.emissiveColor = B.Color3.FromHexString('#ffd078');
+    winGlowMat.disableLighting = true;
+
+    const creamParts = [], crimsonParts = [], brassParts = [], gondolaParts = [], glowParts = [];
+    const addP = (arr, m, px, py, pz, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) => {
       m.position.set(px, py, pz); m.rotation.set(rx, ry, rz); m.scaling.set(sx, sy, sz);
-      m.computeWorldMatrix(true); bargeParts.push(m);
+      m.computeWorldMatrix(true); arr.push(m);
     };
-    putB(B.MeshBuilder.CreateSphere('bHull', { diameter: 14, segments: 10 }, scene), 0, 0, 0, 0, 0, 0, 0.85, 0.78, 3.1);
-    putB(B.MeshBuilder.CreateBox('bGondola', { width: 4.5, height: 3.4, depth: 18 }, scene), 0, -7.2, 0);
-    putB(B.MeshBuilder.CreateBox('bFinV', { width: 0.4, height: 11, depth: 9 }, scene), 0, 0, 17);
-    putB(B.MeshBuilder.CreateBox('bFinH', { width: 11, height: 0.4, depth: 9 }, scene), 0, 0, 17);
-    const bargeMesh = B.Mesh.MergeMeshes(bargeParts, true, true, undefined, false, false);
-    if (bargeMesh) {
-      bargeMesh.name = 'skyHorizonCargoBarge';
-      const bargeMat = new B.PBRMaterial('skyHorizonBargeMat', scene);
-      bargeMat.albedoColor = B.Color3.FromHexString('#c4b498');
-      bargeMat.metallic = 0.18; bargeMat.roughness = 0.78;
-      bargeMesh.material = bargeMat;
-      bargeMesh.isPickable = false; bargeMesh.checkCollisions = false;
-      this._horizonBarge = bargeMesh;
+    // Cigar envelope + crimson aviation bands & tail fins
+    addP(creamParts, B.MeshBuilder.CreateSphere('albHull', { diameter: 15, segments: 14 }, scene), 0, 0, 0, 0, 0, 0, 0.86, 0.80, 3.3);
+    addP(crimsonParts, B.MeshBuilder.CreateTorus('albBandF', { diameter: 11.4, thickness: 1.4, tessellation: 18 }, scene), 0, 0, -11.5, Math.PI * 0.5, 0, 0, 1.0, 1.0, 0.94);
+    addP(crimsonParts, B.MeshBuilder.CreateTorus('albBandR', { diameter: 10.6, thickness: 1.4, tessellation: 18 }, scene), 0, 0, 12.5, Math.PI * 0.5, 0, 0, 1.0, 1.0, 0.94);
+    addP(crimsonParts, B.MeshBuilder.CreateBox('albFinV', { width: 0.45, height: 12.5, depth: 9.5 }, scene), 0, 0, 18.5);
+    addP(crimsonParts, B.MeshBuilder.CreateBox('albFinH', { width: 12.5, height: 0.45, depth: 9.5 }, scene), 0, 0, 18.5);
+    // Brass mooring nose cone + equatorial ribs
+    addP(brassParts, B.MeshBuilder.CreateCylinder('albNose', { diameterTop: 0.3, diameterBottom: 3.4, height: 3.6, tessellation: 10 }, scene), 0, 0, -25.2, -Math.PI * 0.5);
+    // Underslung Interbellum passenger/supply gondola + warm cabin windows + engine struts
+    addP(gondolaParts, B.MeshBuilder.CreateBox('albGondola', { width: 4.6, height: 3.6, depth: 19.0 }, scene), 0, -7.8, -1.0);
+    addP(gondolaParts, B.MeshBuilder.CreateBox('albKeel', { width: 2.2, height: 1.6, depth: 26.0 }, scene), 0, -5.8, 0.5);
+    for (let wz = -7.5; wz <= 5.5; wz += 2.6) {
+      addP(glowParts, B.MeshBuilder.CreateBox(`albWinL_${wz}`, { width: 0.14, height: 1.0, depth: 1.3 }, scene), -2.35, -7.6, wz);
+      addP(glowParts, B.MeshBuilder.CreateBox(`albWinR_${wz}`, { width: 0.14, height: 1.0, depth: 1.3 }, scene), 2.35, -7.6, wz);
     }
+    // Twin outboard engine nacelles + spinning props
+    this._airshipProps = [];
+    for (const side of [-1, 1]) {
+      addP(gondolaParts, B.MeshBuilder.CreateBox(`albStrut_${side}`, { width: 4.4, height: 0.45, depth: 0.7 }, scene), side * 4.2, -7.4, 2.5);
+      addP(brassParts, B.MeshBuilder.CreateCylinder(`albPod_${side}`, { diameterTop: 1.4, diameterBottom: 1.8, height: 4.8, tessellation: 10 }, scene), side * 6.4, -7.4, 2.5, Math.PI * 0.5);
+      const prop = B.MeshBuilder.CreateBox(`albProp_${side}`, { width: 3.4, height: 0.36, depth: 0.12 }, scene);
+      prop.parent = airshipRoot; prop.position.set(side * 6.4, -7.4, 5.1);
+      prop.material = brassMat; prop.isPickable = false;
+      this._airshipProps.push(prop);
+    }
+    const finalizePart = (arr, name, mat) => {
+      const m = B.Mesh.MergeMeshes(arr, true, true, undefined, false, false);
+      if (m) { m.name = name; m.parent = airshipRoot; m.material = mat; m.isPickable = false; m.checkCollisions = false; }
+    };
+    finalizePart(creamParts, 'skySupplyAirshipHull', creamMat);
+    finalizePart(crimsonParts, 'skySupplyAirshipTrim', crimsonMat);
+    finalizePart(brassParts, 'skySupplyAirshipBrass', brassMat);
+    finalizePart(gondolaParts, 'skySupplyAirshipGondola', woodSteelMat);
+    finalizePart(glowParts, 'skySupplyAirshipWindows', winGlowMat);
+    this._horizonBarge = airshipRoot;
+    this._supplyCooldown = 0;
+
+    // HUD supply-airship marker (non-intrusive gold anchor icon when within 1200m)
+    if (!(scene.getEngine() instanceof B.NullEngine) && typeof document !== 'undefined') {
+      this._airshipMarker = document.createElement('div');
+      this._airshipMarker.style.cssText = 'position:fixed;transform:translate(-50%,-50%);color:#f6d98c;text-shadow:0 1px 4px #000c;font:600 11px/1.2 sans-serif;white-space:nowrap;pointer-events:none;z-index:21;display:none;';
+      document.body.appendChild(this._airshipMarker);
+    }
+
+    // 2. Pair of peaceful Interbellum Crimson-and-Cream Mail Biplanes cruising between islands
+    this._mailPlanes = [];
+    for (let i = 0; i < 2; i++) {
+      const mpRoot = new B.TransformNode(`interbellumMailPlane_${i}`, scene);
+      const mpParts = [];
+      addP(mpParts, B.MeshBuilder.CreateCylinder(`mpFus_${i}`, { diameterTop: 0.7, diameterBottom: 1.5, height: 7.5, tessellation: 8 }, scene), 0, 0, 0, Math.PI * 0.5);
+      addP(mpParts, B.MeshBuilder.CreateBox(`mpWingU_${i}`, { width: 10.2, height: 0.22, depth: 1.7 }, scene), 0, 0.9, -0.8);
+      addP(mpParts, B.MeshBuilder.CreateBox(`mpWingL_${i}`, { width: 9.2, height: 0.22, depth: 1.5 }, scene), 0, -0.45, -0.6);
+      addP(mpParts, B.MeshBuilder.CreateBox(`mpTailH_${i}`, { width: 3.4, height: 0.16, depth: 1.0 }, scene), 0, 0.3, 3.2);
+      addP(mpParts, B.MeshBuilder.CreateBox(`mpTailV_${i}`, { width: 0.16, height: 1.7, depth: 1.1 }, scene), 0, 0.9, 3.2);
+      const mpMesh = B.Mesh.MergeMeshes(mpParts, true, true, undefined, false, false);
+      if (mpMesh) {
+        mpMesh.name = `interbellumMailPlaneMesh_${i}`;
+        mpMesh.parent = mpRoot;
+        mpMesh.material = i === 0 ? crimsonMat : creamMat;
+        mpMesh.isPickable = false; mpMesh.checkCollisions = false;
+      }
+      this._mailPlanes.push({
+        root: mpRoot,
+        radius: 310 + i * 115,
+        alt: 84 + i * 28,
+        speed: (0.065 - i * 0.014) * (i === 0 ? 1 : -1),
+        phase: i * 3.1,
+      });
+    }
+    scene.onDisposeObservable.addOnce(() => { this._airshipMarker?.remove(); });
   }
 
-  update(dt) {
+  update(dt, { playerPos = null, camera = null, isPlaying = false, ship = null, construction = null, ui = null, audio = null } = {}) {
     this.time += dt;
+    if (this._supplyCooldown > 0) this._supplyCooldown = Math.max(0, this._supplyCooldown - dt);
     if (this._horizonBarge && !this._horizonBarge.isDisposed()) {
-      const a = this.time * 0.022 + 0.9;
-      const r = 740;
+      const a = this.time * 0.032 + 0.7;
+      const r = 440;
       const bx = Math.cos(a) * r;
       const bz = Math.sin(a) * r;
-      this._horizonBarge.position.set(bx, 118 + Math.sin(this.time * 0.35) * 6, bz);
+      const by = 96 + Math.sin(this.time * 0.42) * 5;
+      this._horizonBarge.position.set(bx, by, bz);
       this._horizonBarge.rotation.y = Math.atan2(Math.sin(a), -Math.cos(a));
+      for (const p of this._airshipProps || []) p.rotation.z += dt * 22;
+
+      if (isPlaying && playerPos) {
+        const dist = BABYLON.Vector3.Distance(playerPos, this._horizonBarge.position);
+        if (dist < 78 && this._supplyCooldown <= 0) {
+          this._supplyCooldown = 45;
+          if (ship) {
+            ship.hull = ship.maxHull || 100;
+            if (typeof ship.torpedoes === 'number') ship.torpedoes = Math.max(ship.torpedoes, 4);
+            if (typeof ship.missiles === 'number') ship.missiles = Math.max(ship.missiles, 8);
+          }
+          if (construction) {
+            construction.addSalvage(35);
+            construction.saveState?.();
+          }
+          audio?.playObjective?.();
+          ui?.showToast?.('⚓ Дирижабль «Альбатрос»: борт отремонтирован, боезапас пополнен, +35 лома!', 4600);
+        }
+        if (this._airshipMarker && camera && dist < 1300) {
+          const eng = this.scene.getEngine();
+          const w = eng.getRenderWidth(), h = eng.getRenderHeight();
+          const proj = BABYLON.Vector3.Project(
+            this._horizonBarge.position.add(new BABYLON.Vector3(0, 14, 0)),
+            BABYLON.Matrix.Identity(),
+            this.scene.getTransformMatrix(),
+            camera.viewport.toGlobal(w, h)
+          );
+          if (proj.z >= 0 && proj.z <= 1 && proj.x > 20 && proj.x < w - 20 && proj.y > 20 && proj.y < h - 20) {
+            this._airshipMarker.style.display = 'block';
+            this._airshipMarker.style.left = `${proj.x}px`;
+            this._airshipMarker.style.top = `${proj.y}px`;
+            this._airshipMarker.textContent = `⚓ Снабженец «Альбатрос» · ${Math.round(dist)}м`;
+          } else {
+            this._airshipMarker.style.display = 'none';
+          }
+        } else if (this._airshipMarker) {
+          this._airshipMarker.style.display = 'none';
+        }
+      } else if (this._airshipMarker) {
+        this._airshipMarker.style.display = 'none';
+      }
+    }
+
+    for (const mp of this._mailPlanes || []) {
+      const ang = this.time * mp.speed + mp.phase;
+      const mx = Math.cos(ang) * mp.radius;
+      const mz = Math.sin(ang) * mp.radius * 0.85;
+      const my = mp.alt + Math.sin(ang * 2.0) * 6.0;
+      mp.root.position.set(mx, my, mz);
+      const vx = -Math.sin(ang) * mp.radius * mp.speed;
+      const vz = Math.cos(ang) * mp.radius * 0.85 * mp.speed;
+      mp.root.rotation.y = Math.atan2(-vx, -vz);
+      mp.root.rotation.z = mp.speed > 0 ? 0.16 : -0.16;
     }
     for (const bird of this.birds) {
       const angle = this.time * bird.speed * bird.dir + bird.phase;
