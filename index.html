@@ -520,9 +520,11 @@
     #radio-text { color: #eee8d2 !important; font-size: 13px !important; line-height: 1.5 !important; }
     #menu-overlay { background: linear-gradient(90deg,#101a13f5,#142018c9 28%,#101a1344 58%,transparent 80%); }
     .menu-col { position: relative; padding: 40px 48px; width: min(440px,90vw); }
-    .menu-col::before { content: "ЛЁТНАЯ КНИЖКА / ЭСКАДРИЛЬЯ 01"; color: #bac0a2; font: 10px "Courier New",monospace; letter-spacing: .12em; margin-bottom: 20px; }
-    .menu-title { font-family: Impact,"Arial Black",Arial,sans-serif; font-size: clamp(43px,5vw,64px); font-weight: 900; letter-spacing: .1em; color: #f0e4bc; text-shadow: 2px 3px #0b130d; margin-bottom: 15px; }
-    .menu-rule { width: 100%; max-width: 275px; height: 3px; background: #c7bd92; margin-bottom: 26px; }
+    .menu-col::before { content: "ЛЁТНАЯ ХРОНИКА  /  ДЕКАДА 1931"; color: #d8cfa8; font: 10px "Courier New",monospace; letter-spacing: .16em; margin-bottom: 10px; display: block; }
+    .menu-emblem { width: 176px; height: 28px; margin-bottom: 4px; opacity: 0.92; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.55)); }
+    .menu-title { font-family: "Georgia","Times New Roman",serif; font-size: clamp(44px,5vw,66px); font-weight: 800; letter-spacing: .08em; color: #f4e2ad; text-shadow: 0 3px 10px rgba(8,14,10,0.85), 1px 2px #1c170b; margin-bottom: 4px; line-height: 1.02; }
+    .menu-subtitle { font: 600 11px "Courier New",monospace; letter-spacing: .24em; color: #e2cfa0; margin-bottom: 18px; text-shadow: 0 1px 4px #000a; }
+    .menu-rule { width: 100%; max-width: 285px; height: 2px; background: linear-gradient(90deg, #e2c578, #8c7640 70%, transparent); margin-bottom: 22px; }
     .menu-item { border: 1px solid transparent; min-height: 45px; font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; padding: 10px 12px; }
     .menu-item .dot { border-radius: 1px; width: 8px; height: 8px; }
     .menu-item:hover, .menu-item:focus-visible, .menu-item.selected { padding-left: 12px; border-color: #90936b; background: #74805c29; box-shadow: inset 3px 0 #e6d397; }
@@ -947,7 +949,15 @@
   <!-- MAIN MENU -->
   <div id="menu-overlay">
     <div class="menu-col">
+      <svg class="menu-emblem" viewBox="0 0 220 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M12 16 H84 L96 22 H26 Z M208 16 H136 L124 22 H194 Z" fill="#e6c87a" fill-opacity="0.9"/>
+        <path d="M24 24 H88 L96 28 H38 Z M196 24 H132 L124 28 H182 Z" fill="#c9a452" fill-opacity="0.75"/>
+        <circle cx="110" cy="17" r="11" stroke="#f0d78c" stroke-width="2.2" fill="#17221b"/>
+        <path d="M110 7 L112.5 17 L110 27 L107.5 17 Z" fill="#f0d78c"/>
+        <circle cx="110" cy="17" r="2.6" fill="#f4e2ad"/>
+      </svg>
       <h1 class="menu-title">БРОДЯГА</h1>
+      <div class="menu-subtitle">♦ НЕБЕСНЫЙ КРЕЙСЕР ♦</div>
       <div class="menu-rule"></div>
       <div class="menu-nav" id="menu-nav">
         <button class="menu-item selected" id="start-btn"><span class="dot"></span>1 · Пролог (Закатный архипелаг)</button>

@@ -3962,16 +3962,16 @@ engine.runRenderLoop(() => {
     atmosphereFX?.update(dt, { controlMode: 'menu', camera });
     const basePos = asteroidBase ? asteroidBase.group.position : ship.group.position;
     world.updateShadowFocus?.(basePos);
-    const angle = 0.78 + Math.sin(world.simTime * .035) * .16;
+    const angle = -0.82 + Math.sin(world.simTime * .035) * .14;
     const framing=Math.max(1,1.1/engine.getAspectRatio(camera));
-    // Heroic low-angle framing: Vagabond in lower-right foreground, split moon + orbital megastructure ring + cloud abyss in vista!
+    // Sunlit 3/4 port-bow framing (illuminates the riveted grey cruiser hull, crimson-white bow stripe, triple turrets & tripod mast!)
     camera.position.set(
-      basePos.x + Math.cos(angle) * 112 * framing,
-      basePos.y + 16 * framing,
-      basePos.z + Math.sin(angle) * 112 * framing
+      basePos.x + Math.cos(angle) * 116 * framing,
+      basePos.y + 18 * framing,
+      basePos.z + Math.sin(angle) * 116 * framing
     );
     camera.upVector.set(0, 1, 0);
-    camera.setTarget(basePos.add(new BABYLON.Vector3(-14.0, 26.0, -24.0)));
+    camera.setTarget(basePos.add(new BABYLON.Vector3(-8.0, 15.0, 6.0)));
   }
 
   const drawTotal=engine._drawCalls?.current||0;

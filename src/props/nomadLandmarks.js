@@ -519,11 +519,30 @@ export function buildInterbellumCarrierHull(asteroidBase, scene, shadowGen = nul
   put(crimsonParts, B.MeshBuilder.CreateCylinder('wsBowKeel', { diameterTop: 11.0, diameterBottom: 0.9, height: 38.0, tessellation: 4 }, scene), 43.0, -3.2, 0, 0, Math.PI * 0.25, -Math.PI * 0.5 + 0.04, 0.34, 1.0, 0.78);
   // Tapered cruiser stern
   put(hullParts, B.MeshBuilder.CreateCylinder('wsSternTaper', { diameterTop: 15.2, diameterBottom: 3.8, height: 20.0, tessellation: 4 }, scene), -50.0, -0.6, 0, 0, Math.PI * 0.25, Math.PI * 0.5, 0.42, 1.0, 0.88);
-  // Swept clipper brass bow stem + cruiser anchors
+  // Swept clipper brass bow stem + cruiser anchors + iconic 1931 diagonal crimson-and-white bow heraldic stripe!
   put(brassParts, B.MeshBuilder.CreateBox('wsBowStem', { width: 0.75, height: 7.4, depth: 0.75 }, scene), 67.5, -0.2, 0, 0, 0, -0.34);
+  const whiteMat = getOrCreateMat(scene, 'vagNavalWhiteStripeMat', () => {
+    const m = new B.PBRMaterial('vagNavalWhiteStripeMat', scene);
+    m.albedoColor = c3('#ece4cf');
+    m.metallic = 0.08; m.roughness = 0.65;
+    return m;
+  });
+  const whiteParts = [];
   for (const side of [-1, 1]) {
     put(brassParts, B.MeshBuilder.CreateTorus(`wsHawse_${side}`, { diameter: 1.25, thickness: 0.20, tessellation: 10 }, scene), 49.5, 0.8, side * 5.2, 0, Math.PI * 0.5, 0);
     put(ironParts, B.MeshBuilder.CreateCylinder(`wsAnchorShank_${side}`, { diameter: 0.28, height: 2.2, tessellation: 6 }, scene), 49.5, -0.3, side * 5.5);
+    // Diagonal white-framed crimson flagship bow stripe (exact 1931 Sky-Cruiser key-art signature!)
+    put(whiteParts, B.MeshBuilder.CreateBox(`wsBowStripeW_${side}`, { width: 4.8, height: 6.2, depth: 0.35 }, scene), 34.0, -0.4, side * 8.2, 0, side * -0.14, -0.30);
+    put(crimsonParts, B.MeshBuilder.CreateBox(`wsBowStripeC_${side}`, { width: 3.1, height: 6.3, depth: 0.44 }, scene), 34.0, -0.4, side * 8.28, 0, side * -0.14, -0.30);
+  }
+  mergeGroup(whiteParts, 'vagWarshipWhiteStripe', asteroidBase.group, whiteMat, null);
+
+  // Recessed armored glowing amber under-hull lift-thruster vents along the cruiser keel (key-art propulsion pods!)
+  for (const vx of [-28, -8, 12, 30]) {
+    put(ironParts, B.MeshBuilder.CreateBox(`wsKeelVentBox_${vx}`, { width: 8.4, height: 2.2, depth: 6.8 }, scene), vx, -6.4, 0);
+    for (const side of [-1, 1]) {
+      put(glowParts, B.MeshBuilder.CreateBox(`wsKeelVentGlow_${vx}_${side}`, { width: 6.6, height: 1.0, depth: 0.25 }, scene), vx, -6.5, side * 3.48);
+    }
   }
 
   // 2. Crimson Cruiser Waterline Stripe, Brass Strake & Open Steel Trestle Girders (USS Langley style!)
@@ -566,11 +585,12 @@ export function buildInterbellumCarrierHull(asteroidBase, scene, shadowGen = nul
   }
 
   // 4. Gotland / Tone-Chikuma Signature Superstructure: Raked Trunked Funnel + Tripod Naval Mast & Rangefinder + Twin-Barrel Cruiser Turrets!
-  // Raked Tone-style swept trunked funnel (22° aft rake) with dark cap & brass bands
+  // Raked Tone-style swept trunked funnel (22° aft rake) with dark cap, crimson flagship band & brass trim
   put(hullParts, B.MeshBuilder.CreateCylinder('wsSecondFunnel', { diameterTop: 2.2, diameterBottom: 3.1, height: 10.2, tessellation: 12 }, scene), -40.5, 26.2, -19.5, 0, 0, 0.32);
   put(ironParts, B.MeshBuilder.CreateCylinder('wsSecondFunnelCap', { diameterTop: 2.4, diameterBottom: 2.25, height: 1.4, tessellation: 12 }, scene), -42.1, 31.1, -19.5, 0, 0, 0.32);
-  for (const fy of [28.4, 29.6]) {
-    put(brassParts, B.MeshBuilder.CreateTorus(`wsSecondFunnelBand_${fy}`, { diameter: 2.45, thickness: 0.18, tessellation: 14 }, scene), -40.5 - (fy - 26.2) * 0.32, fy, -19.5, 0, 0, 0.32);
+  put(crimsonParts, B.MeshBuilder.CreateCylinder('wsSecondFunnelCrimson', { diameterTop: 2.48, diameterBottom: 2.62, height: 1.5, tessellation: 12 }, scene), -41.4, 29.0, -19.5, 0, 0, 0.32);
+  for (const fy of [28.1, 29.9]) {
+    put(brassParts, B.MeshBuilder.CreateTorus(`wsSecondFunnelBand_${fy}`, { diameter: 2.55, thickness: 0.16, tessellation: 14 }, scene), -40.5 - (fy - 26.2) * 0.32, fy, -19.5, 0, 0, 0.32);
   }
 
   // Iconic Gotland / Tone Interbellum Tripod Naval Mast + Fire-Control Director & Signal Yardarms on port flank
