@@ -1,17 +1,23 @@
 import { configureBuildingMaterial } from './buildingMaterials.js?v=mission1';
 import { buildFlak88Turret } from './flak88.js?v=mission1';
-import { buildSculptedRadar } from './props/dieselpunkStructures.js?v=mission1';
+import { buildSculptedRadar, buildSculptedSamLauncher } from './props/dieselpunkStructures.js?v=mission1';
 export const BUILDING_DEFINITIONS = Object.freeze({
   generator: { name: 'Эфирный генератор', file: 'ether_generator.glb', cost: 30, output: 4, demand: 0, width: 5.42, height: 4.84, depth: 7, detail: '+4 энергии · ремонт острова' },
-  turret: { name: 'Зенитная установка', file: 'flak_turret.glb', cost: 35, output: 0, demand: 2, width: 7, height: 3.1, depth: 4.37, detail: '−2 энергии · защита острова' },
+  turret: { name: 'Зенитная пушка', file: 'flak_turret.glb', cost: 35, output: 0, demand: 2, width: 7, height: 3.1, depth: 4.37, detail: '−2 энергии · защита острова' },
   radar: { name: 'Радар', file: 'radar_array.glb', cost: 25, output: 0, demand: 1, width: 5.84, height: 7.95, depth: 7, detail: '−1 энергии · обнаружение целей' },
+  sam: { name: 'ЗРК ПВО', file: 'sam_battery', cost: 45, output: 0, demand: 2, width: 6.5, height: 4.6, depth: 6.5, detail: '−2 энергии · 4 ракеты ПВО' },
+  shield: { name: 'Эфирный щит', file: 'aether_shield', cost: 55, output: 0, demand: 3, width: 6.0, height: 6.2, depth: 6.0, detail: '−3 энергии · купол щита базы' },
 });
 const DEFINITIONS = BUILDING_DEFINITIONS;
 const REQUIRED_TYPE = {build_generator:'generator', build_defense:'turret', build_radar:'radar'};
 const DECK = {minX:-23, maxX:1, minZ:-10, maxZ:12, y:21.73};
+const EXPANDED_DECK = {minX:-48, maxX:1, minZ:-15, maxZ:13, y:21.73};
 const FOOTING = 7.7;
 const GAP = .35;
-const DEFAULT_POSITIONS = [{x:-18,z:-4},{x:-7,z:-4},{x:-18,z:7}];
+const DEFAULT_POSITIONS = [
+  {x:-18,z:-4},{x:-7,z:-4},{x:-18,z:7},
+  {x:-29,z:-10},{x:-29,z:-1},{x:-40,z:-10},{x:-40,z:-1},{x:-40,z:8},
+];
 const samePlace = (a,b) => Boolean(a&&b&&Math.hypot(a.x-b.x,a.z-b.z)<.6);
 
 function fallbackFootingMaterial(scene) {
@@ -53,6 +59,8 @@ export class IslandConstruction {
       generators:this.buildings.filter(b=>b.type==='generator').length,
       turrets:this.buildings.filter(b=>b.type==='turret').length,
       radars:this.buildings.filter(b=>b.type==='radar').length,
+      sams:this.buildings.filter(b=>b.type==='sam').length,
+      shields:this.buildings.filter(b=>b.type==='shield').length,
       buildings:this.buildings.map(({type,socket,position})=>({type,socket,position:{...position}})),
       isOpen:this.isOpen,selectedType:this.selectedType,selectedPosition:{...this.selectedPosition},positionPinned:this.positionPinned,
       placementValid:validation.valid,placementReason:validation.reason};
@@ -62,14 +70,25 @@ export class IslandConstruction {
     return this.buildings.reduce((n,b)=>n+DEFINITIONS[b.type].output-DEFINITIONS[b.type].demand,0);
   }
 
+  _isTutorialStage() {
+    return Boolean(REQUIRED_TYPE[this.stage]);
+  }
+
+  _activeDeck() {
+    return (this._isTutorialStage() || this.stage === null) ? DECK : EXPANDED_DECK;
+  }
+
   validatePlacement(type=this.selectedType, position=this.selectedPosition) {
     if(!DEFINITIONS[type])return {valid:false,code:'type',reason:'Выберите постройку.'};
     if(!position||!Number.isFinite(position.x)||!Number.isFinite(position.z))return {valid:false,code:'position',reason:'Укажите место на палубе.'};
+    const deck=this._activeDeck();
     const half=FOOTING/2, x=position.x,z=position.z;
-    if(x-half<DECK.minX||x+half>DECK.maxX||z-half<DECK.minZ||z+half>DECK.maxZ)
+    if(x-half<deck.minX||x+half>deck.maxX||z-half<deck.minZ||z+half>deck.maxZ)
       return {valid:false,code:'edge',reason:'Фундамент выходит за край строительной палубы.'};
     if(x+half>-20&&x-half<13&&z+half>-15.6&&z-half<-9.2)
       return {valid:false,code:'stairs',reason:'Здесь проходит лестница. Оставьте проход свободным.'};
+    if(x+half>-35&&x-half<-21&&z+half>11.5)
+      return {valid:false,code:'occupied',reason:'Здесь установлен главный генераторный комплекс.'};
     const liftDistance=Math.hypot(Math.max(Math.abs(x+8)-half,0),Math.max(Math.abs(z-6.5)-half,0));
     if(liftDistance<3)return {valid:false,code:'lift',reason:'Слишком близко к подъёмнику: нужен свободный проход.'};
     if(this.buildings.some(b=>Math.abs(b.position.x-x)<FOOTING+GAP&&Math.abs(b.position.z-z)<FOOTING+GAP))
@@ -82,11 +101,12 @@ export class IslandConstruction {
     const d=DEFINITIONS[type];if(!d)return {valid:false,code:'type',reason:'Выберите постройку.'};
     const required=REQUIRED_TYPE[this.stage];
     if(required&&required!==type)return {valid:false,code:'mission',reason:`Сейчас по заданию нужен: ${DEFINITIONS[required].name}.`};
-    if(this.buildings.some(b=>b.type===type))return {valid:false,code:'duplicate',reason:'В первой миссии достаточно одной постройки каждого типа.'};
+    if(this._isTutorialStage()&&this.buildings.some(b=>b.type===type))return {valid:false,code:'duplicate',reason:'В первой миссии достаточно одной постройки каждого типа.'};
+    if(this.buildings.length>=10)return {valid:false,code:'limit',reason:'Достигнут лимит построек на палубе (10).'};
     const placement=this.validatePlacement(type,position);if(!placement.valid)return placement;
     if(this.salvage<d.cost)return {valid:false,code:'salvage',reason:`Не хватает ${d.cost-this.salvage} лома. Нужен лом с обломков.`};
     if(this._power()<d.demand)return {valid:false,code:'power',reason:`Не хватает ${d.demand-this._power()} энергии. Сначала постройте генератор.`};
-    if(!this._leavesMissionSpace(position))return {valid:false,code:'capacity',reason:'Здесь не останется места для остальных построек. Сдвиньте фундамент или выберите готовое место 1–3.'};
+    if(this._isTutorialStage()&&!this._leavesMissionSpace(position))return {valid:false,code:'capacity',reason:'Здесь не останется места для остальных построек. Сдвиньте фундамент или выберите готовое место 1–3.'};
     return placement;
   }
 
@@ -127,8 +147,9 @@ export class IslandConstruction {
   _recommendPosition() {
     const found=DEFAULT_POSITIONS.find(p=>this.validatePlacement(this.selectedType,p).valid);
     if(found){this.selectedPosition={...found};this.selectedSocket=DEFAULT_POSITIONS.indexOf(found);return;}
-    // A nonstandard first placement must not make all three shortcut slots mandatory.
-    for(let z=-5;z<=8;z+=.5)for(let x=-19;x<=-3;x+=.5){
+    const deck=this._activeDeck(), half=FOOTING/2;
+    // A nonstandard first placement must not make all shortcut slots mandatory.
+    for(let z=Math.ceil(deck.minZ+half);z<=Math.floor(deck.maxZ-half);z+=.5)for(let x=Math.ceil(deck.minX+half);x<=Math.floor(deck.maxX-half);x+=.5){
       if(this.validatePlacement(this.selectedType,{x,z}).valid){this.selectedPosition={x,z};this.selectedSocket=-1;return;}
     }
   }
@@ -166,13 +187,15 @@ export class IslandConstruction {
     const narrow=width<=760;
     c.viewport=new B.Viewport(0,narrow ? .42 : 0,narrow?1:Math.max(.4,(width-326)/width),narrow ? .58 : 1);
     c.mode=B.Camera.ORTHOGRAPHIC_CAMERA;
-    const aspect=width*c.viewport.width/(height*c.viewport.height),halfHeight=18;
+    const expanded = !(this._isTutorialStage() || this.stage === null);
+    const aspect=width*c.viewport.width/(height*c.viewport.height),halfHeight=expanded?24:18;
     c.orthoTop=halfHeight;c.orthoBottom=-halfHeight;c.orthoLeft=-halfHeight*aspect;c.orthoRight=halfHeight*aspect;
     this.base.group.computeWorldMatrix(true);
     const matrix=this.base.group.getWorldMatrix();
-    c.position.copyFrom(B.Vector3.TransformCoordinates(new B.Vector3(-11,90,1),matrix));
+    const cx=expanded?-23:-11, cz=expanded?-1:1;
+    c.position.copyFrom(B.Vector3.TransformCoordinates(new B.Vector3(cx,90,cz),matrix));
     c.upVector.copyFrom(B.Vector3.TransformNormal(new B.Vector3(0,0,-1),matrix).normalize());
-    c.setTarget(B.Vector3.TransformCoordinates(new B.Vector3(-11,DECK.y,1),matrix));
+    c.setTarget(B.Vector3.TransformCoordinates(new B.Vector3(cx,DECK.y,cz),matrix));
     c.getProjectionMatrix(true);this.scene.updateTransformMatrix(true);
   }
 
@@ -259,6 +282,41 @@ export class IslandConstruction {
       fallback.dispose(); fallbackMat.dispose(); building.loaded = true;
       return;
     }
+    if (building.type === 'sam') {
+      const sam = buildSculptedSamLauncher(this.scene, `builtSam_${this.buildings.indexOf(building)}`, building.node, new BABYLON.Vector3(0, 0.0, 0), this.shadowGenerator);
+      sam.base.scaling.setAll(1.05);
+      this.base.samLaunchers ||= [];
+      this.base.samLaunchers.push(sam);
+      building.samRig = sam;
+      fallback.dispose(); fallbackMat.dispose(); building.loaded = true;
+      return;
+    }
+    if (building.type === 'shield') {
+      const B = BABYLON;
+      const pylon = B.MeshBuilder.CreateCylinder(`builtShieldPylon_${this.buildings.indexOf(building)}`, { diameterTop: 1.6, diameterBottom: 3.4, height: 5.2, tessellation: 10 }, this.scene);
+      pylon.parent = building.node; pylon.position.y = 2.6;
+      const pMat = new B.PBRMaterial(`builtShieldMat_${this.buildings.indexOf(building)}`, this.scene);
+      pMat.albedoColor = B.Color3.FromHexString('#c69b4c'); pMat.metallic = 0.82; pMat.roughness = 0.30;
+      pylon.material = pMat;
+      const orb = B.MeshBuilder.CreateSphere(`builtShieldOrb_${this.buildings.indexOf(building)}`, { diameter: 2.2, segments: 10 }, this.scene);
+      orb.parent = building.node; orb.position.y = 5.8;
+      const oMat = new B.StandardMaterial(`builtShieldOrbMat_${this.buildings.indexOf(building)}`, this.scene);
+      oMat.emissiveColor = B.Color3.FromHexString('#48e0ff'); oMat.disableLighting = true;
+      orb.material = oMat;
+      // Translucent protective aether dome over Vagabond
+      if (!this.base._shieldDome || this.base._shieldDome.isDisposed?.()) {
+        const dome = B.MeshBuilder.CreateSphere('vagAetherShieldDome', { diameter: 118, segments: 18, slice: 0.55 }, this.scene);
+        dome.parent = this.base.group; dome.position.set(-14, 14, 0);
+        const dMat = new B.StandardMaterial('vagAetherShieldDomeMat', this.scene);
+        dMat.emissiveColor = B.Color3.FromHexString('#38c8ff'); dMat.disableLighting = true;
+        dMat.alpha = 0.10; dMat.alphaMode = B.Engine.ALPHA_ADD; dMat.backFaceCulling = false; dMat.depthWrite = false;
+        dome.material = dMat; dome.isPickable = false; dome.checkCollisions = false;
+        this.base._shieldDome = dome;
+      }
+      this.base.shieldStrength = (this.base.shieldStrength || 0) + 1;
+      fallback.dispose(); fallbackMat.dispose(); building.loaded = true;
+      return;
+    }
     try {
       const result=await BABYLON.SceneLoader.ImportMeshAsync('','./assets/buildings/',DEFINITIONS[building.type].file,this.scene);
       if(this.disposed||building.node.isDisposed()){result.meshes.forEach(m=>m.dispose());return;}
@@ -300,7 +358,7 @@ export class IslandConstruction {
       if(event.repeat)return;
       if(event.code==='Escape'||event.code==='KeyB')this.close();
       else if(event.code==='Enter'&&!uiActivation)this.build();
-      else if(/^Digit[123]$/.test(event.code))this.selectSocket(Number(event.code.slice(-1))-1);
+      else if(/^Digit[1-8]$/.test(event.code))this.selectSocket(Number(event.code.slice(-1))-1);
     };
     this._pointerMove=event=>{if(this.isOpen&&!this.positionPinned)this.pointerPending={clientX:event.clientX,clientY:event.clientY};};
     this._pointerDown=event=>{
@@ -322,7 +380,7 @@ export class IslandConstruction {
       .island-builder-panel{position:fixed;right:12px;top:12px;bottom:12px;width:296px;overflow:auto;z-index:80;background:#1b261ef5;color:#eee4c5;border:1px solid #9d9d74;padding:16px;box-shadow:0 5px 30px #0008;font:13px/1.4 Arial,sans-serif;pointer-events:auto}
       .island-builder-panel button{font:inherit;min-height:38px;border:1px solid #6e8067;background:#303e2b;color:#f1e6c7;padding:8px;cursor:pointer;text-align:left;border-radius:2px}
       .island-builder-panel button:hover{background:#465239}.island-builder-panel button:focus-visible{outline:2px solid #f3d98e;outline-offset:2px}.island-builder-panel button:disabled{opacity:.4;cursor:default}
-      .island-builder-panel [data-types]{display:grid;gap:7px;margin:10px 0}.island-builder-panel [data-sockets]{display:flex;gap:6px;margin:8px 0}.island-builder-panel small{font-size:11px;color:#c2c9ae}
+      .island-builder-panel [data-types]{display:grid;gap:7px;margin:10px 0}.island-builder-panel [data-sockets]{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}.island-builder-panel [data-sockets] button{min-width:34px;min-height:32px;padding:4px 6px;text-align:center}.island-builder-panel small{font-size:11px;color:#c2c9ae}
       @media(max-width:760px){.island-builder-panel{left:12px;right:12px;top:auto;bottom:10px;width:auto;max-height:39vh;padding:10px;font-size:12px}.island-builder-panel [data-types]{grid-template-columns:repeat(3,1fr);gap:5px;margin:6px 0}.island-builder-panel [data-types] button{padding:6px;font-size:11px}.island-builder-panel [data-types] small{display:none}.island-builder-panel [data-message]{margin:5px 0!important;min-height:0!important}}
     `;document.body.append(this.style);
     const panel=document.createElement('section');panel.className='island-builder-panel pilot-panel';panel.hidden=true;panel.setAttribute('aria-label','Строительство острова');
@@ -346,7 +404,7 @@ export class IslandConstruction {
     const produced=this.buildings.reduce((n,b)=>n+DEFINITIONS[b.type].output,0),used=produced-this._power();
     this.panel.querySelector('[data-resources]').textContent=`Лом ${this.salvage} · Энергия ${used}/${produced}`;
     this.panel.querySelectorAll('[data-type]').forEach(button=>{
-      const type=button.dataset.type,built=this.buildings.some(b=>b.type===type),blocked=Boolean(required&&required!==type);
+      const type=button.dataset.type,built=this._isTutorialStage()&&this.buildings.some(b=>b.type===type),blocked=Boolean(required&&required!==type);
       button.disabled=built||blocked;button.title=built?'Уже построено':blocked?`По заданию сейчас нужен: ${DEFINITIONS[required].name}`:DEFINITIONS[type].detail;
       button.style.borderColor=type===this.selectedType?'#efd997':'#6e8067';button.setAttribute('aria-pressed',String(type===this.selectedType));
     });

@@ -3500,8 +3500,16 @@ engine.runRenderLoop(() => {
             audio?.playExplosion?.(1.0);
             ship.recoilShake = Math.max(ship.recoilShake || 0, 1.1);
             if (asteroidBase) {
-              asteroidBase.integrity = Math.max(0, (asteroidBase.integrity ?? 100) - 20);
-              ui.showToast(`🔥 Попадание по «Бродяге»! Прочность базы: ${Math.round(asteroidBase.integrity)}%`, 2800);
+              const shieldLvl = asteroidBase.shieldStrength || 0;
+              const dmgScale = Math.max(0.3, 1 - shieldLvl * 0.35);
+              const dmg = Math.round(20 * dmgScale);
+              asteroidBase.integrity = Math.max(0, (asteroidBase.integrity ?? 100) - dmg);
+              ui.showToast(
+                shieldLvl > 0
+                  ? `🛡 Эфирный щит погасил удар (−${dmg}%)! Прочность базы: ${Math.round(asteroidBase.integrity)}%`
+                  : `🔥 Попадание по «Бродяге»! Прочность базы: ${Math.round(asteroidBase.integrity)}%`,
+                2800
+              );
               if (asteroidBase.integrity <= 0) checkWinLose();
             } else {
               ui.showToast('🔥 Попадание вражеской ракеты по палубе «Бродяги»!', 2800);

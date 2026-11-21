@@ -969,12 +969,12 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
     exhaust.parent = asteroidBase.group; exhaust.position.set(-29.2, 8.5, nz); exhaust.rotation.y = Math.PI * 0.5;
     exhaust.material = warmGlowMat; exhaust.isPickable = false;
   }
-  // Raked 1930s naval aircraft-carrier funnel/smokestack beside the Control Tower
+  // Raked 1930s naval aircraft-carrier funnel/smokestack beside the Control Tower (port flank)
   const funnel = BABYLON.MeshBuilder.CreateCylinder('vagNavalFunnel', { diameterTop: 2.8, diameterBottom: 3.8, height: 11.5, tessellation: 12 }, scene);
-  funnel.position.set(-34.5, 26.8, -11.5); funnel.rotation.z = 0.14; funnel.computeWorldMatrix(true); carrierSteelParts.push(funnel);
+  funnel.position.set(-35.5, 26.8, -19.5); funnel.rotation.z = 0.14; funnel.computeWorldMatrix(true); carrierSteelParts.push(funnel);
   for (const fy of [29.6, 31.2]) {
     const band = BABYLON.MeshBuilder.CreateTorus(`vagFunnelBand_${fy}`, { diameter: 3.1, thickness: 0.24, tessellation: 14 }, scene);
-    band.position.set(-34.5 - (fy - 26.8) * 0.14, fy, -11.5); band.rotation.z = 0.14; band.computeWorldMatrix(true); carrierBrassParts.push(band);
+    band.position.set(-35.5 - (fy - 26.8) * 0.14, fy, -19.5); band.rotation.z = 0.14; band.computeWorldMatrix(true); carrierBrassParts.push(band);
   }
   // Outboard flight-deck catwalk sponsons along both edges of the runway (classic naval carrier silhouette!)
   for (const side of [-1, 1]) {
@@ -1119,9 +1119,9 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
 
   // Sagging Interbellum catenary cables spanning Control Tower <-> Generator <-> Hangar Lintel (1 merged draw call!)
   const cableSpans = [
-    [new BABYLON.Vector3(-28, 31.2, -15.5), new BABYLON.Vector3(-30, 27.5, 13.5), 2.4],
-    [new BABYLON.Vector3(-28, 29.8, -15.5), new BABYLON.Vector3(3.5, 16.5, -9.8), 2.8],
-    [new BABYLON.Vector3(-30, 26.8, 13.5),  new BABYLON.Vector3(3.5, 16.5, 11.8), 2.6],
+    [new BABYLON.Vector3(-28, 31.2, -22.5), new BABYLON.Vector3(-28, 27.5, 20.5), 2.6],
+    [new BABYLON.Vector3(-28, 29.8, -22.5), new BABYLON.Vector3(3.5, 16.5, -9.8), 2.8],
+    [new BABYLON.Vector3(-28, 26.8, 20.5),  new BABYLON.Vector3(3.5, 16.5, 11.8), 2.6],
   ];
   const cableMeshes = [];
   cableSpans.forEach(([pA, pB, sag], cIdx) => {
@@ -1260,29 +1260,36 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   asteroidBase._radarRotor = vagRadar.rotor;
 
   // ---------------------------------------------------------------------------
-  // 4. UPPER LEVEL (y = 20.5): HUGE 50m CONSTRUCTION PLATEAU + TOWER + WORKSHOP
+  // 4. UPPER LEVEL (y = 20.5): HUGE 66m FLAT-TOP CARRIER SHIPYARD DECK + TOWER + WORKSHOP
   // ---------------------------------------------------------------------------
-  const upperDeck = BABYLON.MeshBuilder.CreateCylinder('vagUpperCourtyard', { diameter: 50.0, height: 1.0, tessellation: 24 }, scene);
+  const upperDeck = BABYLON.MeshBuilder.CreateCylinder('vagUpperCourtyard', { diameter: 66.0, height: 1.0, tessellation: 28 }, scene);
   upperDeck.parent = asteroidBase.group;
-  upperDeck.position.set(-18.0, 20.85, 0.0);
-  applyWorldRockUVs(upperDeck, -18.0, 20.85, 0.0, 1.0, 1.0, 8.5);
+  upperDeck.position.set(-22.0, 20.85, 0.0);
+  applyWorldRockUVs(upperDeck, -22.0, 20.85, 0.0, 1.0, 1.0, 8.5);
   upperDeck.material = concreteMat;
   upperDeck.receiveShadows = true;
 
-  // Brass perimeter coaming ring around the 50m upper deck
-  const upperRim = BABYLON.MeshBuilder.CreateTorus('vagUpperDeckRim', { diameter: 49.8, thickness: 0.34, tessellation: 36 }, scene);
+  // Brass perimeter coaming ring around the 66m upper carrier deck
+  const upperRim = BABYLON.MeshBuilder.CreateTorus('vagUpperDeckRim', { diameter: 65.8, thickness: 0.36, tessellation: 40 }, scene);
   upperRim.parent = asteroidBase.group;
-  upperRim.position.set(-18.0, 21.35, 0.0);
+  upperRim.position.set(-22.0, 21.35, 0.0);
   upperRim.material = copperMat;
   upperRim.isPickable = false;
 
-  // Huge dedicated flat Construction Zone pad (~28m x 26m) in riveted armored deck plating
+  // Forward Construction Zone pad (~28m x 26m) + Huge Aft Carrier Expansion Deck (~24m x 36m) in riveted armored plating!
   const buildZone = BABYLON.MeshBuilder.CreateBox('vagBuildZone', { width: 28.0, height: 0.36, depth: 26.0 }, scene);
   buildZone.parent = asteroidBase.group;
   buildZone.position.set(-10.0, 21.55, 0.0);
   applyWorldRockUVs(buildZone, -10.0, 21.55, 0.0, 1.0, 1.0, 4.8);
   buildZone.material = grateMat;
   buildZone.receiveShadows = true;
+
+  const buildZoneAft = BABYLON.MeshBuilder.CreateBox('vagBuildZoneAft', { width: 24.0, height: 0.36, depth: 28.0 }, scene);
+  buildZoneAft.parent = asteroidBase.group;
+  buildZoneAft.position.set(-36.0, 21.55, -1.0);
+  applyWorldRockUVs(buildZoneAft, -36.0, 21.55, -1.0, 1.0, 1.0, 4.8);
+  buildZoneAft.material = grateMat;
+  buildZoneAft.receiveShadows = true;
 
   // Ochre/brass perimeter hazard framing strips around the construction pad
   const bzTrimParts = [];
@@ -1310,17 +1317,17 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   const mCaps = BABYLON.Mesh.MergeMeshes(capParts, true, true, undefined, false, false);
   if (mCaps) { mCaps.name = 'vagBuildCaps'; mCaps.parent = asteroidBase.group; mCaps.material = warmGlowMat; mCaps.isPickable = false; }
 
-  // 4A. Upper Control Tower (high-detail riveted dieselpunk GLB matching aircraft fleet)
+  // 4A. Upper Control Tower (high-detail riveted dieselpunk GLB on port carrier island flank)
   // A real raised footing separates the model's base faces from the courtyard.
   const towerFooting = BABYLON.MeshBuilder.CreateBox('vagTowerFooting', {width:11.4,height:.76,depth:10.8},scene);
-  towerFooting.parent=asteroidBase.group;towerFooting.position.set(-28,21.49,-15.5);
-  applyWorldRockUVs(towerFooting, -28, 21.49, -15.5, 1, 1, 5.5);
+  towerFooting.parent=asteroidBase.group;towerFooting.position.set(-28,21.49,-22.5);
+  applyWorldRockUVs(towerFooting, -28, 21.49, -22.5, 1, 1, 5.5);
   towerFooting.material=concreteMat;towerFooting.receiveShadows=true;
   // 4. Control Tower & Rotating Aviation Lighthouse Beacon (soft gradient beam + Fresnel lens, 0 lights!)
-  instantiateGLBInto(scene, './assets/buildings/', 'control_tower.glb', asteroidBase.group, new BABYLON.Vector3(-28.0, 21.95, -15.5), 1.0, 0.0, shadowGen);
+  instantiateGLBInto(scene, './assets/buildings/', 'control_tower.glb', asteroidBase.group, new BABYLON.Vector3(-28.0, 21.95, -22.5), 1.0, 0.0, shadowGen);
   const beaconRig = new BABYLON.TransformNode('vagTowerBeaconRig', scene);
   beaconRig.parent = asteroidBase.group;
-  beaconRig.position.set(-28.0, 35.6, -15.5);
+  beaconRig.position.set(-28.0, 35.6, -22.5);
 
   const lensMat = new BABYLON.StandardMaterial('vagTowerLensMat', scene);
   lensMat.emissiveColor = c3('#ffe29c');
@@ -1377,7 +1384,7 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   asteroidBase._windsock = rwSockPivot;
 
   asteroidBase._exhaustFans = [];
-  for (const [fx, fy, fz] of [[-23.5, 24.5, 13.5], [-36.5, 24.5, 13.5]]) {
+  for (const [fx, fy, fz] of [[-21.5, 24.5, 20.5], [-34.5, 24.5, 20.5]]) {
     const fanHub = new BABYLON.TransformNode(`vagExhaustFan_${fx}`, scene);
     fanHub.parent = asteroidBase.group; fanHub.position.set(fx, fy, fz);
     const fanParts = [];
@@ -1390,32 +1397,32 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
     asteroidBase._exhaustFans.push(fanHub);
   }
 
-  // 4B. Upper Workshop & Ether Generator Complex (high-detail dieselpunk GLB)
+  // 4B. Upper Workshop & Ether Generator Complex (high-detail dieselpunk GLB on starboard flank)
   const generatorFooting = BABYLON.MeshBuilder.CreateBox('vagGeneratorFooting', {width:14,height:.76,depth:18},scene);
-  generatorFooting.parent=asteroidBase.group;generatorFooting.position.set(-30,21.49,13.5);
-  applyWorldRockUVs(generatorFooting, -30, 21.49, 13.5, 1, 1, 5.5);
+  generatorFooting.parent=asteroidBase.group;generatorFooting.position.set(-28,21.49,20.5);
+  applyWorldRockUVs(generatorFooting, -28, 21.49, 20.5, 1, 1, 5.5);
   generatorFooting.material=concreteMat;generatorFooting.receiveShadows=true;
   // This GLB has minimum y=-.25: compensate explicitly, then leave 8cm surface clearance.
-  instantiateGLBInto(scene, './assets/buildings/', 'ether_generator.glb', asteroidBase.group, new BABYLON.Vector3(-30.0, 22.20, 13.5), 1.0, 0.0, shadowGen);
+  instantiateGLBInto(scene, './assets/buildings/', 'ether_generator.glb', asteroidBase.group, new BABYLON.Vector3(-28.0, 22.20, 20.5), 1.0, 0.0, shadowGen);
 
-  // 5. GROUNDED COASTAL VEGETATION ON VAGABOND: Unified human/architectural scale (0.76..0.94), strictly aft/side ledges
+  // 5. GROUNDED COASTAL VEGETATION ON VAGABOND: Unified human/architectural scale (0.76..0.94), strictly outer aft/side rims (leaving 66m carrier deck clear!)
   const treePlacements = [
-    { file: 'pine_hero.glb',     pos: [-38.0, 20.1, -8.0],  s: 0.92, r: 0.4 },
-    { file: 'fir_medium.glb',    pos: [-39.0, 20.1, 2.5],   s: 0.86, r: 1.6 },
-    { file: 'coastal_alder.glb', pos: [-21.5, 20.1, -21.0], s: 0.82, r: 0.9 },
-    { file: 'fir_medium.glb',    pos: [-18.0, 20.1, 21.5],  s: 0.84, r: 1.1 },
-    { file: 'pine_hero.glb',     pos: [-37.0, 20.1, 10.0],  s: 0.88, r: 0.3 },
-    { file: 'coastal_alder.glb', pos: [-14.0, 20.1, -21.5], s: 0.78, r: 1.4 },
-    { file: 'pine_hero.glb',     pos: [-25.5, 20.1, 21.0],  s: 0.90, r: 2.4 },
+    { file: 'pine_hero.glb',     pos: [-50.5, 20.1, -9.0],  s: 0.92, r: 0.4 },
+    { file: 'fir_medium.glb',    pos: [-51.5, 20.1, 3.5],   s: 0.86, r: 1.6 },
+    { file: 'coastal_alder.glb', pos: [-17.5, 20.1, -26.5], s: 0.82, r: 0.9 },
+    { file: 'fir_medium.glb',    pos: [-16.0, 20.1, 26.5],  s: 0.84, r: 1.1 },
+    { file: 'pine_hero.glb',     pos: [-48.0, 20.1, 14.5],  s: 0.88, r: 0.3 },
+    { file: 'coastal_alder.glb', pos: [-11.5, 20.1, -24.5], s: 0.78, r: 1.4 },
+    { file: 'pine_hero.glb',     pos: [-46.5, 20.1, -18.5], s: 0.90, r: 2.4 },
   ];
   for (const tp of treePlacements) {
     instantiateGLBInto(scene, './assets/benchmark/models/trees/', tp.file, asteroidBase.group, new BABYLON.Vector3(...tp.pos), tp.s, tp.r, shadowGen);
   }
 
   const bushPlacements = [
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-26.0, 20.6, 19.5],  s: 2.2, r: 0.5 },
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-16.0, 20.6, -20.5], s: 2.1, r: 1.8 },
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-36.0, 20.6, 5.0],   s: 2.3, r: 1.1 },
+    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-18.0, 20.6, 25.0],  s: 2.2, r: 0.5 },
+    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-14.0, 20.6, -24.5], s: 2.1, r: 1.8 },
+    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-49.5, 20.6, 8.0],   s: 2.3, r: 1.1 },
     // Additional coastal grass tufts along cliff shoulders & upper deck rim for 3D landscape micro-detail
     { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [3.5,  20.4, -18.5],  s: 2.0, r: 0.9 },
     { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [5.5,  20.4, -12.5],  s: 1.8, r: 2.3 },
