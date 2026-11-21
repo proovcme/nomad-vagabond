@@ -509,68 +509,92 @@ export function buildInterbellumCarrierHull(asteroidBase, scene, shadowGen = nul
     arr.push(m);
   };
 
-  // 1. Main Armored Dreadnought Lower Hull & Tapered Bow Prow (under the 64m flight deck, x = -54..+66)
-  // Center armored hull body
-  put(hullParts, B.MeshBuilder.CreateBox('wsHullCore', { width: 76, height: 14.0, depth: 38.0 }, scene), -14, -4.8, 0);
-  // Sloped lower V-keel armor plates
-  put(crimsonParts, B.MeshBuilder.CreateCylinder('wsLowerKeel', { diameterTop: 42, diameterBottom: 14, height: 11.5, tessellation: 6 }, scene), -14, -15.5, 0, 0, Math.PI / 6, 0, 1.85, 1.0, 0.92);
-  // Forward tapered battleship prow extending cleanly under the 64m carrier runway to x = +66!
-  put(hullParts, B.MeshBuilder.CreateCylinder('wsBowProw', { diameterTop: 22, diameterBottom: 2.2, height: 42.0, tessellation: 4 }, scene), 44.0, -3.8, 0, 0, Math.PI * 0.25, -Math.PI * 0.5, 0.62, 1.0, 0.95);
-  // Classic 1920s Dreadnought Brass Ram / Bow Stem + Twin Anchors
-  put(brassParts, B.MeshBuilder.CreateBox('wsBowStem', { width: 1.4, height: 10.5, depth: 1.4 }, scene), 64.5, -1.6, 0, 0, 0, -0.24);
+  // 1. Sleek Aviation-Cruiser Hull inspired by HSwMS Gotland (1933) & IJN Tone/Chikuma (1937)
+  // Razor-slim fast cruiser hull strictly below the hangar/flight deck (depth 18.5m, height 5.6m)
+  put(hullParts, B.MeshBuilder.CreateBox('wsHullCore', { width: 70, height: 5.4, depth: 18.5 }, scene), -8, -0.6, 0);
+  // Sleek shallow crimson cruiser underwater hull & keel (bottom around y = -7.6)
+  put(crimsonParts, B.MeshBuilder.CreateCylinder('wsLowerKeel', { diameterTop: 19.2, diameterBottom: 6.2, height: 4.8, tessellation: 6 }, scene), -8, -5.5, 0, 0, Math.PI / 6, 0, 3.4, 1.0, 0.92);
+  // Graceful flared clipper cruiser bow (Gotland / Tone signature sharp sweeping prow to x = +67!)
+  put(hullParts, B.MeshBuilder.CreateCylinder('wsBowProw', { diameterTop: 14.5, diameterBottom: 1.0, height: 44.0, tessellation: 4 }, scene), 46.5, -0.4, 0, 0, Math.PI * 0.25, -Math.PI * 0.5 + 0.035, 0.40, 1.0, 0.88);
+  put(crimsonParts, B.MeshBuilder.CreateCylinder('wsBowKeel', { diameterTop: 11.0, diameterBottom: 0.9, height: 38.0, tessellation: 4 }, scene), 43.0, -3.2, 0, 0, Math.PI * 0.25, -Math.PI * 0.5 + 0.04, 0.34, 1.0, 0.78);
+  // Tapered cruiser stern
+  put(hullParts, B.MeshBuilder.CreateCylinder('wsSternTaper', { diameterTop: 15.2, diameterBottom: 3.8, height: 20.0, tessellation: 4 }, scene), -50.0, -0.6, 0, 0, Math.PI * 0.25, Math.PI * 0.5, 0.42, 1.0, 0.88);
+  // Swept clipper brass bow stem + cruiser anchors
+  put(brassParts, B.MeshBuilder.CreateBox('wsBowStem', { width: 0.75, height: 7.4, depth: 0.75 }, scene), 67.5, -0.2, 0, 0, 0, -0.34);
   for (const side of [-1, 1]) {
-    put(brassParts, B.MeshBuilder.CreateTorus(`wsHawse_${side}`, { diameter: 2.0, thickness: 0.32, tessellation: 12 }, scene), 48.0, -0.8, side * 8.6, 0, Math.PI * 0.5, 0);
-    put(ironParts, B.MeshBuilder.CreateCylinder(`wsAnchorShank_${side}`, { diameter: 0.45, height: 3.6, tessellation: 6 }, scene), 48.0, -2.6, side * 9.0);
-    put(ironParts, B.MeshBuilder.CreateTorus(`wsAnchorFluke_${side}`, { diameter: 2.2, thickness: 0.36, tessellation: 10 }, scene), 48.0, -4.0, side * 9.0, 0, 0, 0, 1.0, 0.55, 0.4);
+    put(brassParts, B.MeshBuilder.CreateTorus(`wsHawse_${side}`, { diameter: 1.25, thickness: 0.20, tessellation: 10 }, scene), 49.5, 0.8, side * 5.2, 0, Math.PI * 0.5, 0);
+    put(ironParts, B.MeshBuilder.CreateCylinder(`wsAnchorShank_${side}`, { diameter: 0.28, height: 2.2, tessellation: 6 }, scene), 49.5, -0.3, side * 5.5);
   }
 
-  // 2. Armored Side Bulges, Crimson Flagship Waterline Belt & Brass Strakes (port & starboard)
+  // 2. Crimson Cruiser Waterline Stripe, Brass Strake & Open Steel Trestle Girders (USS Langley style!)
   for (const side of [-1, 1]) {
-    // Full-length crimson armor belt
-    put(crimsonParts, B.MeshBuilder.CreateBox(`wsBelt_${side}`, { width: 78, height: 3.6, depth: 1.6 }, scene), -14, -4.5, side * 19.6);
-    // Upper armored citadel hull wall sheathing the ship flanks up to the 66m upper deck
-    put(hullParts, B.MeshBuilder.CreateBox(`wsCitadelWall_${side}`, { width: 52, height: 17.5, depth: 4.5 }, scene), -26, 11.2, side * 24.5);
-    // Sloped forward bow cheek sponsons framing the carved hangar bay (leaving z = -10..+10 wide open!)
-    put(hullParts, B.MeshBuilder.CreateBox(`wsBowCheek_${side}`, { width: 16, height: 17.2, depth: 10.5 }, scene), -2, 11.4, side * 20.5, 0, side * -0.18);
-    // Armored cylindrical battleship barbettes supporting the mid-level AA Turret & Radar sponsons!
-    const bx = side > 0 ? 16.0 : 14.0, bz = side > 0 ? 25.0 : -26.0, bh = side > 0 ? 19.5 : 21.0;
-    put(hullParts, B.MeshBuilder.CreateCylinder(`wsBarbette_${side}`, { diameterTop: 13.8, diameterBottom: 11.2, height: bh, tessellation: 14 }, scene), bx, bh * 0.5 - 6.0, bz);
-    put(crimsonParts, B.MeshBuilder.CreateCylinder(`wsBarbetteBase_${side}`, { diameterTop: 11.0, diameterBottom: 4.5, height: 7.5, tessellation: 12 }, scene), bx, -9.2, bz);
-    put(brassParts, B.MeshBuilder.CreateTorus(`wsBarbetteRing_${side}`, { diameter: 14.0, thickness: 0.42, tessellation: 18 }, scene), bx, bh - 6.2, bz);
-    // Horizontal armored bridge-arm connecting each barbette cleanly into the main warship hull
-    put(hullParts, B.MeshBuilder.CreateBox(`wsBarbetteStrut_${side}`, { width: 10.5, height: 6.5, depth: 14.0 }, scene), bx - 4.0, 2.0, side * 16.5);
-    // Brass armored strake rails along upper & lower citadel edges
-    put(brassParts, B.MeshBuilder.CreateBox(`wsStrakeTop_${side}`, { width: 54, height: 0.55, depth: 0.7 }, scene), -26, 20.1, side * 27.0);
-    put(brassParts, B.MeshBuilder.CreateBox(`wsStrakeMid_${side}`, { width: 79, height: 0.55, depth: 0.7 }, scene), -14, -2.5, side * 20.6);
+    put(crimsonParts, B.MeshBuilder.CreateBox(`wsBelt_${side}`, { width: 70, height: 1.8, depth: 0.8 }, scene), -8, -2.6, side * 10.2);
+    put(brassParts, B.MeshBuilder.CreateBox(`wsStrakeMid_${side}`, { width: 71, height: 0.38, depth: 0.5 }, scene), -8, -1.5, side * 10.5);
 
-    // 3. Dreadnought Broadside Armored Gun Casemates (3 per side — iconic 1920s battleship silhouette!)
-    for (const gx of [-38, -24, -10]) {
-      put(ironParts, B.MeshBuilder.CreateCylinder(`wsCasemate_${side}_${gx}`, { diameter: 3.8, height: 3.4, tessellation: 10 }, scene), gx, 6.2, side * 26.8);
-      put(ironParts, B.MeshBuilder.CreateCylinder(`wsBroadsideBarrel_${side}_${gx}`, { diameterTop: 0.38, diameterBottom: 0.58, height: 7.2, tessellation: 8 }, scene), gx, 6.4, side * 30.2, side * Math.PI * 0.5);
-      put(brassParts, B.MeshBuilder.CreateTorus(`wsCasemateRing_${side}_${gx}`, { diameter: 3.9, thickness: 0.24, tessellation: 12 }, scene), gx, 7.9, side * 26.8);
+    // Open riveted steel trestle columns & diagonal cross-braces supporting the upper deck (airy cruiser look, zero solid brick walls!)
+    for (const px of [-44, -32, -20, -8, 2]) {
+      put(ironParts, B.MeshBuilder.CreateBox(`wsTrestleCol_${side}_${px}`, { width: 1.1, height: 18.2, depth: 1.1 }, scene), px, 11.4, side * 15.5, side * -0.18, 0, 0);
+      if (px < 2) {
+        put(ironParts, B.MeshBuilder.CreateBox(`wsTrestleBrace_${side}_${px}`, { width: 14.5, height: 0.55, depth: 0.55 }, scene), px + 6, 11.5, side * 15.5, 0, 0, 0.68);
+      }
+    }
+    // Lightweight cantilevered steel lattice trusses supporting the mid-level AA Turret & Radar sponsons
+    const bx = side > 0 ? 16.0 : 14.0, bz = side > 0 ? 25.0 : -26.0, bh = side > 0 ? 13.6 : 15.0;
+    put(ironParts, B.MeshBuilder.CreateCylinder(`wsSponsonPost_${side}`, { diameterTop: 3.4, diameterBottom: 2.6, height: 9.5, tessellation: 10 }, scene), bx, bh - 5.2, bz);
+    put(ironParts, B.MeshBuilder.CreateBox(`wsSponsonStrutA_${side}`, { width: 2.2, height: 1.4, depth: 18.5 }, scene), bx - 3.5, bh - 4.8, side * 16.5, side * -0.35, 0, 0);
+    put(ironParts, B.MeshBuilder.CreateBox(`wsSponsonStrutB_${side}`, { width: 2.2, height: 1.2, depth: 19.5 }, scene), bx - 3.5, bh - 8.5, side * 16.5, side * 0.25, 0, 0);
+    put(brassParts, B.MeshBuilder.CreateTorus(`wsSponsonCollar_${side}`, { diameter: 3.8, thickness: 0.28, tessellation: 14 }, scene), bx, bh - 1.2, bz);
+
+    // Compact twin light-cruiser side casemate guns (2 per side)
+    for (const gx of [-26, -12]) {
+      put(ironParts, B.MeshBuilder.CreateCylinder(`wsCasemate_${side}_${gx}`, { diameter: 2.2, height: 2.0, tessellation: 8 }, scene), gx, 0.8, side * 10.6);
+      put(ironParts, B.MeshBuilder.CreateCylinder(`wsBroadsideBarrel_${side}_${gx}`, { diameterTop: 0.24, diameterBottom: 0.36, height: 4.8, tessellation: 8 }, scene), gx, 0.9, side * 13.0, side * Math.PI * 0.5);
     }
   }
 
-  // 4. Armored Stern Bulkhead, Twin Dreadnought Stabilizer Fins & Quad Main Propulsion Thrusters
-  put(hullParts, B.MeshBuilder.CreateCylinder('wsSternTransom', { diameterTop: 52, diameterBottom: 40, height: 19.0, tessellation: 12 }, scene), -44, 10.5, 0, 0, 0, 0, 0.58, 1.0, 1.0);
-  // Twin vertical & horizontal naval tail-rudder stabilizer fins at the stern
+  // 3. Slim Cruiser Tail Fins & Twin Compact Stern Propulsion Thrusters
   for (const side of [-1, 1]) {
-    put(crimsonParts, B.MeshBuilder.CreateBox(`wsSternFinV_${side}`, { width: 12.0, height: 14.5, depth: 0.9 }, scene), -60.5, 7.0, side * 12.5, 0, 0, 0.16);
-    put(brassParts, B.MeshBuilder.CreateBox(`wsSternFinTrim_${side}`, { width: 12.4, height: 0.5, depth: 1.1 }, scene), -60.5, 14.2, side * 12.5, 0, 0, 0.16);
+    put(crimsonParts, B.MeshBuilder.CreateBox(`wsSternFinV_${side}`, { width: 8.5, height: 8.2, depth: 0.6 }, scene), -58.5, 1.5, side * 7.2, 0, 0, 0.18);
+    put(brassParts, B.MeshBuilder.CreateBox(`wsSternFinTrim_${side}`, { width: 8.8, height: 0.35, depth: 0.75 }, scene), -58.5, 5.6, side * 7.2, 0, 0, 0.18);
   }
-  put(hullParts, B.MeshBuilder.CreateBox('wsSternFinH', { width: 10.5, height: 0.9, depth: 34.0 }, scene), -59.5, 6.5, 0);
+  put(hullParts, B.MeshBuilder.CreateBox('wsSternFinH', { width: 7.2, height: 0.6, depth: 20.0 }, scene), -57.8, 1.0, 0);
 
-  // Quad stern battleship-carrier thruster bells with warm glowing exhaust cores
-  for (const [tz, ty] of [[-12, 0], [-4.5, -2.5], [4.5, -2.5], [12, 0]]) {
-    put(ironParts, B.MeshBuilder.CreateCylinder(`wsSternBell_${tz}`, { diameterTop: 3.6, diameterBottom: 5.4, height: 6.5, tessellation: 12 }, scene), -55.5, ty, tz, 0, 0, Math.PI * 0.5);
-    put(brassParts, B.MeshBuilder.CreateTorus(`wsSternBellRing_${tz}`, { diameter: 5.4, thickness: 0.45, tessellation: 14 }, scene), -58.8, ty, tz, 0, 0, Math.PI * 0.5);
-    put(glowParts, B.MeshBuilder.CreateDisc(`wsSternGlow_${tz}`, { radius: 2.2, tessellation: 10 }, scene), -58.9, ty, tz, 0, Math.PI * 0.5, 0);
+  for (const tz of [-4.2, 4.2]) {
+    put(ironParts, B.MeshBuilder.CreateCylinder(`wsSternBell_${tz}`, { diameterTop: 2.6, diameterBottom: 3.8, height: 5.2, tessellation: 12 }, scene), -56.5, -1.2, tz, 0, 0, Math.PI * 0.5);
+    put(brassParts, B.MeshBuilder.CreateTorus(`wsSternBellRing_${tz}`, { diameter: 3.8, thickness: 0.32, tessellation: 14 }, scene), -59.1, -1.2, tz, 0, 0, Math.PI * 0.5);
+    put(glowParts, B.MeshBuilder.CreateDisc(`wsSternGlow_${tz}`, { radius: 1.5, tessellation: 10 }, scene), -59.2, -1.2, tz, 0, Math.PI * 0.5, 0);
   }
 
-  // 5. Second Raked 1920s Naval Funnel beside the first on port flank (unmistakable twin-funnel dreadnought-carrier!)
-  put(ironParts, B.MeshBuilder.CreateCylinder('wsSecondFunnel', { diameterTop: 2.6, diameterBottom: 3.5, height: 10.5, tessellation: 12 }, scene), -41.5, 26.2, -19.5, 0, 0, 0.14);
-  for (const fy of [28.8, 30.2]) {
-    put(brassParts, B.MeshBuilder.CreateTorus(`wsSecondFunnelBand_${fy}`, { diameter: 2.9, thickness: 0.24, tessellation: 14 }, scene), -41.5 - (fy - 26.2) * 0.14, fy, -19.5, 0, 0, 0.14);
+  // 4. Gotland / Tone-Chikuma Signature Superstructure: Raked Trunked Funnel + Tripod Naval Mast & Rangefinder + Twin-Barrel Cruiser Turrets!
+  // Raked Tone-style swept trunked funnel (22° aft rake) with dark cap & brass bands
+  put(hullParts, B.MeshBuilder.CreateCylinder('wsSecondFunnel', { diameterTop: 2.2, diameterBottom: 3.1, height: 10.2, tessellation: 12 }, scene), -40.5, 26.2, -19.5, 0, 0, 0.32);
+  put(ironParts, B.MeshBuilder.CreateCylinder('wsSecondFunnelCap', { diameterTop: 2.4, diameterBottom: 2.25, height: 1.4, tessellation: 12 }, scene), -42.1, 31.1, -19.5, 0, 0, 0.32);
+  for (const fy of [28.4, 29.6]) {
+    put(brassParts, B.MeshBuilder.CreateTorus(`wsSecondFunnelBand_${fy}`, { diameter: 2.45, thickness: 0.18, tessellation: 14 }, scene), -40.5 - (fy - 26.2) * 0.32, fy, -19.5, 0, 0, 0.32);
+  }
+
+  // Iconic Gotland / Tone Interbellum Tripod Naval Mast + Fire-Control Director & Signal Yardarms on port flank
+  const mx = -20.5, mz = -22.0;
+  put(ironParts, B.MeshBuilder.CreateCylinder('wsMastMain', { diameterTop: 0.32, diameterBottom: 0.95, height: 19.5, tessellation: 8 }, scene), mx, 31.0, mz);
+  put(ironParts, B.MeshBuilder.CreateCylinder('wsMastLegL', { diameterTop: 0.24, diameterBottom: 0.55, height: 14.5, tessellation: 6 }, scene), mx - 2.2, 28.0, mz - 1.6, 0.18, 0, -0.24);
+  put(ironParts, B.MeshBuilder.CreateCylinder('wsMastLegR', { diameterTop: 0.24, diameterBottom: 0.55, height: 14.5, tessellation: 6 }, scene), mx - 2.2, 28.0, mz + 1.6, -0.18, 0, -0.24);
+  // Crow's nest & optical rangefinder director bar
+  put(hullParts, B.MeshBuilder.CreateCylinder('wsCrowsNest', { diameter: 2.6, height: 1.4, tessellation: 10 }, scene), mx, 34.5, mz);
+  put(brassParts, B.MeshBuilder.CreateBox('wsRangefinder', { width: 0.65, height: 0.65, depth: 4.8 }, scene), mx, 36.2, mz);
+  put(ironParts, B.MeshBuilder.CreateBox('wsYardarm', { width: 0.22, height: 0.22, depth: 10.5 }, scene), mx, 38.6, mz);
+
+  // Pair of US Navy 1930s Flight-Deck Cruiser (CF) Triple-Barrel 6-inch Main Gun Turrets!
+  for (const [tx, ty, tz, ry, dir] of [
+    [-46.5, 22.0, -9.5, Math.PI, -1],
+    [-46.5, 22.0,  9.5, Math.PI, -1],
+    [  1.5, 22.0, -14.8, 0.0,     1],
+  ]) {
+    put(hullParts, B.MeshBuilder.CreateCylinder(`wsCruiserBarbette_${tx}_${tz}`, { diameter: 4.8, height: 1.6, tessellation: 12 }, scene), tx, ty, tz);
+    put(hullParts, B.MeshBuilder.CreateBox(`wsCruiserTurret_${tx}_${tz}`, { width: 5.4, height: 2.1, depth: 4.4 }, scene), tx, ty + 1.6, tz, 0, ry);
+    put(brassParts, B.MeshBuilder.CreateTorus(`wsCruiserTurretRing_${tx}_${tz}`, { diameter: 4.9, thickness: 0.22, tessellation: 14 }, scene), tx, ty + 0.7, tz);
+    for (const bz of [-1.05, 0.0, 1.05]) {
+      put(ironParts, B.MeshBuilder.CreateCylinder(`wsCruiserBarrel_${tx}_${tz}_${bz}`, { diameterTop: 0.24, diameterBottom: 0.36, height: 7.8, tessellation: 8 }, scene), tx + dir * 5.6, ty + 2.0, tz + bz, 0, 0, dir * (Math.PI * 0.5 - 0.12));
+    }
   }
 
   mergeGroup(hullParts, 'vagWarshipHullSteel', asteroidBase.group, navalHullMat, shadowGen);

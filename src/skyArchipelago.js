@@ -949,9 +949,9 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   mossCap.material = mossRockMat;
   mossCap.receiveShadows = true;
 
-  // Twin carrier lift rotors (aft main keel + forward flight-deck lift rotor) + side armored thruster nacelles!
-  const keelRotorHub = createGiantIslandLiftRotor(asteroidBase.group, scene, -16.0, -21.5, 0.0, 42.0, shadowGen);
-  const bowRotorHub = createGiantIslandLiftRotor(asteroidBase.group, scene, 30.0, -3.5, 0.0, 22.0, null);
+  // Twin sleek cruiser-carrier lift rotors hugging the shallow cruiser keel!
+  const keelRotorHub = createGiantIslandLiftRotor(asteroidBase.group, scene, -10.0, -11.5, 0.0, 30.0, shadowGen);
+  const bowRotorHub = createGiantIslandLiftRotor(asteroidBase.group, scene, 26.0, -4.5, 0.0, 18.0, null);
   if (asteroidBase.engineRotors) asteroidBase.engineRotors.push(keelRotorHub, bowRotorHub);
 
   // Iconic twin port/starboard armored Sky-Carrier Thruster Nacelles + 1930s raked naval funnel (merged into 2 draw calls!)
