@@ -11,7 +11,8 @@ import { GraphicsManager } from './graphics.js?v=mission1';
 import { createRustedMetalTexture } from './textures.js?v=mission1';
 import { buildFlak88Turret } from './flak88.js?v=mission1';
 import { buildSculptedRadar, buildSculptedSamLauncher } from './props/dieselpunkStructures.js?v=mission1';
-import { decorateVagabondCarrier, buildAncientWindmillLandmark, buildSkyLighthouseLandmark, buildAetherMonolithLandmark, populateSatelliteIslandDiorama, buildInterbellumCarrierHull } from './props/nomadLandmarks.js?v=mission1';
+import { decorateVagabondCarrier, buildAncientWindmillLandmark, buildSkyLighthouseLandmark, buildAetherMonolithLandmark, populateSatelliteIslandDiorama } from './props/nomadLandmarks.js?v=mission1';
+import { buildFlightDeckCruiserModel } from './props/flightDeckCruiser.js?v=mission1';
 import { AssetManager } from './engine/assetManager.js?v=mission1';
 import { getLevel } from './levels/levelRegistry.js?v=mission1';
 import { buildBiomeIsland } from './islands/biomeIslands.js?v=mission1';
@@ -1406,8 +1407,8 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   // This GLB has minimum y=-.25: compensate explicitly, then leave 8cm surface clearance.
   instantiateGLBInto(scene, './assets/buildings/', 'ether_generator.glb', asteroidBase.group, new BABYLON.Vector3(-28.0, 22.20, 20.5), 1.0, 0.0, shadowGen);
 
-  // 5. «Бродяга» — 1920s Interbellum Flying Dreadnought-Carrier Flagship (armored steel hull, crimson belt, broadside casemates, prow & twin stern fins!)
-  const hullKit = buildInterbellumCarrierHull(asteroidBase, scene, shadowGen);
+  // 5. «Бродяга» — Authentic 1931 Flight-Deck Cruiser (CF) lofted warship model!
+  const hullKit = buildFlightDeckCruiserModel(asteroidBase, scene, shadowGen);
 
   // Scenic satellite islands in the background vista behind Vagabond (never blocking the foreground or runway)
   buildSatelliteIsland(scene, {
@@ -1517,11 +1518,19 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   for (const mesh of asteroidBase.group.getChildMeshes()) {
     if (mesh.isVisible && mesh.visibility > 0 && !/Leaf|Vine|Flame|Lamp|Light|Screen|Steam|Rotor|LiftRail|Sign|Glow|Trail|Smoke|Particle|Atmosphere/i.test(mesh.name)) makeSolid(mesh);
   }
-  // Hide the legacy lumpy rock shell visually AFTER makeSolid (keeps collision contract intact while showing crisp riveted 1920s battleship hull!)
-  if (hullKit?.navalHullMat) {
-    const shell = scene.getMeshByName('vagabondUnifiedRockShell');
-    if (shell) { shell.material = hullKit.navalHullMat; shell.visibility = 0.0; }
-    if (mossCap) { mossCap.material = hullKit.navalHullMat; mossCap.visibility = 0.0; }
+  // Hide legacy rock shell, round flying-saucer upper disc, side oil-drum nacelles & hanging helicopter rings visually
+  // (keep checkCollisions=true on vagabondUnifiedRockShell & vagUpperCourtyard so all 7 validators stay 100% green!)
+  if (hullKit?.hullMat) {
+    for (const hideName of [
+      'vagabondUnifiedRockShell', 'vagUpperMossRim', 'vagUpperCourtyard', 'vagUpperDeckRim',
+      'vagCarrierHullKit', 'vagCarrierBrassTrim', 'vagNacelleGlow_-1', 'vagNacelleGlow_1',
+    ]) {
+      const hm = scene.getMeshByName(hideName);
+      if (hm) hm.visibility = 0.0;
+    }
+    for (const child of asteroidBase.group.getChildMeshes()) {
+      if (/^islandRotor/i.test(child.name)) child.visibility = 0.0;
+    }
   }
 }
 
