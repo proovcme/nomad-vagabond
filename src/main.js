@@ -1080,14 +1080,17 @@ function launchIslandSamSalvo(count = 2) {
     return;
   }
   demoState.remoteSamCd = cdLimit;
-  const sam = asteroidBase.samLaunchers[0];
   demoState.samMissiles ||= [];
+  const launchers = asteroidBase.samLaunchers;
   for (let k = 0; k < count; k++) {
+    const sam = launchers[k % launchers.length];
     const tgt = candidates[k % candidates.length];
     const mNode = sam.muzzles[(sam.tubeIdx + k) % sam.muzzles.length];
     mNode.computeWorldMatrix(true);
     const startPos = mNode.getAbsolutePosition().clone();
-    const initDir = tgt.root.position.subtract(startPos).normalize().add(new BABYLON.Vector3(0, 0.35, 0)).normalize();
+    const tgtPos = (tgt.root || tgt.mesh).position;
+    const initDir = tgtPos.subtract(startPos).normalize().add(new BABYLON.Vector3(0, 0.35, 0)).normalize();
+    atmosphereFX?.spawnMuzzleFlash(startPos, initDir);
     if (!demoState._samMat || demoState._samMat.isDisposed) {
       demoState._samMat = new BABYLON.StandardMaterial('samMissileSharedMat', scene);
       demoState._samMat.emissiveColor = BABYLON.Color3.FromHexString('#ffaa38');
@@ -1114,11 +1117,79 @@ function launchIslandSamSalvo(count = 2) {
       trail.material = demoState._samTrailMat;
       trail.isPickable = false;
     }
-    demoState.samMissiles.push({ mesh: mMesh, trail, vel: initDir.scale(92), target: tgt, life: 6.5, dmg: 65 });
+    demoState.samMissiles.push({ mesh: mMesh, trail, vel: initDir.scale(96), target: tgt, life: 6.8, dmg: 68 });
   }
-  sam.tubeIdx = (sam.tubeIdx + count) % sam.muzzles.length;
+  launchers.forEach((s) => { s.tubeIdx = (s.tubeIdx + count) % s.muzzles.length; });
   audio?.playSpecialWeapon?.('rocket');
-  ui.showToast(`🚀 Залп ЗРК «Бродяги» (${count} ракеты)! Перезарядка ${cdLimit} с`, 2400);
+  ui.showToast(`🚀 Залп ЗРК ПВО «Бродяги» (${count} ракет)! Перезарядка ${cdLimit} с`, 2400);
+}
+
+/** Heavy Dieselpunk Aerial Sky-Torpedo against capital targets (Dreadnoughts, Convoys & Enemy Fortress Islands) */
+function launchSkyTorpedo() {
+  if (!demoState) return;
+  if ((demoState.torpedoCd || 0) > 0) {
+    ui.showToast(`🧨 Воздушная торпеда перезаряжается (${demoState.torpedoCd.toFixed(1)} с)`, 1400);
+    return;
+  }
+  const capitalTargets = [];
+  if (demoState.enemyIsland?.alive) capitalTargets.push({ kind: 'island', obj: demoState.enemyIsland, label: 'вражескому острову «Монолит»' });
+  if (demoState.dreadnought?.alive) capitalTargets.push({ kind: 'dreadnought', obj: demoState.dreadnought, label: demoState.dreadnought.isConvoy ? 'дирижаблю конвоя' : 'Дредноуту' });
+  const bomber = (demoState.enemies || []).find((e) => e.alive && e.variant === 'bomber');
+  if (bomber) capitalTargets.push({ kind: 'bomber', obj: bomber, label: 'бомбардировщику' });
+
+  if (!capitalTargets.length) {
+    ui.showToast('🧨 Торпеда: нет крупных целей (дредноут / остров / бомбардировщик)', 2000);
+    return;
+  }
+  const chosen = capitalTargets[0];
+  demoState.torpedoCd = 9.0;
+  demoState.skyTorpedoes ||= [];
+
+  let startPos, initDir;
+  if (controlMode === 'aircraft' && ship?.group && !ship.dockedAsteroid) {
+    ship.group.computeWorldMatrix(true);
+    const wm = ship.group.getWorldMatrix();
+    startPos = BABYLON.Vector3.TransformCoordinates(new BABYLON.Vector3(0, -1.35, -1.5), wm);
+    initDir = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 0, -1), wm).normalize();
+  } else if (asteroidBase?.group) {
+    asteroidBase.group.computeWorldMatrix(true);
+    const wm = asteroidBase.group.getWorldMatrix();
+    startPos = BABYLON.Vector3.TransformCoordinates(new BABYLON.Vector3(56, 3.8, 0), wm);
+    initDir = chosen.obj.root.position.subtract(startPos).normalize();
+  } else {
+    return;
+  }
+
+  if (!demoState._torpMat || demoState._torpMat.isDisposed) {
+    demoState._torpMat = new BABYLON.StandardMaterial('skyTorpedoGlowMat', scene);
+    demoState._torpMat.emissiveColor = BABYLON.Color3.FromHexString('#ff7828');
+    demoState._torpMat.disableLighting = true;
+  }
+  if (!demoState._torpTrailMat || demoState._torpTrailMat.isDisposed) {
+    demoState._torpTrailMat = new BABYLON.StandardMaterial('skyTorpedoTrailMat', scene);
+    demoState._torpTrailMat.emissiveColor = BABYLON.Color3.FromHexString('#f0e4cc');
+    demoState._torpTrailMat.disableLighting = true;
+    demoState._torpTrailMat.backFaceCulling = false;
+    demoState._torpTrailMat.depthWrite = false;
+    demoState._torpTrailMat.alpha = 0.68;
+    if (ship?.trailMat?.opacityTexture) demoState._torpTrailMat.opacityTexture = ship.trailMat.opacityTexture;
+  }
+  const tMesh = createDetailedMissile('skyTorpedo', 1.85, '#3b4349', '#cc3e22', demoState._torpMat);
+  tMesh.position.copyFrom(startPos);
+  tMesh.lookAt(startPos.add(initDir));
+  tMesh.rotate(BABYLON.Axis.X, Math.PI * 0.5, BABYLON.Space.LOCAL);
+  tMesh.computeWorldMatrix(true);
+  tMesh._trailAnchor.computeWorldMatrix(true);
+  let trail = null;
+  if (typeof BABYLON.TrailMesh === 'function') {
+    trail = new BABYLON.TrailMesh(`torpTrail_${Date.now()}`, tMesh._trailAnchor, scene, 0.78, 48, true);
+    trail.material = demoState._torpTrailMat;
+    trail.isPickable = false;
+  }
+  demoState.skyTorpedoes.push({ mesh: tMesh, trail, vel: initDir.scale(68), target: chosen.obj, kind: chosen.kind, life: 11.0 });
+  atmosphereFX?.spawnMuzzleFlash(startPos, initDir);
+  audio?.playHeavyLaunch?.();
+  ui.showToast(`🧨 Воздушная торпеда пошла по ${chosen.label}!`, 2600);
 }
 
 function launchAntiIslandMissile(firstPerson = false) {
@@ -1477,13 +1548,16 @@ window.addEventListener('keydown', (e) => {
     ui.showToast(`✈️ Самолёт из ангара: ${labels[next]}`, 2000);
   }
 
-  if (e.code === 'Digit2' && (controlMode === 'aircraft' || controlMode === 'turret')) {
-    launchIslandSamSalvo(2);
+  if (e.code === 'Digit2' && (controlMode === 'aircraft' || controlMode === 'turret' || controlMode === 'asteroid')) {
+    launchIslandSamSalvo(4);
+  }
+  if (e.code === 'KeyT' && (controlMode === 'aircraft' || controlMode === 'turret' || controlMode === 'asteroid')) {
+    launchSkyTorpedo();
   }
   if (controlMode === 'turret' || controlMode === 'missile_cam') {
     turretKeys[e.code] = true;
     if (controlMode === 'turret') {
-      if (e.code === 'KeyF') launchIslandSamSalvo(2);
+      if (e.code === 'KeyF') launchIslandSamSalvo(4);
       if (e.code === 'Digit3' || e.code === 'KeyR') launchAntiIslandMissile(false);
       if (e.code === 'Digit4' || e.code === 'KeyV') launchAntiIslandMissile(true);
     }
@@ -3583,6 +3657,65 @@ engine.runRenderLoop(() => {
           hm.trail?.dispose();
           hm.mesh.dispose(false, false);
           demoState.heavyMissiles.splice(i, 1);
+        }
+      }
+
+      // Update Heavy Aerial Sky-Torpedoes (anti-Dreadnought / anti-Fortress-Island)
+      demoState.torpedoCd = Math.max(0, (demoState.torpedoCd || 0) - dt);
+      demoState.skyTorpedoes ||= [];
+      for (let i = demoState.skyTorpedoes.length - 1; i >= 0; i--) {
+        const tp = demoState.skyTorpedoes[i];
+        tp.life -= dt;
+        let hit = false;
+        const curSpd = tp.vel.length();
+        const curDir = tp.vel.scale(1 / Math.max(1, curSpd));
+        if (tp.target?.alive && tp.target.root && !tp.target.root.isDisposed?.()) {
+          const toTgt = tp.target.root.position.subtract(tp.mesh.position);
+          const dist = toTgt.length();
+          if (dist > 1) {
+            const desDir = toTgt.scale(1 / dist);
+            BABYLON.Vector3.LerpToRef(curDir, desDir, 1 - Math.exp(-2.6 * dt), curDir);
+            curDir.normalize();
+            tp.vel.copyFrom(curDir.scale(Math.min(82, curSpd + 14 * dt)));
+          }
+          const hitRad = tp.kind === 'island' ? 42 : tp.kind === 'dreadnought' ? 28 : 10;
+          if (dist < hitRad) {
+            hit = true;
+            spawnDemoExplosion(tp.mesh.position.clone(), 2.4);
+            audio?.playExplosion?.(1.0);
+            if (tp.kind === 'island' && tp.target.applyDamage) {
+              const downed = tp.target.applyDamage(360, tp.mesh.position.clone(), spawnDemoExplosion, audio);
+              if (downed) {
+                demoState.kills++;
+                construction.addSalvage(150);
+                ui.showToast('💥 ТОРПЕДА РАЗОРВАЛА «МОНОЛИТ»! +150 лома', 5500);
+                checkMissionClear();
+              } else {
+                ui.showToast(`🧨 Попадание торпеды по острову! Осталось ${Math.round((tp.target.hp / tp.target.maxHp) * 100)}%`, 2600);
+              }
+            } else if (tp.kind === 'dreadnought' && tp.target.applyDamage) {
+              const downed = tp.target.applyDamage(360, tp.mesh.position.clone(), spawnDemoExplosion, audio);
+              if (downed) {
+                demoState.kills++;
+                construction.addSalvage(120);
+                ui.showToast('💥 ВОЗДУШНАЯ ТОРПЕДА ПОТОПИЛА ДРЕДНОУТ! +120 лома', 5500);
+                checkMissionClear();
+              } else {
+                ui.showToast(`🧨 Торпеда пробила борт Дредноута! Осталось ${Math.round((tp.target.hp / tp.target.maxHp) * 100)}%`, 2600);
+              }
+            } else if (tp.kind === 'bomber') {
+              tp.target.hp = 0;
+              missionEnemyDown(tp.target);
+            }
+          }
+        }
+        tp.mesh.position.addInPlace(tp.vel.scale(dt));
+        tp.mesh.lookAt(tp.mesh.position.add(curDir));
+        tp.mesh.rotate(BABYLON.Axis.X, Math.PI * 0.5, BABYLON.Space.LOCAL);
+        if (hit || tp.life <= 0) {
+          tp.trail?.dispose?.();
+          tp.mesh.dispose(false, false);
+          demoState.skyTorpedoes.splice(i, 1);
         }
       }
 

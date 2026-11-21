@@ -901,21 +901,21 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
     // Solid rock pinnacles supporting the Mid-Level Turret & Radar Terraces
     { x: 16.0,  y: 4.5,   z: 25.0,  h: 19.0, dTop: 15.0, dBot: 10.0, sx: 1.0,  sz: 1.0,  ry: 0.5 },
     { x: 14.0,  y: 5.0,   z: -26.0, h: 21.0, dTop: 14.5, dBot: 9.5,  sx: 1.0,  sz: 1.0,  ry: -0.6 },
-    // Lower rock base strictly BELOW the runway/hangar floor (top at y = 3.25)
-    { x: -4.0,  y: -4.5,  z: 0.0,   h: 15.5, dTop: 48.0, dBot: 30.0, sx: 1.10, sz: 0.95, ry: 0.1 },
-    // Deep jagged keel spires plunging down to y = -52
-    { x: -14.0, y: -21.0, z: 0.0,   h: 40.0, dTop: 46.0, dBot: 4.2,  sx: 1.05, sz: 1.05, ry: 0.3 },
-    { x: 4.0,   y: -22.0, z: -9.0,  h: 34.0, dTop: 22.0, dBot: 2.6,  sx: 1.0,  sz: 1.0,  ry: 0.9 },
-    { x: 4.0,   y: -22.0, z: 9.0,   h: 34.0, dTop: 22.0, dBot: 2.6,  sx: 1.0,  sz: 1.0,  ry: -0.9 },
-    { x: -32.0, y: -18.0, z: -3.0,  h: 30.0, dTop: 20.0, dBot: 2.4,  sx: 1.0,  sz: 1.0,  ry: 1.2 },
-    { x: 18.0,  y: -14.0, z: 17.0,  h: 22.0, dTop: 12.0, dBot: 1.8,  sx: 1.0,  sz: 1.0,  ry: 0.4 },
-    { x: 16.0,  y: -14.0, z: -18.0, h: 22.0, dTop: 12.0, dBot: 1.8,  sx: 1.0,  sz: 1.0,  ry: -0.4 },
-    // Extra jagged outer crags, stepped cliff shelves, and stern buttresses for dramatic silhouette
-    { x: -45.0, y: 12.0,  z: 0.0,   h: 24.0, dTop: 14.0, dBot: 5.0,  sx: 1.1,  sz: 1.25, ry: 0.5 },
-    { x: -38.0, y: -4.0,  z: 24.0,  h: 26.0, dTop: 14.0, dBot: 2.2,  sx: 1.0,  sz: 1.0,  ry: -0.7 },
-    { x: -38.0, y: -4.0,  z: -24.0, h: 26.0, dTop: 14.0, dBot: 2.2,  sx: 1.0,  sz: 1.0,  ry: 0.7 },
-    { x: -12.0, y: 2.0,   z: 28.0,  h: 20.0, dTop: 13.0, dBot: 3.5,  sx: 1.1,  sz: 0.9,  ry: 0.3 },
-    { x: -12.0, y: 2.0,   z: -28.0, h: 20.0, dTop: 13.0, dBot: 3.5,  sx: 1.1,  sz: 0.9,  ry: -0.3 },
+    // Lower rock hull strictly BELOW the runway/hangar floor — sleek flatter carrier-slab profile (not a tall iceberg!)
+    { x: -4.0,  y: -3.5,  z: 0.0,   h: 13.5, dTop: 52.0, dBot: 36.0, sx: 1.15, sz: 0.98, ry: 0.1 },
+    // Sleek tapered carrier keel (bottom around y = -22 instead of -52 -> unmistakable flat-top sky-carrier proportions!)
+    { x: -16.0, y: -11.5, z: 0.0,   h: 20.0, dTop: 48.0, dBot: 16.0, sx: 1.18, sz: 1.02, ry: 0.2 },
+    { x: 6.0,   y: -9.5,  z: -8.0,  h: 16.0, dTop: 22.0, dBot: 8.0,  sx: 1.05, sz: 0.95, ry: 0.6 },
+    { x: 6.0,   y: -9.5,  z: 8.0,   h: 16.0, dTop: 22.0, dBot: 8.0,  sx: 1.05, sz: 0.95, ry: -0.6 },
+    { x: -34.0, y: -9.0,  z: 0.0,   h: 17.0, dTop: 28.0, dBot: 10.0, sx: 1.10, sz: 1.05, ry: 0.8 },
+    { x: 16.0,  y: -7.5,  z: 18.0,  h: 14.0, dTop: 14.0, dBot: 5.0,  sx: 1.0,  sz: 1.0,  ry: 0.4 },
+    { x: 15.0,  y: -7.5,  z: -19.0, h: 14.0, dTop: 14.0, dBot: 5.0,  sx: 1.0,  sz: 1.0,  ry: -0.4 },
+    // Broadened aft & side hull shoulders for elongated carrier deck footprint
+    { x: -46.0, y: 10.5,  z: 0.0,   h: 19.0, dTop: 18.0, dBot: 10.0, sx: 1.15, sz: 1.30, ry: 0.2 },
+    { x: -36.0, y: 1.5,   z: 24.0,  h: 18.0, dTop: 16.0, dBot: 7.0,  sx: 1.05, sz: 1.0,  ry: -0.5 },
+    { x: -36.0, y: 1.5,   z: -24.0, h: 18.0, dTop: 16.0, dBot: 7.0,  sx: 1.05, sz: 1.0,  ry: 0.5 },
+    { x: -12.0, y: 4.0,   z: 28.0,  h: 16.0, dTop: 15.0, dBot: 6.5,  sx: 1.1,  sz: 0.92, ry: 0.2 },
+    { x: -12.0, y: 4.0,   z: -28.0, h: 16.0, dTop: 15.0, dBot: 6.5,  sx: 1.1,  sz: 0.92, ry: -0.2 },
   ];
   // Broad organic shoulders shelter the four-bay cavern; no external box hangar.
   rockMasses.push(
@@ -948,19 +948,81 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   mossCap.material = mossRockMat;
   mossCap.receiveShadows = true;
 
-  // Giant helicopter-style lift rotor underneath the keel (all islands fly on giant rotors!)
-  const keelRotorHub = createGiantIslandLiftRotor(asteroidBase.group, scene, -14.0, -39.0, 0.0, 44.0, shadowGen);
-  if (asteroidBase.engineRotors) asteroidBase.engineRotors.push(keelRotorHub);
+  // Twin carrier lift rotors (aft main keel + forward flight-deck lift rotor) + side armored thruster nacelles!
+  const keelRotorHub = createGiantIslandLiftRotor(asteroidBase.group, scene, -16.0, -21.5, 0.0, 42.0, shadowGen);
+  const bowRotorHub = createGiantIslandLiftRotor(asteroidBase.group, scene, 30.0, -3.5, 0.0, 22.0, null);
+  if (asteroidBase.engineRotors) asteroidBase.engineRotors.push(keelRotorHub, bowRotorHub);
+
+  // Iconic twin port/starboard armored Sky-Carrier Thruster Nacelles + 1930s raked naval funnel (merged into 2 draw calls!)
+  const carrierSteelParts = [], carrierBrassParts = [];
+  for (const side of [-1, 1]) {
+    const nz = side * 32.0;
+    const pod = BABYLON.MeshBuilder.CreateCylinder(`vagNacelle_${side}`, { diameterTop: 4.8, diameterBottom: 6.4, height: 18.0, tessellation: 12 }, scene);
+    pod.position.set(-20.0, 8.5, nz); pod.rotation.z = Math.PI * 0.5; pod.computeWorldMatrix(true); carrierSteelParts.push(pod);
+    const pylon = BABYLON.MeshBuilder.CreateBox(`vagNacellePylon_${side}`, { width: 9.5, height: 2.4, depth: 8.5 }, scene);
+    pylon.position.set(-20.0, 8.5, side * 26.5); pylon.computeWorldMatrix(true); carrierSteelParts.push(pylon);
+    const ringF = BABYLON.MeshBuilder.CreateTorus(`vagNacelleRingF_${side}`, { diameter: 5.4, thickness: 0.55, tessellation: 16 }, scene);
+    ringF.position.set(-11.2, 8.5, nz); ringF.rotation.z = Math.PI * 0.5; ringF.computeWorldMatrix(true); carrierBrassParts.push(ringF);
+    const ringR = BABYLON.MeshBuilder.CreateTorus(`vagNacelleRingR_${side}`, { diameter: 6.2, thickness: 0.55, tessellation: 16 }, scene);
+    ringR.position.set(-28.8, 8.5, nz); ringR.rotation.z = Math.PI * 0.5; ringR.computeWorldMatrix(true); carrierBrassParts.push(ringR);
+    const exhaust = BABYLON.MeshBuilder.CreateDisc(`vagNacelleGlow_${side}`, { radius: 2.4, tessellation: 12 }, scene);
+    exhaust.parent = asteroidBase.group; exhaust.position.set(-29.2, 8.5, nz); exhaust.rotation.y = Math.PI * 0.5;
+    exhaust.material = warmGlowMat; exhaust.isPickable = false;
+  }
+  // Raked 1930s naval aircraft-carrier funnel/smokestack beside the Control Tower
+  const funnel = BABYLON.MeshBuilder.CreateCylinder('vagNavalFunnel', { diameterTop: 2.8, diameterBottom: 3.8, height: 11.5, tessellation: 12 }, scene);
+  funnel.position.set(-34.5, 26.8, -11.5); funnel.rotation.z = 0.14; funnel.computeWorldMatrix(true); carrierSteelParts.push(funnel);
+  for (const fy of [29.6, 31.2]) {
+    const band = BABYLON.MeshBuilder.CreateTorus(`vagFunnelBand_${fy}`, { diameter: 3.1, thickness: 0.24, tessellation: 14 }, scene);
+    band.position.set(-34.5 - (fy - 26.8) * 0.14, fy, -11.5); band.rotation.z = 0.14; band.computeWorldMatrix(true); carrierBrassParts.push(band);
+  }
+  // Outboard flight-deck catwalk sponsons along both edges of the runway (classic naval carrier silhouette!)
+  for (const side of [-1, 1]) {
+    const catwalk = BABYLON.MeshBuilder.CreateBox(`vagCarrierCatwalk_${side}`, { width: 52.0, height: 0.45, depth: 2.2 }, scene);
+    catwalk.position.set(32.0, 2.55, side * 11.1); catwalk.computeWorldMatrix(true); carrierSteelParts.push(catwalk);
+    const coaming = BABYLON.MeshBuilder.CreateBox(`vagCarrierCoaming_${side}`, { width: 52.0, height: 0.22, depth: 0.18 }, scene);
+    coaming.position.set(32.0, 3.05, side * 12.1); coaming.computeWorldMatrix(true); carrierBrassParts.push(coaming);
+  }
+  const mCarrierSteel = BABYLON.Mesh.MergeMeshes(carrierSteelParts, true, true, undefined, false, false);
+  if (mCarrierSteel) { mCarrierSteel.name = 'vagCarrierHullKit'; mCarrierSteel.parent = asteroidBase.group; mCarrierSteel.material = hullMat; mCarrierSteel.receiveShadows = true; mCarrierSteel.isPickable = false; }
+  const mCarrierBrass = BABYLON.Mesh.MergeMeshes(carrierBrassParts, true, true, undefined, false, false);
+  if (mCarrierBrass) { mCarrierBrass.name = 'vagCarrierBrassTrim'; mCarrierBrass.parent = asteroidBase.group; mCarrierBrass.material = copperMat; mCarrierBrass.isPickable = false; }
 
   // ---------------------------------------------------------------------------
-  // 2. LOWER LEVEL (y = 3.35): CARVED-IN HANGAR PORTAL + 56m CANTILEVERED RUNWAY
+  // 2. LOWER LEVEL (y = 3.35): CARVED-IN HANGAR PORTAL + 64m AIRCRAFT CARRIER FLIGHT DECK
   // ---------------------------------------------------------------------------
-  const runway = BABYLON.MeshBuilder.CreateBox('vagCarrierRunway', { width: 56.0, height: 1.4, depth: 20.0 }, scene);
+  const runway = BABYLON.MeshBuilder.CreateBox('vagCarrierRunway', { width: 64.0, height: 1.4, depth: 20.0 }, scene);
   runway.parent = asteroidBase.group;
-  runway.position.set(28.0, 2.68, 0.0);
+  runway.position.set(32.0, 2.68, 0.0);
   runway.material = runwayMat;
   runway.receiveShadows = true;
   if (shadowGen) shadowGen.addShadowCaster(runway, false);
+
+  // Painted naval carrier hull stencil "01" on the flight deck bow (unmistakable aircraft-carrier identity from the air!)
+  if (!(scene.getEngine() instanceof BABYLON.NullEngine) && typeof document !== 'undefined') {
+    const nTex = new BABYLON.DynamicTexture('vagCarrierDeckNumTex', { width: 256, height: 256 }, scene, false);
+    const nCtx = nTex.getContext();
+    nCtx.clearRect(0, 0, 256, 256);
+    nCtx.fillStyle = 'rgba(236, 224, 192, 0.78)';
+    nCtx.font = 'bold 165px "Georgia", serif';
+    nCtx.textAlign = 'center';
+    nCtx.textBaseline = 'middle';
+    nCtx.fillText('01', 128, 134);
+    nTex.update();
+    nTex.hasAlpha = true;
+    const nMat = new BABYLON.StandardMaterial('vagCarrierDeckNumMat', scene);
+    nMat.diffuseTexture = nTex;
+    nMat.useAlphaFromDiffuseTexture = true;
+    nMat.emissiveColor = c3('#8c826c');
+    nMat.disableLighting = true;
+    nMat.depthWrite = false;
+    const numPlane = BABYLON.MeshBuilder.CreatePlane('vagCarrierDeckNumber01', { width: 10.5, height: 10.5 }, scene);
+    numPlane.parent = asteroidBase.group;
+    numPlane.position.set(58.2, 3.43, 0.0);
+    numPlane.rotation.set(Math.PI * 0.5, -Math.PI * 0.5, 0);
+    numPlane.material = nMat;
+    numPlane.isPickable = false;
+  }
 
   // Heavy steel trusses & concrete piers anchoring the cantilevered runway into the cliff
   for (const rz of [-8.4, 8.4]) {
@@ -1169,10 +1231,12 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   const mainFlak = buildFlak88Turret(scene, 'vagFlak88Main', turretPlat, new BABYLON.Vector3(0, 0.98, 0), 0.35, shadowGen);
   asteroidBase.flakTurrets = [mainFlak];
 
-  // Sculpted Interbellum / Dieselpunk Quad-Tube Rocket Battery (ЗРК) — zero cubes, lathed cupola & copper pipes
-  const vagSam = buildSculptedSamLauncher(scene, 'vagSam', asteroidBase.group, new BABYLON.Vector3(-5.0, 21.35, -16.5), shadowGen);
-  vagSam.base.scaling.setAll(1.18);
-  asteroidBase.samLaunchers = [vagSam];
+  // Dual Port & Starboard Sculpted Interbellum / Dieselpunk Quad-Tube SAM Batteries (ЗРК ПВО)
+  const vagSamPort = buildSculptedSamLauncher(scene, 'vagSamPort', asteroidBase.group, new BABYLON.Vector3(-5.0, 21.35, -16.5), shadowGen);
+  vagSamPort.base.scaling.setAll(1.18);
+  const vagSamStbd = buildSculptedSamLauncher(scene, 'vagSamStbd', asteroidBase.group, new BABYLON.Vector3(-5.0, 21.35, 16.5), shadowGen);
+  vagSamStbd.base.scaling.setAll(1.18);
+  asteroidBase.samLaunchers = [vagSamPort, vagSamStbd];
 
   const radarPlat = new BABYLON.TransformNode('vagRadarPlatform', scene);
   radarPlat.parent = asteroidBase.group;
@@ -1370,15 +1434,13 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   // ---------------------------------------------------------------------------
   // 5. GEOLOGICAL ROCK STRATA & SCALE-REFERENCE LANDMARKS
   // ---------------------------------------------------------------------------
-  // Stepped basalt/sandstone rock shelves & asymmetric crag ridge for layered geology
+  // Stepped horizontal rock shelves reinforcing the flat-top carrier profile (removed bulky rear peak)
   const strataLedges = [
-    { x: -16.0, y: 13.8, z: -26.0, w: 22.0, h: 3.2, d: 12.0, ry: 0.25, rz: -0.06 },
-    { x: -24.0, y: 8.2,  z: 27.5,  w: 24.0, h: 3.5, d: 13.0, ry: -0.32, rz: 0.05 },
-    { x: 6.0,   y: 0.5,  z: -24.5, w: 18.0, h: 2.8, d: 11.0, ry: 0.45, rz: -0.04 },
-    { x: 8.0,   y: -1.5, z: 23.0,  w: 20.0, h: 3.0, d: 12.0, ry: -0.4, rz: 0.04 },
-    { x: -41.0, y: 15.0, z: -8.0,  w: 18.0, h: 4.5, d: 22.0, ry: 0.15, rz: -0.08 },
-    // Asymmetric craggy ridge peak on stern upper plateau
-    { x: -42.0, y: 24.5, z: -6.0,  w: 12.0, h: 11.0, d: 14.0, ry: 0.35, rz: 0.08 },
+    { x: -16.0, y: 13.8, z: -26.0, w: 22.0, h: 3.2, d: 12.0, ry: 0.25, rz: -0.04 },
+    { x: -24.0, y: 8.2,  z: 27.5,  w: 24.0, h: 3.5, d: 13.0, ry: -0.32, rz: 0.04 },
+    { x: 6.0,   y: 0.5,  z: -24.5, w: 18.0, h: 2.8, d: 11.0, ry: 0.45, rz: -0.03 },
+    { x: 8.0,   y: -1.5, z: 23.0,  w: 20.0, h: 3.0, d: 12.0, ry: -0.4, rz: 0.03 },
+    { x: -42.0, y: 14.5, z: -6.0,  w: 20.0, h: 3.6, d: 24.0, ry: 0.12, rz: -0.04 },
   ];
   strataLedges.forEach((st, sIdx) => {
     const ledge = BABYLON.MeshBuilder.CreateCylinder(`vagStrata_${sIdx}`, {
