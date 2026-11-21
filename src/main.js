@@ -3962,16 +3962,18 @@ engine.runRenderLoop(() => {
     atmosphereFX?.update(dt, { controlMode: 'menu', camera });
     const basePos = asteroidBase ? asteroidBase.group.position : ship.group.position;
     world.updateShadowFocus?.(basePos);
-    const angle = -0.82 + Math.sin(world.simTime * .035) * .14;
+    const angle = -2.42 + Math.sin(world.simTime * .032) * .10;
     const framing=Math.max(1,1.1/engine.getAspectRatio(camera));
-    // Sunlit 3/4 port-bow framing (illuminates the riveted grey cruiser hull, crimson-white bow stripe, triple turrets & tripod mast!)
-    camera.position.set(
-      basePos.x + Math.cos(angle) * 116 * framing,
-      basePos.y + 18 * framing,
-      basePos.z + Math.sin(angle) * 116 * framing
-    );
-    camera.upVector.set(0, 1, 0);
-    camera.setTarget(basePos.add(new BABYLON.Vector3(-8.0, 15.0, 6.0)));
+    // Heroic 1931 artbook 3/4 bow-port framing: sunlit 227m Flight-Deck Cruiser (bow & 3 triple turrets left -> pagoda mast & twin funnels center -> flat flight deck right!)
+    if (!window.__freezeCam) {
+      camera.position.set(
+        basePos.x + Math.cos(angle) * 215 * framing,
+        basePos.y + 26 * framing,
+        basePos.z + Math.sin(angle) * 195 * framing
+      );
+      camera.upVector.set(0, 1, 0);
+      camera.setTarget(basePos.add(new BABYLON.Vector3(-42.0, 14.0, 4.0)));
+    }
   }
 
   const drawTotal=engine._drawCalls?.current||0;

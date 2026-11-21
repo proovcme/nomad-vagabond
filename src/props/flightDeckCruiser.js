@@ -1,44 +1,43 @@
 /**
- * Authentic 1931 Interbellum Flight-Deck Cruiser (CF) Warship Model for «Бродяга».
- * Uses a true lofted 3D ship-hull mesh (flared clipper bow, tumblehome armor sides,
- * tapered V-keel, cruiser stern) + tiered pagoda bridge, twin crimson-banded funnels,
- * superfiring triple 6-inch turrets, and recessed glowing amber keel lift-thrusters.
+ * Modular 227-Meter 1931 Interbellum Flight-Deck Cruiser (CF) «Бродяга».
+ * Orientation (matches hangar & runway takeoff along +X):
+ *   - BOW (-X): x = -155..-55 — Razor-sharp flared clipper bow, diagonal crimson-white heraldic stripe,
+ *     3 superfiring triple-barrel 6-inch main cruiser turrets (A, B, C).
+ *   - MIDSHIPS: x = -55..+2 — Stepped 1930s pagoda bridge, 56m tripod foremast, twin crimson-banded
+ *     raked funnels, sheltered 4-bay hangar & upper shipyard deck (y = 21.73).
+ *   - AFT (+X): x = +2..+72 — Flush flat flight deck (y = 3.38) for real takeoff/landing,
+ *     catwalks, lifeboats on davits, cranes, and cruiser stern transom.
+ *   - KEEL: 5 armored anti-gravity propulsion bays with glowing amber louver vents.
  */
 
 function c3(hex) {
   return BABYLON.Color3.FromHexString(hex);
 }
 
-/**
- * Builds a true lofted 3D cruiser warship hull mesh from longitudinal cross-section stations.
- * Each station: { x, halfBeamTop, halfBeamMid, halfBeamKeel, yTop, yMid, yKeel }
- */
-function createLoftedCruiserHull(scene, name, stations, material, parent, shadowGen = null) {
+function createLoftedHull(scene, name, stations, material, parent, shadowGen = null) {
   const B = BABYLON;
   const positions = [];
   const indices = [];
   const uvs = [];
-
-  // 7 profile vertices per station (starboard top -> starboard mid -> starboard keel -> center keel -> port keel -> port mid -> port top)
   const ringPts = 7;
   const xMin = stations[0].x;
   const xSpan = Math.max(1, stations[stations.length - 1].x - xMin);
 
   for (let i = 0; i < stations.length; i++) {
     const s = stations[i];
-    const u = ((s.x - xMin) / xSpan) * 7.5;
+    const u = ((s.x - xMin) / xSpan) * 11.0;
     const pts = [
-      [s.x, s.yTop,   s.halfBeamTop],
-      [s.x, s.yMid,   s.halfBeamMid],
-      [s.x, s.yKeel + 1.2, s.halfBeamKeel],
-      [s.x, s.yKeel,  0],
-      [s.x, s.yKeel + 1.2, -s.halfBeamKeel],
-      [s.x, s.yMid,   -s.halfBeamMid],
-      [s.x, s.yTop,   -s.halfBeamTop],
+      [s.x, s.yTop,         s.halfBeamTop],
+      [s.x, s.yMid,         s.halfBeamMid],
+      [s.x, s.yKeel + 1.5,  s.halfBeamKeel],
+      [s.x, s.yKeel,        0],
+      [s.x, s.yKeel + 1.5, -s.halfBeamKeel],
+      [s.x, s.yMid,        -s.halfBeamMid],
+      [s.x, s.yTop,        -s.halfBeamTop],
     ];
     for (let j = 0; j < ringPts; j++) {
       positions.push(pts[j][0], pts[j][1], pts[j][2]);
-      uvs.push(u, (j / (ringPts - 1)) * 2.2);
+      uvs.push(u, (j / (ringPts - 1)) * 2.4);
     }
   }
 
@@ -50,13 +49,12 @@ function createLoftedCruiserHull(scene, name, stations, material, parent, shadow
       const b = rowB + j;
       const c = rowB + j + 1;
       const d = rowA + j + 1;
-      // Outward-facing CCW winding for Babylon.js left-handed coordinate system
       indices.push(a, b, d);
       indices.push(b, c, d);
     }
   }
 
-  // Cap top deck flush across all stations (starboard top -> port top, outward +Y)
+  // Cap top deck flush (+Y outward)
   for (let i = 0; i < stations.length - 1; i++) {
     const a = i * ringPts;
     const b = (i + 1) * ringPts;
@@ -66,15 +64,16 @@ function createLoftedCruiserHull(scene, name, stations, material, parent, shadow
     indices.push(b, d, c);
   }
 
-  // Cap stern transom (station 0)
+  // Cap stern transom (last station, +X outward)
+  const last = stations.length - 1;
+  const lastRow = last * ringPts;
   const sternCenterIdx = positions.length / 3;
-  const s0 = stations[0];
-  positions.push(s0.x, (s0.yTop + s0.yKeel) * 0.5, 0);
-  uvs.push(0, 0.5);
+  const sLast = stations[last];
+  positions.push(sLast.x, (sLast.yTop + sLast.yKeel) * 0.5, 0);
+  uvs.push(11.0, 0.5);
   for (let j = 0; j < ringPts - 1; j++) {
-    indices.push(sternCenterIdx, j, j + 1);
+    indices.push(sternCenterIdx, lastRow + j + 1, lastRow + j);
   }
-  indices.push(sternCenterIdx, ringPts - 1, 0);
 
   const normals = [];
   B.VertexData.ComputeNormals(positions, indices, normals);
@@ -108,197 +107,307 @@ function mergeKit(meshes, name, parent, material, shadowGen = null) {
   return merged;
 }
 
-/**
- * Builds the complete 1931 Interbellum Flight-Deck Cruiser (CF) warship model for «Бродяга».
- */
-export function buildFlightDeckCruiserModel(asteroidBase, scene, shadowGen = null) {
-  if (!asteroidBase?.group || !scene) return null;
+function createCruiserMaterials(scene) {
   const B = BABYLON;
   const isNull = scene.getEngine() instanceof B.NullEngine;
 
-  // 1. Authentic Sunlit 1931 Battleship-Grey Riveted Steel Hull Material
-  const hullMat = new B.PBRMaterial('cfCruiserHullMat', scene);
-  hullMat.albedoColor = c3('#8c969e');
-  hullMat.metallic = 0.30;
-  hullMat.roughness = 0.50;
-  hullMat.environmentIntensity = 0.85;
+  const hull = new B.PBRMaterial('cfCruiserHullMat', scene);
+  hull.albedoColor = c3('#8d979f'); // classic 1930s battleship light-slate grey
+  hull.metallic = 0.28;
+  hull.roughness = 0.52;
+  hull.environmentIntensity = 0.85;
   if (!isNull) {
     const tex = new B.Texture('./assets/textures/nomad/armored-deck-plates.png', scene);
-    tex.uScale = 2.0; tex.vScale = 1.6;
-    hullMat.albedoTexture = tex;
+    tex.uScale = 2.4; tex.vScale = 1.6;
+    hull.albedoTexture = tex;
   }
 
-  const darkSteelMat = new B.PBRMaterial('cfCruiserDarkSteelMat', scene);
-  darkSteelMat.albedoColor = c3('#3b434b');
-  darkSteelMat.metallic = 0.62;
-  darkSteelMat.roughness = 0.44;
-  darkSteelMat.environmentIntensity = 0.72;
+  const darkSteel = new B.PBRMaterial('cfCruiserDarkSteelMat', scene);
+  darkSteel.albedoColor = c3('#3a424a');
+  darkSteel.metallic = 0.58;
+  darkSteel.roughness = 0.44;
+  darkSteel.environmentIntensity = 0.72;
 
-  const deckSteelMat = new B.PBRMaterial('cfCruiserDeckMat', scene);
-  deckSteelMat.albedoColor = c3('#a89b84'); // weathered teak/steel cruiser deck tone
-  deckSteelMat.metallic = 0.14;
-  deckSteelMat.roughness = 0.72;
+  const deckWood = new B.PBRMaterial('cfCruiserDeckWoodMat', scene);
+  deckWood.albedoColor = c3('#b6a27e'); // weathered Interbellum teak warship deck
+  deckWood.metallic = 0.08;
+  deckWood.roughness = 0.76;
   if (!isNull) {
     const dTex = new B.Texture('./assets/textures/nomad/aviation-runway-graphite-v1.jpg', scene);
-    dTex.uScale = 3.0; dTex.vScale = 2.0;
-    deckSteelMat.albedoTexture = dTex;
+    dTex.uScale = 3.5; dTex.vScale = 2.0;
+    deckWood.albedoTexture = dTex;
   }
 
-  const crimsonMat = new B.PBRMaterial('cfCruiserCrimsonMat', scene);
-  crimsonMat.albedoColor = c3('#a83226');
-  crimsonMat.metallic = 0.18;
-  crimsonMat.roughness = 0.52;
+  const crimson = new B.PBRMaterial('cfCruiserCrimsonMat', scene);
+  crimson.albedoColor = c3('#a43024');
+  crimson.metallic = 0.16;
+  crimson.roughness = 0.54;
 
-  const whiteMat = new B.PBRMaterial('cfCruiserWhiteMat', scene);
-  whiteMat.albedoColor = c3('#efe7d4');
-  whiteMat.metallic = 0.08;
-  whiteMat.roughness = 0.62;
+  const white = new B.PBRMaterial('cfCruiserWhiteMat', scene);
+  white.albedoColor = c3('#efe7d4');
+  white.metallic = 0.06;
+  white.roughness = 0.64;
 
-  const brassMat = new B.PBRMaterial('cfCruiserBrassMat', scene);
-  brassMat.albedoColor = c3('#d4a64e');
-  brassMat.metallic = 0.84;
-  brassMat.roughness = 0.28;
+  const brass = new B.PBRMaterial('cfCruiserBrassMat', scene);
+  brass.albedoColor = c3('#d2a44c');
+  brass.metallic = 0.84;
+  brass.roughness = 0.28;
 
-  const amberGlowMat = new B.StandardMaterial('cfCruiserAmberGlowMat', scene);
-  amberGlowMat.emissiveColor = c3('#ffaa38');
-  amberGlowMat.diffuseColor = c3('#ffe09a');
-  amberGlowMat.disableLighting = true;
+  const amberGlow = new B.StandardMaterial('cfCruiserAmberGlowMat', scene);
+  amberGlow.emissiveColor = c3('#ffaa38');
+  amberGlow.diffuseColor = c3('#ffe29c');
+  amberGlow.disableLighting = true;
 
-  // 2. TRUE LOFTED 138-METER CRUISER WARSHIP HULL (stern x=-66 -> flared clipper bow x=+72!)
+  return { hull, darkSteel, deckWood, crimson, white, brass, amberGlow };
+}
+
+/**
+ * Module 1: 227-meter lofted 1930s Cruiser Hull (bow x=-155 -> stern x=+72)
+ * with flared clipper stem, diagonal crimson-white bow heraldic stripe, anchors & portholes.
+ */
+function buildCruiserHull(scene, parent, mats, shadowGen) {
+  const B = BABYLON;
   const hullStations = [
-    { x: -66, halfBeamTop: 7.5,  halfBeamMid: 6.2,  halfBeamKeel: 2.2, yTop: 4.0, yMid: -1.5, yKeel: -6.5 },
-    { x: -56, halfBeamTop: 14.5, halfBeamMid: 13.0, halfBeamKeel: 5.8, yTop: 3.6, yMid: -2.4, yKeel: -9.0 },
-    { x: -42, halfBeamTop: 19.5, halfBeamMid: 18.2, halfBeamKeel: 9.2, yTop: 3.2, yMid: -3.2, yKeel: -10.8 },
-    { x: -20, halfBeamTop: 20.5, halfBeamMid: 19.2, halfBeamKeel: 9.8, yTop: 3.0, yMid: -3.4, yKeel: -11.2 },
-    { x:   4, halfBeamTop: 18.5, halfBeamMid: 17.0, halfBeamKeel: 8.6, yTop: 2.9, yMid: -3.2, yKeel: -10.5 },
-    { x:  26, halfBeamTop: 14.2, halfBeamMid: 12.2, halfBeamKeel: 5.6, yTop: 2.8, yMid: -2.6, yKeel: -9.2 },
-    { x:  46, halfBeamTop: 10.6, halfBeamMid: 8.2,  halfBeamKeel: 3.0, yTop: 2.9, yMid: -2.0, yKeel: -7.8 },
-    { x:  60, halfBeamTop: 6.4,  halfBeamMid: 4.0,  halfBeamKeel: 1.2, yTop: 3.2, yMid: -1.4, yKeel: -6.2 },
-    { x:  71, halfBeamTop: 0.7,  halfBeamMid: 0.45, halfBeamKeel: 0.2, yTop: 3.8, yMid: -0.6, yKeel: -4.2 },
+    // Sharp flared clipper bow (-X = forward!)
+    { x: -155, halfBeamTop: 0.7,  halfBeamMid: 0.45, halfBeamKeel: 0.2,  yTop: 11.4, yMid: 4.0,  yKeel: -3.2 },
+    { x: -140, halfBeamTop: 6.2,  halfBeamMid: 4.2,  halfBeamKeel: 1.5,  yTop: 10.6, yMid: 2.2,  yKeel: -6.8 },
+    { x: -120, halfBeamTop: 11.5, halfBeamMid: 9.2,  halfBeamKeel: 4.2,  yTop: 9.8,  yMid: 0.8,  yKeel: -9.8 },
+    { x:  -95, halfBeamTop: 15.8, halfBeamMid: 14.0, halfBeamKeel: 7.4,  yTop: 9.2,  yMid: -0.4, yKeel: -11.6 },
+    { x:  -65, halfBeamTop: 18.8, halfBeamMid: 17.5, halfBeamKeel: 10.0, yTop: 8.8,  yMid: -1.4, yKeel: -12.6 },
+    // Midships hangar & superstructure beam (aft stations yTop=2.25 sit cleanly below runway deck at y=2.68..3.38 — zero z-fighting!)
+    { x:  -40, halfBeamTop: 20.5, halfBeamMid: 19.2, halfBeamKeel: 11.2, yTop: 2.4,  yMid: -2.2, yKeel: -13.0 },
+    { x:  -12, halfBeamTop: 20.5, halfBeamMid: 19.2, halfBeamKeel: 11.0, yTop: 2.25, yMid: -2.4, yKeel: -12.8 },
+    { x:   14, halfBeamTop: 18.2, halfBeamMid: 16.8, halfBeamKeel: 9.2,  yTop: 2.25, yMid: -2.4, yKeel: -11.6 },
+    { x:   38, halfBeamTop: 15.2, halfBeamMid: 13.6, halfBeamKeel: 6.8,  yTop: 2.25, yMid: -2.2, yKeel: -9.8 },
+    { x:   58, halfBeamTop: 12.2, halfBeamMid: 10.2, halfBeamKeel: 4.4,  yTop: 2.25, yMid: -1.8, yKeel: -7.8 },
+    { x:   72, halfBeamTop: 9.2,  halfBeamMid: 7.4,  halfBeamKeel: 2.8,  yTop: 2.25, yMid: -1.4, yKeel: -6.0 },
   ];
-  createLoftedCruiserHull(scene, 'cfLoftedMainHull', hullStations, hullMat, asteroidBase.group, shadowGen);
+  createLoftedHull(scene, 'cfLoftedMainHull', hullStations, mats.hull, parent, shadowGen);
 
-  // Lower crimson anti-fouling keel hull band (sleek lofted lower keel!)
+  // Lower crimson cruiser hull bottom
   const keelStations = hullStations.map(s => ({
     x: s.x,
-    halfBeamTop: s.halfBeamMid * 0.96,
-    halfBeamMid: s.halfBeamKeel * 1.04,
+    halfBeamTop: s.halfBeamMid * 0.98,
+    halfBeamMid: s.halfBeamKeel * 1.05,
     halfBeamKeel: s.halfBeamKeel * 0.45,
-    yTop: s.yMid - 0.1,
-    yMid: s.yKeel + 0.8,
-    yKeel: s.yKeel - 0.8,
+    yTop: s.yMid - 0.15,
+    yMid: s.yKeel + 1.0,
+    yKeel: s.yKeel - 0.9,
   }));
-  createLoftedCruiserHull(scene, 'cfLoftedCrimsonKeel', keelStations, crimsonMat, asteroidBase.group, null);
+  createLoftedHull(scene, 'cfLoftedCrimsonKeel', keelStations, mats.crimson, parent, null);
 
-  const steelParts = [], darkParts = [], crimsonParts = [], whiteParts = [], brassParts = [], glowParts = [], deckParts = [];
-  const put = (arr, m, x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) => {
-    m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.scaling.set(sx, sy, sz);
-    arr.push(m);
-  };
+  const whiteParts = [], crimsonParts = [], brassParts = [], darkParts = [], glowParts = [], deckParts = [];
+  const put = (arr, m, x, y, z, rx = 0, ry = 0, rz = 0) => { m.position.set(x, y, z); m.rotation.set(rx, ry, rz); arr.push(m); };
 
-  // 3. DIAGONAL CRIMSON-AND-WHITE HERALDIC BOW STRIPE (exact key-art signature on both bow flanks!)
+  // Weathered teak forecastle bow gun deck (x = -146..-58)
+  put(deckParts, B.MeshBuilder.CreateBox('cfBowTeakDeck', { width: 78, height: 0.45, depth: 22.0 }, scene), -96, 9.5, 0);
+  // Brass stem, anchors, hawsepipes & iconic 1931 diagonal white-crimson bow stripe!
+  put(brassParts, B.MeshBuilder.CreateBox('cfBowStem', { width: 0.75, height: 14.8, depth: 0.75 }, scene), -155.0, 4.1, 0, 0, 0, -0.05);
   for (const side of [-1, 1]) {
-    put(whiteParts, B.MeshBuilder.CreateBox(`cfBowStripeW_${side}`, { width: 5.4, height: 8.6, depth: 0.35 }, scene), 49.0, -1.6, side * 8.6, side * 0.22, side * -0.22, -0.32);
-    put(crimsonParts, B.MeshBuilder.CreateBox(`cfBowStripeC_${side}`, { width: 3.4, height: 8.8, depth: 0.46 }, scene), 49.0, -1.6, side * 8.72, side * 0.22, side * -0.22, -0.32);
-    // Brass bow stem trim & anchors
-    put(brassParts, B.MeshBuilder.CreateTorus(`cfHawse_${side}`, { diameter: 1.5, thickness: 0.24, tessellation: 10 }, scene), 57.5, 0.8, side * 5.6, 0, Math.PI * 0.5, 0);
-    put(darkParts, B.MeshBuilder.CreateCylinder(`cfAnchor_${side}`, { diameter: 0.35, height: 2.6, tessellation: 6 }, scene), 57.5, -0.6, side * 5.9);
+    // Diagonal white-framed crimson flagship heraldic stripe hugging the flared cruiser bow!
+    put(whiteParts, B.MeshBuilder.CreateBox(`cfBowStripeW_${side}`, { width: 6.4, height: 14.2, depth: 0.45 }, scene), -126.0, 2.2, side * 9.0, side * 0.22, side * 0.26, 0.22);
+    put(crimsonParts, B.MeshBuilder.CreateBox(`cfBowStripeC_${side}`, { width: 4.0, height: 14.4, depth: 0.56 }, scene), -126.0, 2.2, side * 9.12, side * 0.22, side * 0.26, 0.22);
+    // Anchor hawsepipe + hanging battleship anchor
+    put(brassParts, B.MeshBuilder.CreateTorus(`cfHawse_${side}`, { diameter: 1.8, thickness: 0.28, tessellation: 10 }, scene), -142.0, 6.2, side * 5.2, 0, Math.PI * 0.5, 0);
+    put(darkParts, B.MeshBuilder.CreateCylinder(`cfAnchor_${side}`, { diameter: 0.42, height: 3.6, tessellation: 6 }, scene), -142.0, 4.2, side * 5.6);
+    // Illuminated cruiser hull portholes along bow & midships freeboard
+    for (let px = -115; px <= -55; px += 7.5) {
+      const zOff = 12.2 + ((px + 115) / 60) * 6.4;
+      put(glowParts, B.MeshBuilder.CreateCylinder(`cfHullPort_${side}_${px}`, { diameter: 0.85, height: 0.25, tessellation: 8 }, scene), px, 5.2, side * zOff, Math.PI * 0.5, 0, 0);
+    }
+    // Foredeck railing stanchions & brass capstan
+    put(brassParts, B.MeshBuilder.CreateBox(`cfBowRail_${side}`, { width: 76, height: 0.22, depth: 0.18 }, scene), -98, 10.7, side * 11.2);
   }
-  put(brassParts, B.MeshBuilder.CreateBox('cfBowStem', { width: 0.8, height: 8.4, depth: 0.8 }, scene), 71.2, -0.3, 0, 0, 0, -0.28);
+  put(brassParts, B.MeshBuilder.CreateCylinder('cfBowCapstan', { diameterTop: 1.6, diameterBottom: 2.1, height: 1.4, tessellation: 10 }, scene), -136, 10.6, 0);
 
-  // 4. RECESSED GLOWING AMBER UNDER-HULL LIFT-THRUSTER PODS (tucked cleanly into the cruiser keel, exact key-art look!)
-  for (const [vx, vw, vz, vy] of [[-34, 10.5, 6.8, -8.8], [-12, 11.5, 7.6, -9.2], [12, 10.0, 6.2, -8.4], [32, 8.2, 4.4, -7.2]]) {
-    put(darkParts, B.MeshBuilder.CreateBox(`cfVentPod_${vx}`, { width: vw, height: 2.2, depth: vz * 2 }, scene), vx, vy, 0);
+  mergeKit(whiteParts, 'cfBowStripeWhite', parent, mats.white, null);
+  mergeKit(crimsonParts, 'cfBowStripeCrimson', parent, mats.crimson, null);
+  mergeKit(brassParts, 'cfHullBrassKit', parent, mats.brass, null);
+  mergeKit(darkParts, 'cfHullAnchorKit', parent, mats.darkSteel, null);
+  mergeKit(glowParts, 'cfHullPortholes', parent, mats.amberGlow, null);
+  mergeKit(deckParts, 'cfBowTeakDeckMesh', parent, mats.deckWood, shadowGen);
+}
+
+/**
+ * Module 2: Three Superfiring Triple-Barrel 6-inch Cruiser Main Gun Turrets (A, B, C)
+ * mounted cleanly on the long cruiser forecastle bow (-X = forward!).
+ */
+function buildMainBatteryTurrets(scene, parent, mats, shadowGen) {
+  const B = BABYLON;
+  const steelParts = [], darkParts = [], brassParts = [];
+  const put = (arr, m, x, y, z, rx = 0, ry = 0, rz = 0) => { m.position.set(x, y, z); m.rotation.set(rx, ry, rz); arr.push(m); };
+
+  const turrets = [
+    { id: 'A', x: -116, y: 10.4, elev: 0.12, yaw: 0.0 },
+    { id: 'B', x:  -94, y: 14.2, elev: 0.15, yaw: 0.0 },
+    { id: 'C', x:  -72, y: 18.0, elev: 0.16, yaw: 0.0 },
+  ];
+  for (const t of turrets) {
+    const barbH = t.y - 8.2;
+    put(steelParts, B.MeshBuilder.CreateCylinder(`cfMainBarb_${t.id}`, { diameter: 9.2, height: barbH, tessellation: 16 }, scene), t.x, 8.2 + barbH * 0.5, 0);
+    put(brassParts, B.MeshBuilder.CreateTorus(`cfMainBarbRing_${t.id}`, { diameter: 9.4, thickness: 0.34, tessellation: 18 }, scene), t.x, t.y + 0.1, 0);
+    // Faceted 1930s US Navy 6"/47 cruiser gunhouse
+    put(steelParts, B.MeshBuilder.CreateBox(`cfMainHouse_${t.id}`, { width: 10.4, height: 3.6, depth: 8.4 }, scene), t.x + 0.6, t.y + 1.9, 0);
+    put(steelParts, B.MeshBuilder.CreateBox(`cfMainFace_${t.id}`, { width: 2.2, height: 3.2, depth: 8.2 }, scene), t.x - 4.8, t.y + 1.8, 0, 0, 0, 0.28);
+    // Optical turret rangefinder ears
+    put(brassParts, B.MeshBuilder.CreateCylinder(`cfMainRF_${t.id}`, { diameter: 0.72, height: 10.4, tessellation: 8 }, scene), t.x + 2.8, t.y + 2.8, 0, Math.PI * 0.5, 0, 0);
+    // Triple 6-inch barrels pointing forward (-X) with recoil jackets
+    for (const bz of [-2.0, 0.0, 2.0]) {
+      put(darkParts, B.MeshBuilder.CreateCylinder(`cfMainJacket_${t.id}_${bz}`, { diameter: 0.88, height: 3.8, tessellation: 8 }, scene), t.x - 6.8, t.y + 2.4, bz, 0, 0, Math.PI * 0.5 - t.elev);
+      put(darkParts, B.MeshBuilder.CreateCylinder(`cfMainBarrel_${t.id}_${bz}`, { diameterTop: 0.38, diameterBottom: 0.58, height: 15.2, tessellation: 10 }, scene), t.x - 13.0, t.y + 3.2, bz, 0, 0, Math.PI * 0.5 - t.elev);
+    }
+  }
+
+  mergeKit(steelParts, 'cfMainBatteryTurrets', parent, mats.hull, shadowGen);
+  mergeKit(darkParts, 'cfMainBatteryBarrels', parent, mats.darkSteel, shadowGen);
+  mergeKit(brassParts, 'cfMainBatteryBrass', parent, mats.brass, null);
+}
+
+/**
+ * Module 3: Midships 1930s Cruiser Superstructure, Tiered Pagoda Bridge, 56m Tripod Foremast,
+ * Twin Thick Raked Crimson-Banded Funnels & Sheltered Hangar Citadel.
+ */
+function buildMidshipsSuperstructure(scene, parent, mats, shadowGen) {
+  const B = BABYLON;
+  const steelParts = [], darkParts = [], crimsonParts = [], brassParts = [], glowParts = [], deckParts = [];
+  const put = (arr, m, x, y, z, rx = 0, ry = 0, rz = 0) => { m.position.set(x, y, z); m.rotation.set(rx, ry, rz); arr.push(m); };
+
+  // Armored cruiser citadel walls flanking the hangar cavern (x = -54..+2, leaving portal z=-10..+10 wide open at +X!)
+  for (const side of [-1, 1]) {
+    put(steelParts, B.MeshBuilder.CreateBox(`cfCitWall_${side}`, { width: 56.0, height: 18.0, depth: 5.4 }, scene), -26.0, 11.8, side * 17.8, side * -0.08);
+    put(brassParts, B.MeshBuilder.CreateBox(`cfCitStrake_${side}`, { width: 58.0, height: 0.48, depth: 0.6 }, scene), -26.0, 20.6, side * 20.2);
+    for (let px = -48; px <= -4; px += 5.5) {
+      put(glowParts, B.MeshBuilder.CreateBox(`cfCitWinA_${side}_${px}`, { width: 1.2, height: 0.85, depth: 0.24 }, scene), px, 16.0, side * 20.5);
+      put(glowParts, B.MeshBuilder.CreateBox(`cfCitWinB_${side}_${px}`, { width: 1.0, height: 0.75, depth: 0.24 }, scene), px, 9.6, side * 20.8);
+    }
+    // Integrated armored hull sponsons supporting mid-level AA Gun (16, 13.8, 25) & Radar (14, 15.2, -26)
+    const sx = side > 0 ? 16.0 : 14.0, sz = side > 0 ? 25.0 : -26.0, sy = side > 0 ? 13.4 : 14.8;
+    put(steelParts, B.MeshBuilder.CreateCylinder(`cfSponson_${side}`, { diameterTop: 9.2, diameterBottom: 5.0, height: 12.2, tessellation: 12 }, scene), sx, sy - 6.4, sz);
+    put(steelParts, B.MeshBuilder.CreateBox(`cfSponsonArm_${side}`, { width: 11.0, height: 4.0, depth: 14.0 }, scene), sx - 2.5, sy - 3.5, side * 17.5);
+    put(brassParts, B.MeshBuilder.CreateTorus(`cfSponsonRing_${side}`, { diameter: 9.4, thickness: 0.34, tessellation: 16 }, scene), sx, sy - 0.5, sz);
+  }
+  // Sloped forward citadel bulkhead connecting the bow forecastle up to the upper cruiser deck (x = -58..-52)
+  put(steelParts, B.MeshBuilder.CreateBox('cfCitBowWall', { width: 10.0, height: 13.5, depth: 36.0 }, scene), -55.0, 14.2, 0);
+  // Upper armored shipyard/superstructure deck (y = 20.88, replaces legacy round flying saucer!)
+  put(deckParts, B.MeshBuilder.CreateBox('cfUpperDeckMain', { width: 58.0, height: 1.1, depth: 40.0 }, scene), -25.0, 20.88, 0);
+  put(steelParts, B.MeshBuilder.CreateBox('cfUpperBulwarkL', { width: 58.4, height: 0.85, depth: 0.55 }, scene), -25.0, 21.7, -20.0);
+  put(steelParts, B.MeshBuilder.CreateBox('cfUpperBulwarkR', { width: 58.4, height: 0.85, depth: 0.55 }, scene), -25.0, 21.7,  20.0);
+
+  // Towering 1930s US Navy Pagoda Bridge & 56m Tripod Foremast right behind Turret C (x = -54, z = 0)
+  const bx = -54.0, bz = 0.0;
+  put(steelParts, B.MeshBuilder.CreateBox('cfPagoda1', { width: 13.0, height: 6.2, depth: 14.5 }, scene), bx, 24.4, bz);
+  put(steelParts, B.MeshBuilder.CreateBox('cfPagoda2', { width: 10.2, height: 5.4, depth: 11.4 }, scene), bx, 30.0, bz);
+  put(steelParts, B.MeshBuilder.CreateBox('cfBridgeWings', { width: 4.2, height: 1.8, depth: 22.0 }, scene), bx - 1.5, 30.2, bz);
+  put(steelParts, B.MeshBuilder.CreateBox('cfPagoda3', { width: 7.4, height: 4.8, depth: 7.8 }, scene), bx, 35.0, bz);
+  // Warm glowing panoramic bridge windows facing forward (-X)
+  put(glowParts, B.MeshBuilder.CreateBox('cfBridgeGlass1', { width: 0.25, height: 1.1, depth: 9.2 }, scene), bx - 5.2, 30.8, bz);
+  put(glowParts, B.MeshBuilder.CreateBox('cfBridgeGlass2', { width: 0.25, height: 1.0, depth: 6.0 }, scene), bx - 3.8, 35.6, bz);
+  // Tall slender 1930s Tripod Foremast rising to y = 58m!
+  put(darkParts, B.MeshBuilder.CreateCylinder('cfForemastCore', { diameterTop: 0.40, diameterBottom: 1.45, height: 22.0, tessellation: 8 }, scene), bx, 48.0, bz);
+  put(darkParts, B.MeshBuilder.CreateCylinder('cfForemastLegL', { diameterTop: 0.30, diameterBottom: 0.78, height: 16.5, tessellation: 6 }, scene), bx + 3.2, 44.5, -2.4, -0.20, 0, 0.26);
+  put(darkParts, B.MeshBuilder.CreateCylinder('cfForemastLegR', { diameterTop: 0.30, diameterBottom: 0.78, height: 16.5, tessellation: 6 }, scene), bx + 3.2, 44.5,  2.4,  0.20, 0, 0.26);
+  put(steelParts, B.MeshBuilder.CreateCylinder('cfSpottingTop', { diameter: 4.4, height: 1.9, tessellation: 12 }, scene), bx, 45.2, bz);
+  put(brassParts, B.MeshBuilder.CreateBox('cfMainRangefinder', { width: 0.95, height: 0.95, depth: 7.8 }, scene), bx - 0.5, 47.0, bz);
+  put(darkParts, B.MeshBuilder.CreateBox('cfMainYard1', { width: 0.28, height: 0.28, depth: 17.0 }, scene), bx, 51.4, bz);
+  put(darkParts, B.MeshBuilder.CreateBox('cfMainYard2', { width: 0.22, height: 0.22, depth: 11.0 }, scene), bx, 55.2, bz);
+  // Bridge searchlights on side wings
+  for (const sz of [-9.5, 9.5]) {
+    put(brassParts, B.MeshBuilder.CreateCylinder(`cfSearchlight_${sz}`, { diameter: 1.3, height: 1.6, tessellation: 10 }, scene), bx - 2.2, 31.8, sz, 0, 0, Math.PI * 0.5);
+    put(glowParts, B.MeshBuilder.CreateDisc(`cfSearchlightLens_${sz}`, { radius: 0.58, tessellation: 8 }, scene), bx - 3.05, 31.8, sz, 0, -Math.PI * 0.5, 0);
+  }
+
+  // TWO Thick 1930s Raked Cruiser Funnels (behind the pagoda bridge, port flank z = -17.8, swept aft toward +X!)
+  for (const fx of [-39.5, -29.5]) {
+    put(steelParts, B.MeshBuilder.CreateCylinder(`cfFunnel_${fx}`, { diameterTop: 4.2, diameterBottom: 5.0, height: 14.5, tessellation: 14 }, scene), fx, 28.2, -17.8, 0, 0, -0.20);
+    put(darkParts, B.MeshBuilder.CreateCylinder(`cfFunnelCap_${fx}`, { diameterTop: 4.5, diameterBottom: 4.25, height: 2.2, tessellation: 14 }, scene), fx + 1.5, 35.4, -17.8, 0, 0, -0.20);
+    put(crimsonParts, B.MeshBuilder.CreateCylinder(`cfFunnelRed_${fx}`, { diameterTop: 4.45, diameterBottom: 4.62, height: 2.2, tessellation: 14 }, scene), fx + 0.8, 32.2, -17.8, 0, 0, -0.20);
+    put(brassParts, B.MeshBuilder.CreateTorus(`cfFunnelBrass_${fx}`, { diameter: 4.72, thickness: 0.20, tessellation: 14 }, scene), fx + 0.5, 31.0, -17.8, 0, 0, -0.20);
+  }
+
+  mergeKit(steelParts, 'cfSuperstructureSteel', parent, mats.hull, shadowGen);
+  mergeKit(darkParts, 'cfSuperstructureDark', parent, mats.darkSteel, null);
+  mergeKit(crimsonParts, 'cfSuperstructureCrimson', parent, mats.crimson, null);
+  mergeKit(brassParts, 'cfSuperstructureBrass', parent, mats.brass, null);
+  mergeKit(glowParts, 'cfSuperstructureGlow', parent, mats.amberGlow, null);
+  mergeKit(deckParts, 'cfSuperstructureDeck', parent, mats.deckWood, shadowGen);
+}
+
+/**
+ * Module 4: Aft Flight Deck Equipment — Lifeboats on Davits, Deck Ventilators,
+ * Stern Stabilizer Fins & Twin Main Propulsion Nozzles.
+ */
+function buildFlightDeckAndDetails(scene, parent, mats) {
+  const B = BABYLON;
+  const whiteParts = [], brassParts = [], darkParts = [], crimsonParts = [], glowParts = [];
+  const put = (arr, m, x, y, z, rx = 0, ry = 0, rz = 0) => { m.position.set(x, y, z); m.rotation.set(rx, ry, rz); arr.push(m); };
+
+  // Lifeboats slung on curved davits along the cruiser waist & deck-edge ventilators
+  for (const side of [-1, 1]) {
+    for (const lx of [-42, -32, -18]) {
+      put(whiteParts, B.MeshBuilder.CreateSphere(`cfBoat_${side}_${lx}`, { diameterX: 6.2, diameterY: 1.8, diameterZ: 2.2, segments: 8 }, scene), lx, 22.8, side * 21.4);
+      for (const dx of [-2.4, 2.4]) {
+        put(darkParts, B.MeshBuilder.CreateCylinder(`cfDavit_${side}_${lx}_${dx}`, { diameter: 0.22, height: 3.4, tessellation: 6 }, scene), lx + dx, 22.6, side * 20.6, side * 0.28, 0, 0);
+      }
+    }
+    // Classic 1930s ship cowl ventilators on the upper deck flanks
+    for (const vx of [-46, -10]) {
+      put(brassParts, B.MeshBuilder.CreateCylinder(`cfVentPipe_${side}_${vx}`, { diameter: 0.75, height: 2.6, tessellation: 8 }, scene), vx, 22.8, side * 19.2);
+      put(crimsonParts, B.MeshBuilder.CreateSphere(`cfVentCowl_${side}_${vx}`, { diameter: 1.4, segments: 8 }, scene), vx, 24.1, side * 19.2);
+    }
+    // Cruiser stern stabilizer fins & main propulsion thrusters at x = +72
+    put(crimsonParts, B.MeshBuilder.CreateBox(`cfSternFin_${side}`, { width: 10.0, height: 6.2, depth: 0.65 }, scene), 70.5, -3.2, side * 6.4, 0, 0, -0.18);
+    put(darkParts, B.MeshBuilder.CreateCylinder(`cfSternBell_${side}`, { diameterTop: 2.6, diameterBottom: 4.0, height: 5.5, tessellation: 12 }, scene), 71.5, -4.0, side * 3.8, 0, 0, -Math.PI * 0.5);
+    put(brassParts, B.MeshBuilder.CreateTorus(`cfSternRing_${side}`, { diameter: 4.0, thickness: 0.34, tessellation: 14 }, scene), 74.2, -4.0, side * 3.8, 0, 0, Math.PI * 0.5);
+    put(glowParts, B.MeshBuilder.CreateDisc(`cfSternGlow_${side}`, { radius: 1.6, tessellation: 10 }, scene), 74.3, -4.0, side * 3.8, 0, -Math.PI * 0.5, 0);
+  }
+
+  mergeKit(whiteParts, 'cfDeckLifeboats', parent, mats.white, null);
+  mergeKit(brassParts, 'cfDeckBrassDetails', parent, mats.brass, null);
+  mergeKit(darkParts, 'cfDeckDarkDetails', parent, mats.darkSteel, null);
+  mergeKit(crimsonParts, 'cfDeckCrimsonDetails', parent, mats.crimson, null);
+  mergeKit(glowParts, 'cfDeckSternGlow', parent, mats.amberGlow, null);
+}
+
+/**
+ * Module 5: Recessed Armored Anti-Gravity Propulsion Bays along the 227m cruiser keel.
+ */
+function buildAntigravKeelPods(scene, parent, mats) {
+  const B = BABYLON;
+  const darkParts = [], glowParts = [], brassParts = [];
+  const put = (arr, m, x, y, z) => { m.position.set(x, y, z); arr.push(m); };
+
+  const pods = [
+    { x: -108, w: 12.0, z: 5.8, y: -11.4 },
+    { x:  -68, w: 15.0, z: 8.8, y: -13.2 },
+    { x:  -26, w: 16.5, z: 10.2, y: -13.6 },
+    { x:   14, w: 14.0, z: 8.2, y: -12.4 },
+    { x:   46, w: 11.0, z: 5.6, y: -9.8 },
+  ];
+  for (const p of pods) {
+    put(darkParts, B.MeshBuilder.CreateBox(`cfAgPod_${p.x}`, { width: p.w, height: 2.6, depth: p.z * 2 }, scene), p.x, p.y, 0);
+    put(brassParts, B.MeshBuilder.CreateBox(`cfAgFrame_${p.x}`, { width: p.w + 0.6, height: 0.4, depth: p.z * 2 + 0.4 }, scene), p.x, p.y + 1.2, 0);
     for (const side of [-1, 1]) {
-      put(glowParts, B.MeshBuilder.CreateBox(`cfVentGlow_${vx}_${side}`, { width: vw * 0.78, height: 1.05, depth: 0.28 }, scene), vx, vy - 0.1, side * (vz + 0.08));
-      for (let lx = -vw * 0.3; lx <= vw * 0.31; lx += vw * 0.2) {
-        put(darkParts, B.MeshBuilder.CreateBox(`cfVentBar_${vx}_${side}_${lx}`, { width: 0.36, height: 1.4, depth: 0.42 }, scene), vx + lx, vy - 0.1, side * (vz + 0.14));
+      put(glowParts, B.MeshBuilder.CreateBox(`cfAgGlow_${p.x}_${side}`, { width: p.w * 0.80, height: 1.2, depth: 0.30 }, scene), p.x, p.y - 0.1, side * (p.z + 0.08));
+      for (let lx = -p.w * 0.32; lx <= p.w * 0.33; lx += p.w * 0.16) {
+        put(darkParts, B.MeshBuilder.CreateBox(`cfAgLouver_${p.x}_${side}_${lx}`, { width: 0.36, height: 1.5, depth: 0.44 }, scene), p.x + lx, p.y - 0.1, side * (p.z + 0.16));
       }
     }
   }
+  mergeKit(darkParts, 'cfAntigravPods', parent, mats.darkSteel, null);
+  mergeKit(brassParts, 'cfAntigravBrass', parent, mats.brass, null);
+  mergeKit(glowParts, 'cfAntigravGlow', parent, mats.amberGlow, null);
+}
 
-  // 5. ARMORED CRUISER SUPERSTRUCTURE CITADEL (clean tapered warship upper hull — NO floating pancake on stilts!)
-  // Solidly encloses the hangar bay (x = -54..+2) and steps cleanly up to the flat upper shipyard deck (y = 20.85)!
-  for (const side of [-1, 1]) {
-    // Sloped armored cruiser hull walls flanking the hangar bay (leaving z = -10..+10 wide open at x = +2!)
-    put(steelParts, B.MeshBuilder.CreateBox(`cfCitadelWall_${side}`, { width: 54.0, height: 17.8, depth: 5.5 }, scene), -25.0, 11.8, side * 17.2, side * -0.10);
-    // Brass armor strake & warm glowing recessed cabin porthole strip along the citadel side
-    put(brassParts, B.MeshBuilder.CreateBox(`cfCitadelStrake_${side}`, { width: 56.0, height: 0.45, depth: 0.6 }, scene), -25.0, 20.6, side * 19.6);
-    for (let px = -46; px <= -4; px += 5.5) {
-      put(glowParts, B.MeshBuilder.CreateBox(`cfCitPort_${side}_${px}`, { width: 1.2, height: 0.85, depth: 0.24 }, scene), px, 15.6, side * 19.8);
-      put(glowParts, B.MeshBuilder.CreateBox(`cfCitPortLow_${side}_${px}`, { width: 1.0, height: 0.75, depth: 0.24 }, scene), px, 9.2, side * 20.2);
-    }
-    // Integrated armored cruiser sponsons supporting the mid-level AA Turret (16, 13.8, 25) & Radar (14, 15.2, -26)
-    const sx = side > 0 ? 16.0 : 14.0, sz = side > 0 ? 25.0 : -26.0, sy = side > 0 ? 13.4 : 14.8;
-    put(steelParts, B.MeshBuilder.CreateCylinder(`cfSponsonCol_${side}`, { diameterTop: 9.5, diameterBottom: 5.2, height: 12.5, tessellation: 12 }, scene), sx, sy - 6.6, sz);
-    put(steelParts, B.MeshBuilder.CreateBox(`cfSponsonWing_${side}`, { width: 11.5, height: 4.2, depth: 14.0 }, scene), sx - 2.5, sy - 3.6, side * 17.5);
-    put(brassParts, B.MeshBuilder.CreateTorus(`cfSponsonRing_${side}`, { diameter: 9.8, thickness: 0.35, tessellation: 16 }, scene), sx, sy - 0.5, sz);
-  }
-  // Tapered armored cruiser aft bulkhead closing the stern of the superstructure cleanly
-  put(steelParts, B.MeshBuilder.CreateCylinder('cfAftBulkhead', { diameterTop: 38.0, diameterBottom: 28.0, height: 17.8, tessellation: 8 }, scene), -50.0, 11.8, 0, 0, Math.PI / 8, 0, 0.52, 1.0, 1.0);
-
-  // Clean Rectangular/Beveled Armored Cruiser Upper Deck (replaces the ugly round 66m flying-saucer pancake!)
-  put(deckParts, B.MeshBuilder.CreateBox('cfUpperShipyardDeck', { width: 58.0, height: 1.1, depth: 40.0 }, scene), -25.0, 20.88, 0.0);
-  put(steelParts, B.MeshBuilder.CreateBox('cfUpperDeckCoamingL', { width: 58.4, height: 0.75, depth: 0.55 }, scene), -25.0, 21.65, -20.0);
-  put(steelParts, B.MeshBuilder.CreateBox('cfUpperDeckCoamingR', { width: 58.4, height: 0.75, depth: 0.55 }, scene), -25.0, 21.65,  20.0);
-  put(steelParts, B.MeshBuilder.CreateBox('cfUpperDeckCoamingA', { width: 0.55, height: 0.75, depth: 40.4 }, scene), -54.0, 21.65, 0.0);
-
-  // 6. CLASSIC 1931 FLIGHT-DECK CRUISER ISLAND SUPERSTRUCTURE:
-  //    Tiered Pagoda/Tripod Mast + Rangefinder + TWO Thick Crimson-Banded Raked Funnels!
-  // Twin thick 1930s cruiser funnels (raked 18° aft, crimson flagship band, black top cap!)
-  for (const fx of [-33.5, -42.5]) {
-    put(steelParts, B.MeshBuilder.CreateCylinder(`cfFunnelBody_${fx}`, { diameterTop: 3.2, diameterBottom: 4.0, height: 11.5, tessellation: 14 }, scene), fx, 26.8, -17.8, 0, 0, 0.24);
-    put(darkParts, B.MeshBuilder.CreateCylinder(`cfFunnelCap_${fx}`, { diameterTop: 3.4, diameterBottom: 3.25, height: 1.8, tessellation: 14 }, scene), fx - 1.5, 32.4, -17.8, 0, 0, 0.24);
-    put(crimsonParts, B.MeshBuilder.CreateCylinder(`cfFunnelBand_${fx}`, { diameterTop: 3.45, diameterBottom: 3.60, height: 1.8, tessellation: 14 }, scene), fx - 0.8, 29.8, -17.8, 0, 0, 0.24);
-    put(brassParts, B.MeshBuilder.CreateTorus(`cfFunnelTrim_${fx}`, { diameter: 3.65, thickness: 0.18, tessellation: 14 }, scene), fx - 0.5, 28.8, -17.8, 0, 0, 0.24);
-  }
-
-  // Tall 1931 US Navy Pagoda / Tripod Bridge Mast with tiered bridge wings, director & yardarms
-  const mx = -21.5, mz = -17.8;
-  put(steelParts, B.MeshBuilder.CreateBox('cfBridgeTier1', { width: 10.5, height: 5.0, depth: 6.2 }, scene), mx, 23.8, mz);
-  put(steelParts, B.MeshBuilder.CreateBox('cfBridgeTier2', { width: 7.4, height: 4.4, depth: 5.2 }, scene), mx, 28.4, mz);
-  put(steelParts, B.MeshBuilder.CreateBox('cfBridgeWing', { width: 3.2, height: 1.4, depth: 11.2 }, scene), mx + 1.8, 28.2, mz);
-  put(glowParts, B.MeshBuilder.CreateBox('cfBridgeWindows', { width: 0.25, height: 0.9, depth: 4.4 }, scene), mx + 3.75, 29.2, mz);
-  // Slender tripod foremast rising cleanly to y = 46!
-  put(darkParts, B.MeshBuilder.CreateCylinder('cfMastCore', { diameterTop: 0.36, diameterBottom: 1.2, height: 17.5, tessellation: 8 }, scene), mx, 38.0, mz);
-  put(darkParts, B.MeshBuilder.CreateCylinder('cfMastTripodL', { diameterTop: 0.26, diameterBottom: 0.65, height: 13.5, tessellation: 6 }, scene), mx - 2.4, 35.5, mz - 1.8, 0.20, 0, -0.24);
-  put(darkParts, B.MeshBuilder.CreateCylinder('cfMastTripodR', { diameterTop: 0.26, diameterBottom: 0.65, height: 13.5, tessellation: 6 }, scene), mx - 2.4, 35.5, mz + 1.8, -0.20, 0, -0.24);
-  put(steelParts, B.MeshBuilder.CreateCylinder('cfFireControlTop', { diameter: 3.4, height: 1.6, tessellation: 10 }, scene), mx, 37.8, mz);
-  put(brassParts, B.MeshBuilder.CreateBox('cfRangefinderBar', { width: 0.75, height: 0.75, depth: 5.8 }, scene), mx, 39.4, mz);
-  put(darkParts, B.MeshBuilder.CreateBox('cfSignalYard1', { width: 0.24, height: 0.24, depth: 12.5 }, scene), mx, 42.2, mz);
-  put(darkParts, B.MeshBuilder.CreateBox('cfSignalYard2', { width: 0.20, height: 0.20, depth: 8.2 }, scene), mx, 44.8, mz);
-
-  // 7. SUPERFIRING TRIPLE-BARREL 6-INCH CRUISER MAIN GUN TURRETS (signature of the 1930s Flight-Deck Cruiser CF!)
-  const turrets = [
-    { x: -50.0, y: 22.0, z: -8.5, dir: -1, elev: 0.14 },
-    { x: -50.0, y: 22.0, z:  8.5, dir: -1, elev: 0.14 },
-    { x:   1.2, y: 22.0, z: -14.2, dir: 1, elev: 0.16 },
-    { x:   1.2, y: 22.0, z:  14.2, dir: 1, elev: 0.16 },
-  ];
-  for (const t of turrets) {
-    put(steelParts, B.MeshBuilder.CreateCylinder(`cfBarb_${t.x}_${t.z}`, { diameter: 5.0, height: 1.8, tessellation: 12 }, scene), t.x, t.y, t.z);
-    put(steelParts, B.MeshBuilder.CreateBox(`cfTurret_${t.x}_${t.z}`, { width: 6.2, height: 2.4, depth: 4.8 }, scene), t.x, t.y + 1.8, t.z);
-    put(brassParts, B.MeshBuilder.CreateTorus(`cfTurretRing_${t.x}_${t.z}`, { diameter: 5.1, thickness: 0.24, tessellation: 14 }, scene), t.x, t.y + 0.85, t.z);
-    for (const bz of [-1.15, 0.0, 1.15]) {
-      put(darkParts, B.MeshBuilder.CreateCylinder(`cfBarrel_${t.x}_${t.z}_${bz}`, { diameterTop: 0.28, diameterBottom: 0.42, height: 8.8, tessellation: 8 }, scene), t.x + t.dir * 6.4, t.y + 2.4, t.z + bz, 0, 0, t.dir * (Math.PI * 0.5 - t.elev));
-    }
-  }
-
-  // 8. SLEEK CRUISER STERN FINS & TWIN MAIN PROPULSION NOZZLES
-  for (const side of [-1, 1]) {
-    put(crimsonParts, B.MeshBuilder.CreateBox(`cfSternFin_${side}`, { width: 9.5, height: 7.5, depth: 0.65 }, scene), -66.5, -2.5, side * 6.8, 0, 0, 0.22);
-    put(darkParts, B.MeshBuilder.CreateCylinder(`cfSternNozzle_${side}`, { diameterTop: 2.8, diameterBottom: 4.2, height: 5.6, tessellation: 12 }, scene), -67.2, -3.5, side * 3.8, 0, 0, Math.PI * 0.5);
-    put(brassParts, B.MeshBuilder.CreateTorus(`cfSternNozzleRing_${side}`, { diameter: 4.2, thickness: 0.34, tessellation: 14 }, scene), -70.0, -3.5, side * 3.8, 0, 0, Math.PI * 0.5);
-    put(glowParts, B.MeshBuilder.CreateDisc(`cfSternNozzleGlow_${side}`, { radius: 1.7, tessellation: 10 }, scene), -70.1, -3.5, side * 3.8, 0, Math.PI * 0.5, 0);
-  }
-
-  mergeKit(steelParts, 'cfCruiserSuperstructure', asteroidBase.group, hullMat, shadowGen);
-  mergeKit(darkParts, 'cfCruiserDarkSteel', asteroidBase.group, darkSteelMat, null);
-  mergeKit(deckParts, 'cfCruiserUpperDeck', asteroidBase.group, deckSteelMat, shadowGen);
-  mergeKit(crimsonParts, 'cfCruiserCrimsonTrim', asteroidBase.group, crimsonMat, null);
-  mergeKit(whiteParts, 'cfCruiserWhiteTrim', asteroidBase.group, whiteMat, null);
-  mergeKit(brassParts, 'cfCruiserBrassTrim', asteroidBase.group, brassMat, null);
-  mergeKit(glowParts, 'cfCruiserAmberLights', asteroidBase.group, amberGlowMat, null);
-
-  return { hullMat };
+/**
+ * Orchestrates all 5 modular subsystems of the 227-meter 1931 Flight-Deck Cruiser (CF) «Бродяга».
+ */
+export function buildFlightDeckCruiserModel(asteroidBase, scene, shadowGen = null) {
+  if (!asteroidBase?.group || !scene) return null;
+  const mats = createCruiserMaterials(scene);
+  buildCruiserHull(scene, asteroidBase.group, mats, shadowGen);
+  buildMainBatteryTurrets(scene, asteroidBase.group, mats, shadowGen);
+  buildMidshipsSuperstructure(scene, asteroidBase.group, mats, shadowGen);
+  buildFlightDeckAndDetails(scene, asteroidBase.group, mats);
+  buildAntigravKeelPods(scene, asteroidBase.group, mats);
+  return { hullMat: mats.hull };
 }

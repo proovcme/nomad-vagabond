@@ -1410,16 +1410,16 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   // 5. «Бродяга» — Authentic 1931 Flight-Deck Cruiser (CF) lofted warship model!
   const hullKit = buildFlightDeckCruiserModel(asteroidBase, scene, shadowGen);
 
-  // Scenic satellite islands in the background vista behind Vagabond (never blocking the foreground or runway)
+  // Scenic satellite islands in the background vista behind the 227m cruiser (+Z side, framing the cruiser in the menu!)
   buildSatelliteIsland(scene, {
-    id: 'vag_vista_nw', seed: 'VAG-SAT-1', radiusX: 22, radiusZ: 18, depth: 28, scaleY: 1.38,
-    style: 'military', parent: asteroidBase.group, pos: [-135.0, 26.0, -95.0], rot: [0.10, 0.6, 0.12],
-    trees: [{ file: 'pine_hero.glb', x: -2, z: 1, s: 1.2, r: 0.4 }, { file: 'fir_medium.glb', x: 4, z: -2, s: 1.0, r: 1.5 }], shadowGen,
+    id: 'vag_vista_nw', seed: 'VAG-SAT-1', radiusX: 24, radiusZ: 20, depth: 30, scaleY: 1.38,
+    style: 'forest', parent: asteroidBase.group, pos: [-195.0, 52.0, 175.0], rot: [0.06, 0.6, 0.08],
+    trees: [{ file: 'pine_hero.glb', x: -4, z: 2, s: 1.2, r: 0.4 }, { file: 'fir_medium.glb', x: 5, z: -3, s: 1.0, r: 1.5 }, { file: 'coastal_alder.glb', x: -1, z: -6, s: 1.05, r: 2.3 }], shadowGen,
   });
   buildSatelliteIsland(scene, {
-    id: 'vag_vista_ne', seed: 'VAG-SAT-2', radiusX: 19, radiusZ: 16, depth: 24, scaleY: 1.32,
-    style: 'military', parent: asteroidBase.group, pos: [95.0, 22.0, -135.0], rot: [-0.09, 1.8, 0.10],
-    trees: [{ file: 'fir_medium.glb', x: 0, z: 0, s: 1.15, r: 1.2 }], shadowGen,
+    id: 'vag_vista_ne', seed: 'VAG-SAT-2', radiusX: 21, radiusZ: 17, depth: 26, scaleY: 1.32,
+    style: 'military', parent: asteroidBase.group, pos: [65.0, 36.0, 195.0], rot: [-0.06, 1.8, 0.06],
+    trees: [{ file: 'fir_medium.glb', x: -3, z: 2, s: 1.15, r: 1.2 }, { file: 'pine_hero.glb', x: 4, z: -2, s: 1.1, r: 2.1 }], shadowGen,
   });
 
   const vagRustTex = createRustedMetalTexture(scene, [158, 120, 62]);
@@ -1522,7 +1522,8 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   // (keep checkCollisions=true on vagabondUnifiedRockShell & vagUpperCourtyard so all 7 validators stay 100% green!)
   if (hullKit?.hullMat) {
     for (const hideName of [
-      'vagabondUnifiedRockShell', 'vagUpperMossRim', 'vagUpperCourtyard', 'vagUpperDeckRim',
+      'vagabondUnifiedRockShell', 'vagUpperMossRim', 'vagUpperMossRim_stairwell',
+      'vagUpperCourtyard', 'vagUpperCourtyard_stairwell', 'vagUpperDeckRim',
       'vagCarrierHullKit', 'vagCarrierBrassTrim', 'vagNacelleGlow_-1', 'vagNacelleGlow_1',
     ]) {
       const hm = scene.getMeshByName(hideName);
