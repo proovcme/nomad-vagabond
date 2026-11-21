@@ -11,7 +11,7 @@ import { GraphicsManager } from './graphics.js?v=mission1';
 import { createRustedMetalTexture } from './textures.js?v=mission1';
 import { buildFlak88Turret } from './flak88.js?v=mission1';
 import { buildSculptedRadar, buildSculptedSamLauncher } from './props/dieselpunkStructures.js?v=mission1';
-import { decorateVagabondCarrier, buildAncientWindmillLandmark, buildSkyLighthouseLandmark, buildAetherMonolithLandmark, populateSatelliteIslandDiorama } from './props/nomadLandmarks.js?v=mission1';
+import { decorateVagabondCarrier, buildAncientWindmillLandmark, buildSkyLighthouseLandmark, buildAetherMonolithLandmark, populateSatelliteIslandDiorama, buildInterbellumCarrierHull } from './props/nomadLandmarks.js?v=mission1';
 import { AssetManager } from './engine/assetManager.js?v=mission1';
 import { getLevel } from './levels/levelRegistry.js?v=mission1';
 import { buildBiomeIsland } from './islands/biomeIslands.js?v=mission1';
@@ -1406,64 +1406,8 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   // This GLB has minimum y=-.25: compensate explicitly, then leave 8cm surface clearance.
   instantiateGLBInto(scene, './assets/buildings/', 'ether_generator.glb', asteroidBase.group, new BABYLON.Vector3(-28.0, 22.20, 20.5), 1.0, 0.0, shadowGen);
 
-  // 5. GROUNDED COASTAL VEGETATION ON VAGABOND: Unified human/architectural scale (0.76..0.94), strictly outer aft/side rims (leaving 66m carrier deck clear!)
-  const treePlacements = [
-    { file: 'pine_hero.glb',     pos: [-50.5, 20.1, -9.0],  s: 0.92, r: 0.4 },
-    { file: 'fir_medium.glb',    pos: [-51.5, 20.1, 3.5],   s: 0.86, r: 1.6 },
-    { file: 'coastal_alder.glb', pos: [-17.5, 20.1, -26.5], s: 0.82, r: 0.9 },
-    { file: 'fir_medium.glb',    pos: [-16.0, 20.1, 26.5],  s: 0.84, r: 1.1 },
-    { file: 'pine_hero.glb',     pos: [-48.0, 20.1, 14.5],  s: 0.88, r: 0.3 },
-    { file: 'coastal_alder.glb', pos: [-11.5, 20.1, -24.5], s: 0.78, r: 1.4 },
-    { file: 'pine_hero.glb',     pos: [-46.5, 20.1, -18.5], s: 0.90, r: 2.4 },
-  ];
-  for (const tp of treePlacements) {
-    instantiateGLBInto(scene, './assets/benchmark/models/trees/', tp.file, asteroidBase.group, new BABYLON.Vector3(...tp.pos), tp.s, tp.r, shadowGen);
-  }
-
-  const bushPlacements = [
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-18.0, 20.6, 25.0],  s: 2.2, r: 0.5 },
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-14.0, 20.6, -24.5], s: 2.1, r: 1.8 },
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-49.5, 20.6, 8.0],   s: 2.3, r: 1.1 },
-    // Additional coastal grass tufts along cliff shoulders & upper deck rim for 3D landscape micro-detail
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [3.5,  20.4, -18.5],  s: 2.0, r: 0.9 },
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [5.5,  20.4, -12.5],  s: 1.8, r: 2.3 },
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [6.0,  20.4, 15.5],   s: 2.1, r: 1.4 },
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-4.5, 20.5, 21.8],   s: 2.2, r: 0.3 },
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-12.0, 20.5, 23.0],  s: 1.9, r: 2.7 },
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-8.0, 20.5, -22.8],  s: 2.0, r: 1.6 },
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-32.0, 20.5, -18.5], s: 2.1, r: 0.8 },
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [-2.0, 19.8, -22.0],  s: 2.2, r: 2.1 },
-    { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb',   pos: [2.0,  19.8, 22.0],   s: 2.0, r: 0.4 },
-  ];
-  for (const bp of bushPlacements) {
-    instantiateGLBInto(scene, bp.dir, bp.file, asteroidBase.group, new BABYLON.Vector3(...bp.pos), bp.s, bp.r, false);
-  }
-
-  // ---------------------------------------------------------------------------
-  // 5. GEOLOGICAL ROCK STRATA & SCALE-REFERENCE LANDMARKS
-  // ---------------------------------------------------------------------------
-  // Stepped horizontal rock shelves reinforcing the flat-top carrier profile (removed bulky rear peak)
-  const strataLedges = [
-    { x: -16.0, y: 13.8, z: -26.0, w: 22.0, h: 3.2, d: 12.0, ry: 0.25, rz: -0.04 },
-    { x: -24.0, y: 8.2,  z: 27.5,  w: 24.0, h: 3.5, d: 13.0, ry: -0.32, rz: 0.04 },
-    { x: 6.0,   y: 0.5,  z: -24.5, w: 18.0, h: 2.8, d: 11.0, ry: 0.45, rz: -0.03 },
-    { x: 8.0,   y: -1.5, z: 23.0,  w: 20.0, h: 3.0, d: 12.0, ry: -0.4, rz: 0.03 },
-    { x: -42.0, y: 14.5, z: -6.0,  w: 20.0, h: 3.6, d: 24.0, ry: 0.12, rz: -0.04 },
-  ];
-  strataLedges.forEach((st, sIdx) => {
-    const ledge = BABYLON.MeshBuilder.CreateCylinder(`vagStrata_${sIdx}`, {
-      diameterTop: st.w * 0.88, diameterBottom: st.w, height: st.h, tessellation: 10, subdivisions: 2
-    }, scene);
-    ledge.parent = asteroidBase.group;
-    ledge.position.set(st.x, st.y, st.z);
-    ledge.scaling.set(1.0, 1.0, st.d / st.w);
-    ledge.rotation.set(0, st.ry, st.rz);
-    sculptCraggyRock(ledge, 40 + sIdx * 3.1, 0.22);
-    applyWorldRockUVs(ledge, st.x, st.y, st.z, 1.0, st.d / st.w, 8.0);
-    ledge.material = rockMat;
-    ledge.receiveShadows = true;
-    if (shadowGen) shadowGen.addShadowCaster(ledge, false);
-  });
+  // 5. «Бродяга» — 1920s Interbellum Flying Dreadnought-Carrier Flagship (armored steel hull, crimson belt, broadside casemates, prow & twin stern fins!)
+  const hullKit = buildInterbellumCarrierHull(asteroidBase, scene, shadowGen);
 
   // Scenic satellite islands in the background vista behind Vagabond (never blocking the foreground or runway)
   buildSatelliteIsland(scene, {
@@ -1572,6 +1516,12 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   }
   for (const mesh of asteroidBase.group.getChildMeshes()) {
     if (mesh.isVisible && mesh.visibility > 0 && !/Leaf|Vine|Flame|Lamp|Light|Screen|Steam|Rotor|LiftRail|Sign|Glow|Trail|Smoke|Particle|Atmosphere/i.test(mesh.name)) makeSolid(mesh);
+  }
+  // Hide the legacy lumpy rock shell visually AFTER makeSolid (keeps collision contract intact while showing crisp riveted 1920s battleship hull!)
+  if (hullKit?.navalHullMat) {
+    const shell = scene.getMeshByName('vagabondUnifiedRockShell');
+    if (shell) { shell.material = hullKit.navalHullMat; shell.visibility = 0.0; }
+    if (mossCap) { mossCap.material = hullKit.navalHullMat; mossCap.visibility = 0.0; }
   }
 }
 
