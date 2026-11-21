@@ -370,3 +370,94 @@ export function buildAetherMonolithLandmark(scene, parent, pos) {
 
   return { root, crystal };
 }
+
+/**
+ * Populates a satellite floating island with a distinct, lived-in Interbellum architectural diorama
+ * (Watchtower, Aviator Villa, Signal Outpost, Fuel Depot, or Ancient Aqueduct) merged into 3–4 draw calls!
+ */
+export function populateSatelliteIslandDiorama(scene, parent, island, kind = 'watchtower', rx = 22, rz = 18) {
+  const pal = getNomadPalette(scene);
+  const root = new BABYLON.TransformNode(`satDiorama_${kind}`, scene);
+  root.parent = parent;
+
+  const hAt = (x, z) => (typeof island?.getHeight === 'function' ? island.getHeight(x, z) : 1.6);
+  const stoneParts = [], roofParts = [], steelParts = [], brassParts = [], glowParts = [];
+  const put = (arr, m, x, y, z, rx0 = 0, ry0 = 0, rz0 = 0) => {
+    m.position.set(x, y, z); m.rotation.set(rx0, ry0, rz0); arr.push(m);
+  };
+
+  if (kind === 'watchtower') {
+    // Interbellum stone-and-steel sky watchtower + wooden cantilever mooring pier + warm lantern
+    const ty = hAt(2, -2);
+    put(stoneParts, BABYLON.MeshBuilder.CreateCylinder('wtBase', { diameterTop: 4.4, diameterBottom: 6.0, height: 6.5, tessellation: 8 }, scene), 2, ty + 3.0, -2);
+    put(steelParts, BABYLON.MeshBuilder.CreateCylinder('wtCab', { diameter: 4.8, height: 3.4, tessellation: 8 }, scene), 2, ty + 7.8, -2);
+    put(roofParts, BABYLON.MeshBuilder.CreateCylinder('wtRoof', { diameterTop: 0.5, diameterBottom: 6.2, height: 2.8, tessellation: 8 }, scene), 2, ty + 10.9, -2);
+    put(glowParts, BABYLON.MeshBuilder.CreateCylinder('wtLamp', { diameter: 2.2, height: 1.5, tessellation: 8 }, scene), 2, ty + 8.0, -2);
+    put(brassParts, BABYLON.MeshBuilder.CreateCylinder('wtMast', { diameter: 0.22, height: 4.5, tessellation: 6 }, scene), 2, ty + 14.0, -2);
+    // Cantilevered sky-pier jutting off the southern cliff
+    const py = hAt(0, rz * 0.65);
+    put(steelParts, BABYLON.MeshBuilder.CreateBox('wtPierDeck', { width: 4.2, height: 0.5, depth: 11.5 }, scene), 0, py + 0.5, rz * 0.85);
+    for (const sx of [-1.8, 1.8]) {
+      put(brassParts, BABYLON.MeshBuilder.CreateCylinder(`wtPierPost_${sx}`, { diameter: 0.35, height: 2.2, tessellation: 6 }, scene), sx, py + 1.4, rz * 0.85 + 4.8);
+    }
+    put(glowParts, BABYLON.MeshBuilder.CreateSphere('wtPierBeacon', { diameter: 0.75, segments: 6 }, scene), 1.8, py + 2.7, rz * 0.85 + 4.8);
+  } else if (kind === 'villa') {
+    // Porco Rosso sunlit Mediterranean Aviator's Villa + terracotta roof + small mooring dock
+    const vy = hAt(-2, 1);
+    put(stoneParts, BABYLON.MeshBuilder.CreateBox('vilMain', { width: 8.6, height: 5.2, depth: 6.4 }, scene), -2, vy + 2.4, 1, 0, 0.25);
+    put(roofParts, BABYLON.MeshBuilder.CreateCylinder('vilRoof', { diameterTop: 0.6, diameterBottom: 10.8, height: 2.8, tessellation: 4 }, scene), -2, vy + 6.4, 1, 0, Math.PI * 0.25 + 0.25);
+    put(stoneParts, BABYLON.MeshBuilder.CreateBox('vilWing', { width: 5.2, height: 3.6, depth: 4.8 }, scene), 3.4, vy + 1.6, 2.2, 0, 0.25);
+    put(roofParts, BABYLON.MeshBuilder.CreateBox('vilWingRoof', { width: 5.8, height: 0.5, depth: 5.4 }, scene), 3.4, vy + 3.6, 2.2, 0.08, 0.25);
+    // Warm sunlit windows & chimney
+    for (const wx of [-4.2, -1.5, 1.0]) {
+      put(glowParts, BABYLON.MeshBuilder.CreateBox(`vilWin_${wx}`, { width: 1.1, height: 1.4, depth: 0.2 }, scene), wx, vy + 2.9, 4.3, 0, 0.25);
+    }
+    put(stoneParts, BABYLON.MeshBuilder.CreateCylinder('vilChimney', { diameter: 0.9, height: 4.2, tessellation: 6 }, scene), -4.5, vy + 6.5, -0.5);
+    // Wooden mooring dock
+    const dy = hAt(rx * 0.55, 0);
+    put(steelParts, BABYLON.MeshBuilder.CreateBox('vilDock', { width: 10.5, height: 0.45, depth: 3.6 }, scene), rx * 0.78, dy + 0.4, 0);
+    put(brassParts, BABYLON.MeshBuilder.CreateCylinder('vilDockMast', { diameter: 0.26, height: 5.5, tessellation: 6 }, scene), rx * 0.78 + 4.4, dy + 3.0, 1.3);
+  } else if (kind === 'signal') {
+    // Interbellum Radio & Signal Outpost (stone bunker + tall lattice copper antenna + beacon)
+    const sy = hAt(0, 0);
+    put(stoneParts, BABYLON.MeshBuilder.CreateCylinder('sigBunker', { diameterTop: 7.4, diameterBottom: 8.6, height: 3.8, tessellation: 10 }, scene), 0, sy + 1.8, 0);
+    put(brassParts, BABYLON.MeshBuilder.CreateTorus('sigCollar', { diameter: 7.5, thickness: 0.35, tessellation: 16 }, scene), 0, sy + 3.7, 0);
+    put(steelParts, BABYLON.MeshBuilder.CreateCylinder('sigMast', { diameterTop: 0.35, diameterBottom: 1.4, height: 14.5, tessellation: 6 }, scene), 0, sy + 10.8, 0);
+    for (const cy of [8.5, 12.5, 15.8]) {
+      put(brassParts, BABYLON.MeshBuilder.CreateBox(`sigCross_${cy}`, { width: 5.2 - (cy - 8) * 0.35, height: 0.24, depth: 0.24 }, scene), 0, sy + cy, 0);
+    }
+    put(glowParts, BABYLON.MeshBuilder.CreateSphere('sigBeacon', { diameter: 1.3, segments: 8 }, scene), 0, sy + 18.2, 0);
+    put(roofParts, BABYLON.MeshBuilder.CreateBox('sigHut', { width: 4.2, height: 2.6, depth: 3.4 }, scene), -6.5, hAt(-6.5, 3) + 1.2, 3, 0, -0.4);
+  } else if (kind === 'depot') {
+    // Sky-Fuel Depot (twin copper/steel fuel silos + gantry bridge + airship mooring mast)
+    const fy = hAt(-2, 0);
+    for (const sx of [-5.2, 1.2]) {
+      put(steelParts, BABYLON.MeshBuilder.CreateCylinder(`depSilo_${sx}`, { diameter: 4.8, height: 7.8, tessellation: 12 }, scene), sx, fy + 3.8, -1.5);
+      put(brassParts, BABYLON.MeshBuilder.CreateCylinder(`depDome_${sx}`, { diameterTop: 1.2, diameterBottom: 4.8, height: 1.6, tessellation: 12 }, scene), sx, fy + 8.5, -1.5);
+      put(brassParts, BABYLON.MeshBuilder.CreateTorus(`depBand_${sx}`, { diameter: 5.0, thickness: 0.28, tessellation: 14 }, scene), sx, fy + 4.0, -1.5);
+    }
+    put(steelParts, BABYLON.MeshBuilder.CreateBox('depPipe', { width: 7.5, height: 0.6, depth: 0.6 }, scene), -2.0, fy + 6.4, -1.5);
+    put(steelParts, BABYLON.MeshBuilder.CreateBox('depPad', { width: 10.5, height: 0.5, depth: 8.5 }, scene), 6.2, hAt(6.2, 3) + 0.3, 3.0);
+    put(brassParts, BABYLON.MeshBuilder.CreateCylinder('depMast', { diameterTop: 0.3, diameterBottom: 1.1, height: 13.5, tessellation: 8 }, scene), 8.5, hAt(8.5, -4) + 6.6, -4.0);
+    put(glowParts, BABYLON.MeshBuilder.CreateSphere('depLamp', { diameter: 1.2, segments: 8 }, scene), 8.5, hAt(8.5, -4) + 13.6, -4.0);
+  } else {
+    // Ancient Triple-Arch Limestone Aqueduct Ruins + glowing Aether Brazier
+    const ay = hAt(0, 0);
+    for (let i = -1; i <= 1; i++) {
+      const px = i * 6.8;
+      put(stoneParts, BABYLON.MeshBuilder.CreateBox(`aqPil_${i}`, { width: 2.1, height: 9.2, depth: 2.4 }, scene), px, ay + 4.4, -1.0);
+    }
+    put(stoneParts, BABYLON.MeshBuilder.CreateBox('aqSpan', { width: 17.5, height: 1.8, depth: 2.6 }, scene), 0, ay + 9.4, -1.0);
+    put(stoneParts, BABYLON.MeshBuilder.CreateCylinder('aqBrokenCol', { diameter: 1.4, height: 5.2, tessellation: 8 }, scene), 5.5, hAt(5.5, 5.5) + 0.8, 5.5, 1.38, 0.6);
+    put(brassParts, BABYLON.MeshBuilder.CreateCylinder('aqBrazier', { diameterTop: 1.8, diameterBottom: 0.9, height: 2.2, tessellation: 8 }, scene), -4.5, hAt(-4.5, 4.5) + 1.1, 4.5);
+    put(glowParts, BABYLON.MeshBuilder.CreateSphere('aqFlame', { diameter: 1.3, segments: 8 }, scene), -4.5, hAt(-4.5, 4.5) + 2.6, 4.5);
+  }
+
+  mergeGroup(stoneParts, `satDiorama_${kind}_stone`, root, pal.limestone, null);
+  mergeGroup(roofParts, `satDiorama_${kind}_roof`, root, pal.terracotta, null);
+  mergeGroup(steelParts, `satDiorama_${kind}_steel`, root, pal.steel, null);
+  mergeGroup(brassParts, `satDiorama_${kind}_brass`, root, pal.brass, null);
+  mergeGroup(glowParts, `satDiorama_${kind}_glow`, root, pal.warmGlow, null);
+  return root;
+}
+

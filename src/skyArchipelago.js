@@ -11,7 +11,7 @@ import { GraphicsManager } from './graphics.js?v=mission1';
 import { createRustedMetalTexture } from './textures.js?v=mission1';
 import { buildFlak88Turret } from './flak88.js?v=mission1';
 import { buildSculptedRadar, buildSculptedSamLauncher } from './props/dieselpunkStructures.js?v=mission1';
-import { decorateVagabondCarrier, buildAncientWindmillLandmark, buildSkyLighthouseLandmark, buildAetherMonolithLandmark } from './props/nomadLandmarks.js?v=mission1';
+import { decorateVagabondCarrier, buildAncientWindmillLandmark, buildSkyLighthouseLandmark, buildAetherMonolithLandmark, populateSatelliteIslandDiorama } from './props/nomadLandmarks.js?v=mission1';
 import { AssetManager } from './engine/assetManager.js?v=mission1';
 import { getLevel } from './levels/levelRegistry.js?v=mission1';
 import { buildBiomeIsland } from './islands/biomeIslands.js?v=mission1';
@@ -2692,21 +2692,25 @@ export class SkyArchipelagoWorld {
   _buildShatteredWorldField(seedValue = 101) {
     this.shatteredFieldRoot = new BABYLON.TransformNode('shatteredWorldFieldRoot', this.scene);
 
-    // 1. Scenic Satellite Islands balanced across 360° horizon (prevents 5x draw-call pileup when looking toward the sun!)
+    // 1. Scenic Satellite Islands balanced across 360° horizon — each with its own Interbellum diorama + multi-tree grove!
     const satelliteIslands = [
-      { id: 'sky_sat_0', style: 'forest',     x: -175, y: 58,  z: -155, rx: 24, rz: 19, depth: 30, scaleY: 1.35, rot: [0.11, 0.6, -0.10], tree: 'pine_hero.glb' },
-      { id: 'sky_sat_1', style: 'military',   x: 155,  y: 52,  z: -165, rx: 20, rz: 16, depth: 26, scaleY: 1.30, rot: [-0.10, 2.1, 0.11], tree: 'coastal_alder.glb' },
-      { id: 'sky_sat_2', style: 'forest',     x: 215,  y: 64,  z: 185,  rx: 22, rz: 18, depth: 28, scaleY: 1.38, rot: [0.12, 1.4, -0.11], tree: 'pine_hero.glb' },
-      { id: 'sky_sat_5', style: 'industrial', x: -245, y: 28,  z: 215,  rx: 24, rz: 19, depth: 30, scaleY: 1.38, rot: [-0.12, 0.4, 0.10], tree: null },
-      { id: 'sky_sat_7', style: 'military',   x: 45,   y: 46,  z: 265,  rx: 23, rz: 18, depth: 29, scaleY: 1.36, rot: [-0.11, 1.1, 0.10], tree: 'pine_hero.glb' },
+      { id: 'sky_sat_0', style: 'forest',     diorama: 'watchtower', x: -175, y: 58,  z: -155, rx: 24, rz: 19, depth: 30, scaleY: 1.35, rot: [0.06, 0.6, -0.05], tree: 'pine_hero.glb' },
+      { id: 'sky_sat_1', style: 'military',   diorama: 'signal',     x: 155,  y: 52,  z: -165, rx: 20, rz: 16, depth: 26, scaleY: 1.30, rot: [-0.05, 2.1, 0.06], tree: 'coastal_alder.glb' },
+      { id: 'sky_sat_2', style: 'forest',     diorama: 'villa',      x: 215,  y: 64,  z: 185,  rx: 22, rz: 18, depth: 28, scaleY: 1.38, rot: [0.05, 1.4, -0.05], tree: 'pine_hero.glb' },
+      { id: 'sky_sat_5', style: 'industrial', diorama: 'depot',      x: -245, y: 28,  z: 215,  rx: 24, rz: 19, depth: 30, scaleY: 1.38, rot: [-0.05, 0.4, 0.05], tree: 'fir_medium.glb' },
+      { id: 'sky_sat_7', style: 'military',   diorama: 'aqueduct',   x: 45,   y: 46,  z: 265,  rx: 23, rz: 18, depth: 29, scaleY: 1.36, rot: [-0.06, 1.1, 0.05], tree: 'pine_hero.glb' },
     ];
 
     for (let sIdx = 0; sIdx < satelliteIslands.length; sIdx++) {
       const sat = satelliteIslands[sIdx];
-      const satTrees = sat.tree ? [
-        { file: sat.tree, x: 0, z: 0, s: 1.25, r: 0.8 },
-        { file: 'fir_medium.glb', x: -sat.rx * 0.34, z: sat.rz * 0.24, s: 1.05, r: 1.9 },
-      ] : [];
+      // Rich coastal grove around the perimeter so the central diorama stays cleanly framed!
+      const satTrees = [
+        { file: sat.tree,            x: -sat.rx * 0.48, z: -sat.rz * 0.32, s: 1.18, r: 0.4 + sIdx },
+        { file: 'fir_medium.glb',    x: -sat.rx * 0.34, z:  sat.rz * 0.36, s: 1.05, r: 1.9 + sIdx },
+        { file: 'coastal_alder.glb', x:  sat.rx * 0.44, z: -sat.rz * 0.28, s: 1.02, r: 2.7 + sIdx },
+        { file: 'pine_hero.glb',     x:  sat.rx * 0.38, z:  sat.rz * 0.34, s: 1.12, r: 1.1 + sIdx },
+        { file: 'fir_medium.glb',    x: -sat.rx * 0.14, z: -sat.rz * 0.50, s: 0.96, r: 3.4 + sIdx },
+      ];
       const builtSat = buildSatelliteIsland(this.scene, {
         id: sat.id,
         seed: `WORLD-${seedValue}-${sat.id}`,
@@ -2721,6 +2725,7 @@ export class SkyArchipelagoWorld {
         trees: satTrees,
         shadowGen: null,
       });
+      populateSatelliteIslandDiorama(this.scene, builtSat.node, builtSat.island, sat.diorama, sat.rx, sat.rz);
       this.satelliteNodes ||= new Map();
       this.satelliteNodes.set(sat.id, builtSat);
       this.floatingOrbiters ||= [];
@@ -2791,6 +2796,24 @@ export class SkyArchipelagoWorld {
       });
       mesh.scaling.set(...rp.scale);
       makeSolid(mesh);
+      // Dress every floating crag/spire with an Interbellum aviation beacon mast + windswept cliff pine (no bare rocks!)
+      const topY = rp.type === 'spire' ? 21.5 : 12.2;
+      const bMast = BABYLON.MeshBuilder.CreateCylinder(`cragBeaconMast_${idx}`, { diameterTop: 0.18, diameterBottom: 0.42, height: 6.2, tessellation: 6 }, this.scene);
+      bMast.parent = mesh; bMast.position.set(rp.type === 'spire' ? 0 : 4.2, topY + 2.8, rp.type === 'spire' ? 0 : 1.8);
+      bMast.material = this.scene.getMaterialByName('nomadKitBrassMat') || rp.mat; bMast.isPickable = false;
+      const bLamp = BABYLON.MeshBuilder.CreateSphere(`cragBeaconLamp_${idx}`, { diameter: 0.95, segments: 6 }, this.scene);
+      bLamp.parent = bMast; bLamp.position.y = 3.2;
+      bLamp.material = this.scene.getMaterialByName('nomadKitWarmGlowMat') || rp.mat; bLamp.isPickable = false;
+      instantiateGLBInto(
+        this.scene,
+        './assets/benchmark/models/trees/',
+        idx % 2 === 0 ? 'pine_hero.glb' : 'fir_medium.glb',
+        mesh,
+        new BABYLON.Vector3(rp.type === 'spire' ? 1.8 : -3.4, topY - 1.2, rp.type === 'spire' ? -1.4 : -1.5),
+        0.78,
+        idx * 1.1,
+        null
+      );
       this.floatingOrbiters ||= [];
       this.floatingOrbiters.push({
         node: mesh,
