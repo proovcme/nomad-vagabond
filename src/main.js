@@ -24,18 +24,15 @@ import { NavigatorPlayer } from './player.js?v=mission1';
 import { GameUI } from './ui.js?v=mission1';
 import { BenchmarkCoast } from './benchmarkCoast.js?v=mission1';
 import { SkyArchipelagoWorld } from './skyArchipelago.js?v=mission1';
-import { EnemyDreadnought } from './dreadnought.js?v=mission1';
 import { EnemyFortressIsland } from './enemyFortressIsland.js?v=mission1';
-import { LEVEL_REGISTRY, getLevel } from './levels/levelRegistry.js?v=mission1';
+import { LEVEL_REGISTRY } from './levels/levelRegistry.js?v=mission1';
 import { CombatHUD } from './combatHud.js?v=mission1';
 import { createDetailedMissile as buildDetailedMissile, attachSafeTrail } from './weapons/missileFactory.js?v=mission1';
 import { getMissionRecord, saveMissionRecord, loadUserSettings, saveUserSettings } from './storage/records.js?v=mission1';
 import { AtmosphereFX } from './effects/atmosphereFX.js?v=mission1';
 
-const MISSION_CONFIGS = LEVEL_REGISTRY;
 const savedSettings = loadUserSettings();
-let activeMissionTheme = 'sunset';
-let activeMissionId = null;
+const activeMissionTheme = 'sunset';
 let activeFlakRig = null;
 let atmosphereFX = null;
 let controlledHeavyMissile = null;
@@ -185,7 +182,7 @@ const defeatModal = document.getElementById('defeat-modal');
 const victoryModal = document.getElementById('victory-modal');
 const seedInput = document.getElementById('seed-input');
 
-function initWorld(seedStr, { menuPreview = false, fogMission = false } = {}) {
+function initWorld(seedStr, { menuPreview = false, fogMission = false, levelId = 'prologue' } = {}) {
   audio.stopPassageRadio?.();
   if (scene) {
     scene.dispose();
@@ -224,11 +221,11 @@ function initWorld(seedStr, { menuPreview = false, fogMission = false } = {}) {
   scene.activeCamera = camera;
 
   if (worldMode === 'sky') {
-    world = new SkyArchipelagoWorld(scene, currentSeed, activeMissionTheme, selectedQuality, { menuPreview, levelId: activeMissionId || 'prologue' });
+    world = new SkyArchipelagoWorld(scene, currentSeed, activeMissionTheme, selectedQuality, { menuPreview, levelId });
     asteroidBase = new AsteroidBase(scene, 742);
     world.registerVagabondBase(asteroidBase);
     construction = new IslandConstruction(scene, asteroidBase, world.shadowGenerator);
-    if (menuPreview || (activeMissionId && activeMissionId !== 'prologue')) {
+    if (menuPreview) {
       construction.restoreSavedState();
     }
     islandOrigin = asteroidBase.group.position.clone();
@@ -921,7 +918,7 @@ if (shotMode && urlParams.get('hud') === '0') {
 async function startRun(seedStr, { skipPrologue = false } = {}) {
   const generation = ++runGeneration;
   audio.init();
-  initWorld(seedStr,{fogMission:!skipPrologue && !activeMissionId});
+  initWorld(seedStr,{fogMission:!skipPrologue,levelId:skipPrologue?'hangar':'prologue'});
   menuOverlay.style.display = 'none';
   defeatModal.style.display = 'none';
   victoryModal.style.display = 'none';
@@ -1006,95 +1003,6 @@ function closeDeviceModal() {
 document.getElementById('tab-map-btn').addEventListener('click', () => switchDeviceTab('map'));
 document.getElementById('tab-settings-btn').addEventListener('click', () => switchDeviceTab('settings'));
 document.getElementById('tab-controls-btn').addEventListener('click', () => switchDeviceTab('controls'));
-
-async function startStandaloneMission(missionId) {
-  const cfg = MISSION_CONFIGS[missionId];
-  if (!cfg) return;
-  activeMissionId = missionId;
-  activeMissionTheme = cfg.theme;
-  const generation = runGeneration + 1;
-  await startRun(cfg.seed, { skipPrologue: true });
-  if (generation !== runGeneration) return;
-  const canopyEl = document.getElementById('cockpit-canopy-frame');
-  if (canopyEl) canopyEl.style.display = 'none';
-  prologue?.hide();
-  document.body.classList.remove('in-prologue');
-  demoState.missionId = missionId;
-  demoState.spawnGrace = 2.8;
-  demoState.powerOn = true;
-  demoState.stage = 'combat';
-  demoState.combatWave = 1;
-  construction.stage = null;
-  construction.addSalvage(60);
-  for (const [i, type] of ['generator', 'turret', 'radar'].entries()) construction.build(type, i);
-
-  // Switch to the mission's hero aircraft class & launch directly into airborne combat near Vagabond
-  if (cfg.startVariant && ship.setVariant) {
-    ship.setVariant(cfg.startVariant);
-  }
-  const vPos = asteroidBase.group.position;
-  player.boardShip();
-  ship.undockFromAsteroid({ force: true });
-  ship.hull = ship.maxHull || ship.spec?.maxHull || 120;
-  ship.fuel = 100;
-  ship.throttle = 0.72;
-  const startPos = vPos.add(new BABYLON.Vector3(115, 72, 165));
-  const lookDir = vPos.add(new BABYLON.Vector3(0, 88, -110)).subtract(startPos).normalize();
-  ship.group.position.copyFrom(startPos);
-  ship.group.rotationQuaternion = aircraftHeading(lookDir);
-  ship.velocity.copyFrom(lookDir.scale(42));
-  ship.camInited = false;
-  controlMode = 'aircraft';
-  ui.setMode('aircraft');
-  ui.showHUD(true);
-
-  if (missionId === 'dreadnought') {
-    demoState.dreadnought = new EnemyDreadnought(scene, vPos, { isConvoy: false, orbitRadius: 220, altitude: 105 });
-    spawnEnemySquadron(vPos, true);
-    demoState.totalEnemies = 3;
-    ui.showToast('⚡ МИССИЯ: Охота на Дредноут (Штормовой архипелаг)', 4200);
-    ui.showRadio('dispatcher', 'Внимание! В штормовом секторе замечен воздушный линкор «Голиаф» и пара истребителей. Выбей его зенитные пушки и энергоблок гондолы!', 7500);
-  } else if (missionId === 'night') {
-    spawnEnemySquadron(vPos, false);
-    spawnEnemySquadron(vPos, true);
-    demoState.totalEnemies = 3;
-    ui.showToast('🌙 МИССИЯ: Ночной перехват (Прожекторы ПВО активны)', 4200);
-    ui.showRadio('dispatcher', 'Ночной налёт на «Бродягу»! Прожекторы и зенитные пушки уже работают. Ты на «Осе» — перехвати звено в темноте и не подпусти к базе!', 7500);
-  } else if (missionId === 'convoy') {
-    demoState.dreadnought = new EnemyDreadnought(scene, vPos, { isConvoy: true, orbitRadius: 245, altitude: 92 });
-    spawnEnemySquadron(vPos, true);
-    demoState.totalEnemies = 3;
-    ui.showToast('🌅 МИССИЯ: Перехват конвоя «Арго» (Рассветный архипелаг)', 4200);
-    ui.showRadio('dispatcher', 'На рассвете через сектор проходит транспортный дирижабль «Арго» под прикрытием истребителей. Разбомби транспортник и сбей охрану!', 7500);
-  } else if (missionId === 'bastion') {
-    // First-person Flak 88 Bastion Defense against advancing Enemy Fortress Island + air raid!
-    world.fleet?.parkActive(ship);
-    activeFlakRig = asteroidBase?.flakTurrets?.[0] || null;
-    controlMode = 'turret';
-    ui.setMode('aircraft');
-    ui.showHUD(true);
-    demoState.enemyIsland = new EnemyFortressIsland(scene, vPos);
-    spawnEnemySquadron(vPos, false);
-    spawnEnemySquadron(vPos, true);
-    demoState.totalEnemies = 4; // 3 aircraft + Enemy Fortress Island
-    demoState.remoteSamCd = 0;
-    demoState.antiIslandCd = 0;
-    ui.showToast('🎯 ОБОРОНА БАСТИОНА: ЛКМ/Space — Зенитная пушка · [2/F] — ЗРК · [3/R] — Противоостровная ракета!', 5500);
-    ui.showRadio('dispatcher', 'Тревога! Вражеский остров-крепость «Монолит» идёт на таран под прикрытием авиации! Сбивай самолёты из зенитной пушки и ЗРК [2/F], а по острову бей противоостровными ракетами «Громобой» [3/R]!', 8500);
-  } else if (missionId === 'canyon') {
-    spawnEnemySquadron(vPos, true, { includeAce: true });
-    spawnEnemySquadron(vPos.add(new BABYLON.Vector3(-80, 35, -90)), false);
-    demoState.totalEnemies = 3;
-    ui.showToast('🏔️ КАНЬОН ШПИЛЕЙ: Дуэль с алым Асом среди парящих скал!', 4500);
-    ui.showRadio('dispatcher', 'Внимание! В Каньоне шпилей замечен вражеский Ас с эскортом! Маневрируй между каменных колонн и бей первым!', 7500);
-  } else if (missionId === 'survival') {
-    demoState.survivalWave = 1;
-    spawnEnemySquadron(vPos, true, { includeAce: false });
-    demoState.totalEnemies = 2;
-    ui.showToast('🌩️ ВЫЖИВАНИЕ · ВОЛНА 1 — отбивай бесконечные налёты!', 4500);
-    ui.showRadio('dispatcher', 'Штормовая тревога! Враг идёт волнами. За каждую отбитую волну механики подлатают броню и начислят лом!', 7500);
-  }
-}
 
 function launchIslandSamSalvo(count = 2) {
   if (!demoState || !asteroidBase?.samLaunchers?.length) return;
@@ -1287,28 +1195,19 @@ document.getElementById('btn-turret-heavy-auto')?.addEventListener('click', () =
 document.getElementById('btn-turret-heavy-fpv')?.addEventListener('click', () => launchAntiIslandMissile(true));
 
 document.getElementById('start-btn').addEventListener('click', () => {
-  activeMissionId = null;
-  activeMissionTheme = 'sunset';
   activeFlakRig = null;
   hideCombatOverlays();
   startRun(seedInput.value);
 });
-document.getElementById('mission-dreadnought-btn')?.addEventListener('click', () => startStandaloneMission('dreadnought'));
-document.getElementById('mission-night-btn')?.addEventListener('click', () => startStandaloneMission('night'));
-document.getElementById('mission-convoy-btn')?.addEventListener('click', () => startStandaloneMission('convoy'));
-document.getElementById('mission-bastion-btn')?.addEventListener('click', () => startStandaloneMission('bastion'));
-document.getElementById('mission-canyon-btn')?.addEventListener('click', () => startStandaloneMission('canyon'));
-document.getElementById('mission-survival-btn')?.addEventListener('click', () => startStandaloneMission('survival'));
-document.getElementById('hangar-start-btn').addEventListener('click',async()=>{
-  activeMissionId = null;
-  activeMissionTheme = 'sunset';
+async function startFreeFlight(seed){
   hideCombatOverlays();
-  const generation=runGeneration+1;await startRun(seedInput.value,{skipPrologue:true});if(generation!==runGeneration)return;
+  const generation=runGeneration+1;await startRun(seed,{skipPrologue:true});if(generation!==runGeneration)return;
   demoState.freeFlight=true;demoState.powerOn=true;demoState.stage='free_flight';prologue?.hide();document.body.classList.remove('in-prologue');
   construction.stage=null;construction.addSalvage(40);for(const [i,type]of ['generator','turret','radar'].entries())construction.build(type,i);
   world.fleet.parkActive(ship);player.placeOnAsteroid(asteroidBase,new BABYLON.Vector3(-18,3.38,10));controlMode='foot';ui.setMode('foot');ui.showHUD(true);
   ui.showRadio('dispatcher','Эскадрилья готова: грузовой, истребитель, штурмовик и бомбардировщик. Подойди к машине и нажми E. Для каждого борта — своё задание.',7500);
-});
+}
+document.getElementById('hangar-start-btn').addEventListener('click',()=>startFreeFlight(seedInput.value));
 document.getElementById('menu-settings-btn').addEventListener('click', () => openDeviceModal('settings', 'menu'));
 document.getElementById('menu-controls-btn').addEventListener('click', () => openDeviceModal('controls', 'menu'));
 
@@ -1443,25 +1342,15 @@ document.getElementById('map-hud-btn').addEventListener('click', () => openDevic
 document.getElementById('help-hud-btn').addEventListener('click', () => openDeviceModal('controls', 'playing'));
 
 document.getElementById('retry-same-seed-btn').addEventListener('click', () => {
-  if (activeMissionId) startStandaloneMission(activeMissionId);
-  else startRun(currentSeed);
+  restartCurrentMode(currentSeed);
 });
 document.getElementById('new-seed-defeat-btn').addEventListener('click', () => {
-  activeMissionId = null;
-  activeMissionTheme = 'sunset';
-  startRun(generateRandomSeed());
+  restartCurrentMode(generateRandomSeed());
 });
-document.getElementById('new-seed-victory-btn').addEventListener('click', () => {
-  victoryModal.style.display = 'none';
-  const nextId = demoState?.passage ? 'dreadnought' : LEVEL_REGISTRY[activeMissionId]?.nextLevelId;
-  if (nextId && LEVEL_REGISTRY[nextId]) {
-    startStandaloneMission(nextId);
-  } else {
-    activeMissionId = null;
-    activeMissionTheme = 'sunset';
-    startRun(generateRandomSeed());
-  }
-});
+function restartCurrentMode(seed) {
+  return demoState?.freeFlight ? startFreeFlight(seed) : startRun(seed);
+}
+document.getElementById('victory-free-flight-btn').addEventListener('click',()=>startFreeFlight(currentSeed));
 document.getElementById('menu-victory-btn').addEventListener('click', () => {
   victoryModal.style.display = 'none';
   if (document.pointerLockElement) document.exitPointerLock?.();
@@ -1499,8 +1388,7 @@ document.getElementById('pause-settings-btn').addEventListener('click', () => {
 });
 document.getElementById('pause-restart-btn').addEventListener('click', () => {
   pauseModal.style.display = 'none';
-  if (activeMissionId) startStandaloneMission(activeMissionId);
-  else startRun(currentSeed);
+  restartCurrentMode(currentSeed);
 });
 document.getElementById('pause-menu-btn').addEventListener('click', () => {
   pauseModal.style.display = 'none';
@@ -2277,45 +2165,9 @@ function missionEnemyDown(enemy) {
 function checkMissionClear() {
   if (!demoState || demoState.stage !== 'combat') return false;
   if (demoState.kills >= demoState.totalEnemies) {
-    if (demoState.missionId === 'survival') {
-      demoState.survivalWave = (demoState.survivalWave || 1) + 1;
-      const w = demoState.survivalWave;
-      saveMissionRecord('survival', runTime, demoState.kills);
-      construction.addSalvage(40);
-      ship.hull = Math.min(ship.maxHull || 120, ship.hull + (ship.maxHull || 120) * 0.35);
-      const vPos = asteroidBase.group.position;
-      spawnEnemySquadron(vPos, true, { includeAce: w >= 2 });
-      if (w >= 3) spawnEnemySquadron(vPos.add(new BABYLON.Vector3(-90, 40, -70)), false);
-      demoState.totalEnemies += w >= 3 ? 3 : 2;
-      audio?.playUpgrade?.();
-      ui.showToast(`🌩️ ВОЛНА ${w}! +40 лома · +35% ремонт корпуса`, 4200);
-      ui.showRadio('dispatcher', `Волна ${w - 1} отбита! Механики восстановили броню. На радаре волна ${w}${w >= 2 ? ' — с ними Ас!' : '!'}`, 6500);
-      return false;
-    }
     demoState.stage = 'return_to_base';
-    if (demoState.missionId) {
-      saveMissionRecord(demoState.missionId, runTime, demoState.kills);
-      ui.showToast(`Небо чистое · ${demoState.kills}/${demoState.totalEnemies} · Миссия выполнена!`, 5000);
-      ui.showRadio('dispatcher', 'Блестящая работа! Все вражеские цели уничтожены. Доклад готов — можно переходить к следующей миссии!', 7500);
-      const clearedGen = runGeneration;
-      const clearedId = demoState.missionId;
-      const clearedKills = demoState.kills;
-      const clearedSalvage = construction?.snapshot?.salvage || 0;
-      const clearedTime = Math.round(runTime);
-      setTimeout(() => {
-        if (clearedGen !== runGeneration || gameState !== 'playing') return;
-        audio?.playVictory?.();
-        gameState = 'victory';
-        ui.showHUD(false);
-        hideCombatOverlays();
-        if (hudEls.victoryTitle) hudEls.victoryTitle.textContent = `${MISSION_CONFIGS[clearedId]?.title || 'МИССИЯ ВЫПОЛНЕНА'}`;
-        document.getElementById('victory-stats').textContent = `Все цели уничтожены! Сбито: ${clearedKills} • Лом: ${clearedSalvage} • Время: ${clearedTime}с`;
-        victoryModal.style.display = 'flex';
-      }, 4200);
-    } else {
-      ui.showToast(`Небо чистое · ${demoState.kills}/${demoState.totalEnemies} · +20 лома`, 4500);
-      ui.showRadio('dispatcher', 'Небо чистое. Лом с обломков доставлен на остров. Возвращайся: установим радар и уведём базу из опасного сектора.', 6800);
-    }
+    ui.showToast(`Небо чистое · ${demoState.kills}/${demoState.totalEnemies} · +20 лома`, 4500);
+    ui.showRadio('dispatcher', 'Небо чистое. Лом с обломков доставлен на остров. Возвращайся: установим радар и уведём базу из опасного сектора.', 6800);
     return true;
   }
   return false;
@@ -4209,11 +4061,10 @@ if (urlParams.get('dev') === '1' && isLocalDevHost) {
   document.body.append(devBox);
   const lvlWrap = devBox.querySelector('#dev-lvls');
   for (const lvl of Object.values(LEVEL_REGISTRY)) {
-    if (!lvl.standalone) continue;
     const b = document.createElement('button');
     b.textContent = lvl.id;
     b.style.cssText = 'padding:2px 6px;background:#263628;color:#f2e2b7;border:1px solid #8c9075;font:10px monospace;cursor:pointer;';
-    b.onclick = () => startStandaloneMission(lvl.id);
+    b.onclick = () => document.getElementById(lvl.menuButtonId).click();
     lvlWrap.append(b);
   }
   setInterval(() => {
@@ -4221,6 +4072,6 @@ if (urlParams.get('dev') === '1' && isLocalDevHost) {
     if (!el || !scene) return;
     const activeLights = scene.lights.filter((l) => l.isEnabled()).length;
     const draws = scene.metadata?.performanceProbe?.sceneProbe?.drawCallsCounter?.current ?? '-';
-    el.textContent = `FPS:${Math.round(engine.getFps())} (${engine.getDeltaTime().toFixed(1)}ms) | Draws:${draws} | Tris:${Math.round(scene.getActiveIndices() / 3)} | Lights:${activeLights}/${scene.lights.length} | Lvl:${activeMissionId || 'prologue'}`;
+    el.textContent = `FPS:${Math.round(engine.getFps())} (${engine.getDeltaTime().toFixed(1)}ms) | Draws:${draws} | Tris:${Math.round(scene.getActiveIndices() / 3)} | Lights:${activeLights}/${scene.lights.length} | Lvl:${demoState?.freeFlight ? 'hangar' : 'prologue'}`;
   }, 400);
 }

@@ -90,10 +90,10 @@ const runtimeCheck = await page.evaluate(async () => {
 });
 console.log('MENU:', JSON.stringify({ loadMs, medMs: menu.medMs, p95Ms: menu.p95Ms, draws: menu.draws, tris: menu.tris, ...runtimeCheck }));
 
-await page.click('#mission-dreadnought-btn');
-await page.waitForTimeout(2600);
+await page.click('#hangar-start-btn');
+await page.waitForFunction(() => JSON.parse(document.body.dataset.perf || '{}').stage === 'free_flight', null, {timeout:90000});
 const m2 = await sampleFrames(30);
-console.log('DREADNOUGHT:', JSON.stringify({ stage: m2.stage, mode: m2.mode, medMs: m2.medMs, p95Ms: m2.p95Ms, draws: m2.draws, tris: m2.tris }));
+console.log('FREE FLIGHT:', JSON.stringify({ stage: m2.stage, mode: m2.mode, medMs: m2.medMs, p95Ms: m2.p95Ms, draws: m2.draws, tris: m2.tris }));
 
 console.log('ERRORS:', errors.length);
 if (errors.length) console.error(errors.join('\n'));
