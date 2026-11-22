@@ -71,18 +71,20 @@ export class FogPassage {
     });
     this.escort=buildPursuitDestroyer(scene);
     this.escort.position.copyFrom(this.start).addInPlaceFromFloats(180,5,66);
-    if(smokeTexture){
-      const uptake=new B.TransformNode('escortStackOutlet',scene);
-      uptake.parent=this.escort;uptake.position.set(-3.5,16.7,0);
-      const plume=new B.ParticleSystem('escortFunnelExhaust',28,scene);
+    this.exhaust=[];
+    if(smokeTexture) for(const [x,y,rate] of [[-7.7,16.55,6],[6,13.9,4]]){
+      const uptake=new B.TransformNode('escortStackOutlet'+x,scene);
+      uptake.parent=this.escort;uptake.position.set(x,y,0);
+      const plume=new B.ParticleSystem('escortFunnelExhaust'+x,Math.ceil(rate*3.8),scene);
       plume.particleTexture=smokeTexture;plume.emitter=uptake;
       plume.minEmitBox.set(-.65,0,-.5);plume.maxEmitBox.set(.65,.25,.5);
       plume.direction1.set(3.8,1.9,-.45);plume.direction2.set(7.2,3.1,.6);
-      plume.emitRate=7;plume.minLifeTime=1.5;plume.maxLifeTime=3.0;
+      plume.emitRate=rate;plume.minLifeTime=2;plume.maxLifeTime=3.8;
+      plume.minAngularSpeed=-.24;plume.maxAngularSpeed=.31;
       plume.minSize=1.8;plume.maxSize=2.9;plume.addSizeGradient(0,.7);plume.addSizeGradient(1,3.2);
       plume.color1=new B.Color4(.21,.19,.17,.37);plume.color2=new B.Color4(.31,.29,.26,.29);
       plume.colorDead=new B.Color4(.39,.38,.35,0);plume.blendMode=B.ParticleSystem.BLENDMODE_STANDARD;
-      plume.start();this.exhaust=plume;
+      plume.start();this.exhaust.push(plume);
     }
     this.attackClock=5;this.bursts=[];this.salvoTime=0;
     this.salvoBolts=[];
@@ -128,7 +130,7 @@ export class FogPassage {
   fire(scene,base,explode) {
     const B=BABYLON,dest=this.escort.position.clone();
     this.salvoTime=0;
-    this.exhaust?.stop();
+    for(const plume of this.exhaust) plume.stop();
     for(const turret of base.mainTurrets) {
       const delta=dest.subtract(turret.yawPivot.getAbsolutePosition());
       turret.yawPivot.rotation.y=Math.atan2(delta.z,-delta.x);

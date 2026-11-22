@@ -1,5 +1,5 @@
 // Aircraft anchors use [forward, right, up] for the look point and
-// [behind, right, up] for the camera. Escort anchors use world XYZ.
+// [behind, right, up] for the camera. Escort shots use ship-local XYZ.
 export function openingFrame(camera,ship,enemy,time,shots){
   const B=BABYLON;
   let shot=shots[0],local=Math.max(0,time);
@@ -11,8 +11,9 @@ export function openingFrame(camera,ship,enemy,time,shots){
   const [a,b,c]=shot.fromPos.map((n,i)=>n+(shot.toPos[i]-n)*t);
   const [x,y,z]=shot.look;
   if(shot.target==='escort'){
-    camera.position.copyFrom(enemy.position).addInPlaceFromFloats(a,b,c);
-    camera.setTarget(enemy.position.add(new B.Vector3(x,y,z)));
+    const world=enemy.computeWorldMatrix(true);
+    B.Vector3.TransformCoordinatesToRef(new B.Vector3(a,b,c),world,camera.position);
+    camera.setTarget(B.Vector3.TransformCoordinates(new B.Vector3(x,y,z),world));
   }else{
     const mat=ship.computeWorldMatrix(true),f=B.Vector3.TransformNormal(new B.Vector3(0,0,-1),mat).normalize(),r=B.Vector3.TransformNormal(B.Axis.X,mat).normalize();
     camera.position.copyFrom(ship.position).addInPlace(f.scale(-a)).addInPlace(r.scale(b)).y+=c;

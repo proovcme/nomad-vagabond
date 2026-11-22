@@ -130,7 +130,7 @@ function createNavalHullTextures(scene, deck = false) {
   return { albedo, normal, surface };
 }
 
-export function createLoftedHull(scene, name, stations, mats, parent, shadowGen = null, { decorate = true } = {}) {
+export function createLoftedHull(scene, name, stations, mats, parent, shadowGen = null, { decorate = true, bowRake = decorate ? 9.5 : 0 } = {}) {
   const B = BABYLON;
   const positions = [];
   const steel = [], oxide = [], stripe = [], foredeck = [];
@@ -154,7 +154,7 @@ export function createLoftedHull(scene, name, stations, mats, parent, shadowGen 
     const section = [...side, [s.yKeel, 0], ...side.slice().reverse().map(([y,z]) => [y,-z])];
     const pts = section.map(([y,z]) => {
       const depth = (s.yTop - y) / (s.yTop - s.yKeel);
-      const rake = decorate && i === 0 ? 9.5 * depth : 0;
+      const rake = i === 0 ? bowRake * depth : 0;
       const stern = decorate && i === stations.length - 1 ? 6.4 * depth : 0;
       return [s.x + rake - stern, y, z];
     });
@@ -200,7 +200,7 @@ export function createLoftedHull(scene, name, stations, mats, parent, shadowGen 
     const station = stations[end];
     const row = end * ringPts;
     const center = positions.length / 3;
-    positions.push(station.x + (decorate ? (end === 0 ? 4.75 : -3.2) : 0), (station.yTop + station.yKeel) * 0.5, 0);
+    positions.push(station.x + (end === 0 ? bowRake / 2 : decorate ? -3.2 : 0), (station.yTop + station.yKeel) * 0.5, 0);
     uvs.push(end === 0 ? 0 : 6, 0.5);
     deckUvs.push(station.x / 6.4, 0);
     for (let j = 0; j < ringPts; j++) {

@@ -161,18 +161,18 @@ export default {
       "target": "escort",
       "seconds": 2.5,
       "fromPos": [
-        100,
-        48,
-        105
+        -39,
+        12,
+        101
       ],
       "toPos": [
-        84,
-        43,
-        105
+        -18,
+        10,
+        95
       ],
       "look": [
         0,
-        3,
+        7,
         0
       ],
       "fov": 0.86,
