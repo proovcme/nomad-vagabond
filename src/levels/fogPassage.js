@@ -118,11 +118,23 @@ export class FogPassage {
     if(airborne && range<315 && this.attackClock<=0){
       this.attackClock=5.5;
       const aim=ship.group.position.add(ship.velocity.scale(.85));
-      this.bursts.push({point:aim,delay:.85});
+      const local=B.Vector3.TransformCoordinates(aim,B.Matrix.Invert(this.escort.computeWorldMatrix(true)));
+      const mount=this.escort.antiAircraftMounts.find(m=>m.side===(local.z<0?-1:1));
+      const offset=B.Vector3.TransformCoordinates(aim,B.Matrix.Invert(mount.swivel.parent.computeWorldMatrix(true)))
+        .subtract(mount.swivel.position).subtract(new B.Vector3(0,mount.pivot.position.y,0));
+      mount.swivel.rotation.y=Math.atan2(offset.z,-offset.x);
+      mount.pivot.rotation.z=-Math.atan2(offset.y,Math.hypot(offset.x,offset.z));
+      mount.swivel.computeWorldMatrix(true);
+      const start=B.Vector3.TransformCoordinates(new B.Vector3(-3.25,.1,.39),mount.pivot.computeWorldMatrix(true));
+      explode(start,effects.muzzle);
+      const tracer=B.MeshBuilder.CreateSphere('escortAATracer',{diameter:.8,segments:5},this.escort.getScene());
+      tracer.material=this.flashMaterial;tracer.isPickable=false;tracer.position.copyFrom(start);
+      this.bursts.push({point:aim,start,tracer,delay:.85});
     }
     for (const burst of this.bursts) {
       burst.delay-=dt;
-      if(burst.delay<=0){explode(burst.point,effects.airburst);if(airborne&&B.Vector3.Distance(ship.group.position,burst.point)<18)onHit();}
+      B.Vector3.LerpToRef(burst.start,burst.point,Math.min(1,1-burst.delay/.85),burst.tracer.position);
+      if(burst.delay<=0){burst.tracer.dispose();explode(burst.point,effects.airburst);if(airborne&&B.Vector3.Distance(ship.group.position,burst.point)<18)onHit();}
     }
     this.bursts=this.bursts.filter(b=>b.delay>0);
   }
@@ -130,6 +142,8 @@ export class FogPassage {
   fire(scene,base,explode) {
     const B=BABYLON,dest=this.escort.position.clone();
     this.salvoTime=0;
+    for(const burst of this.bursts) burst.tracer.dispose();
+    this.bursts=[];
     for(const plume of this.exhaust) plume.stop();
     for(const turret of base.mainTurrets) {
       const delta=dest.subtract(turret.yawPivot.getAbsolutePosition());

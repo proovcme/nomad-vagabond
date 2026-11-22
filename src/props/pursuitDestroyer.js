@@ -81,6 +81,7 @@ export function buildPursuitDestroyer(scene) {
       const corners=[[ax-dy*k,ay+dx*k],[ax+dy*k,ay-dx*k],[bx+dy*k,by-dx*k],[bx-dy*k,by+dx*k]];
       hullPaint(side,corners.map(([x,y])=>[-31+side*x,1.05+y]));
     }
+    spar('HullDark',[-26,7.3,side*3.25],[-26,9.84,side*4.8],.26);
     for(const x of [-21.75,-18.75])
       spar('AmberGlow',[x-.45,12.9,side*3.83],[x+.45,12.9,side*3.83],.15);
 
@@ -133,6 +134,27 @@ export function buildPursuitDestroyer(scene) {
   for(const [finish,meshes] of groups){
     const batch=B.Mesh.MergeMeshes(meshes,true,true);
     batch.name='escort'+finish;batch.material=mat(finish);batch.parent=root;batch.isPickable=false;batch.receiveShadows=true;
+  }
+  root.antiAircraftMounts=[];
+  for(const side of [-1,1]){
+    // The wing platforms overhang the forward deckhouse, clear of the bridge.
+    const pedestal=B.MeshBuilder.CreateCylinder('escortAAPlatform',{height:.85,diameterTop:3.6,diameterBottom:2.3,tessellation:14},scene);
+    pedestal.position.set(-26,10.05,side*4.25);pedestal.parent=root;pedestal.material=mat('Hull');
+    const swivel=new B.TransformNode('escortAASwivel',scene);
+    swivel.parent=pedestal;swivel.position.y=.44;
+    const cradle=B.MeshBuilder.CreateCylinder('escortAACradle',{height:1.35,diameterTop:1.4,diameterBottom:2,tessellation:10},scene);
+    cradle.parent=swivel;cradle.position.y=.65;cradle.material=mat('HullDark');
+    const pivot=new B.TransformNode('escortAAElevation',scene);
+    pivot.parent=swivel;pivot.position.y=1.42;pivot.rotation.z=-.3;
+    const pieces=[];
+    for(const z of [-.39,.39]){
+      const breech=B.MeshBuilder.CreateBox('receiver',{width:1.55,height:.62,depth:.48},scene);
+      breech.position.z=z;pieces.push(breech);
+      const barrel=B.MeshBuilder.CreateCylinder('barrel',{height:2.6,diameterBottom:.21,diameterTop:.16,tessellation:8},scene);
+      barrel.rotation.z=Math.PI/2;barrel.position.set(-1.95,.1,z);pieces.push(barrel);
+    }
+    const guns=B.Mesh.MergeMeshes(pieces,true,true);guns.name='escortAATwin';guns.parent=pivot;guns.material=mat('DarkSteel');
+    root.antiAircraftMounts.push({side,swivel,pivot});
   }
   return root;
 }
