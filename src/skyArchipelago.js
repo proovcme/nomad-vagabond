@@ -1216,48 +1216,44 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   // ---------------------------------------------------------------------------
   const turretPlat = new BABYLON.TransformNode('vagTurretPlatform', scene);
   turretPlat.parent = asteroidBase.group;
-  turretPlat.position.set(16.0, 13.8, 25.0);
+  turretPlat.position.set(-2.0, 21.2, 17.5);
 
-  const tPad = BABYLON.MeshBuilder.CreateCylinder('vagTurretPad', { diameterTop: 15.0, diameterBottom: 13.0, height: 1.6, tessellation: 16 }, scene);
+  const tPad = BABYLON.MeshBuilder.CreateCylinder('vagTurretPad', { diameterTop: 6.0, diameterBottom: 5.5, height: 0.6, tessellation: 14 }, scene);
   tPad.parent = turretPlat;
-  applyWorldRockUVs(tPad, 16, 13.8, 25, 1, 1, 7.0);
   tPad.material = concreteMat;
   tPad.receiveShadows = true;
-  if (shadowGen) shadowGen.addShadowCaster(tPad, false);
 
-  const turretCollar = BABYLON.MeshBuilder.CreateCylinder('vagTurretMountCollar',{diameter:8.8,height:.18,tessellation:16},scene);
-  turretCollar.parent=turretPlat;turretCollar.position.y=.89;applyWorldRockUVs(turretCollar,16,14.7,25,1,1,4.2);turretCollar.material=grateMat;turretCollar.receiveShadows=true;
-  const turretRim = BABYLON.MeshBuilder.CreateTorus('vagTurretPadRim', { diameter: 14.8, thickness: 0.24, tessellation: 24 }, scene);
-  turretRim.parent = turretPlat; turretRim.position.y = 0.80; turretRim.material = copperMat; turretRim.isPickable = false;
-  // Authentic WWII 8.8cm FlaK 36/37 anti-aircraft battery with animated yaw, skyward elevation & barrel recoil
-  const mainFlak = buildFlak88Turret(scene, 'vagFlak88Main', turretPlat, new BABYLON.Vector3(0, 0.98, 0), 0.35, shadowGen);
+  const turretCollar = BABYLON.MeshBuilder.CreateCylinder('vagTurretMountCollar',{diameter:5.6,height:.18,tessellation:14},scene);
+  turretCollar.parent=turretPlat;turretCollar.position.y=.35;turretCollar.material=grateMat;turretCollar.receiveShadows=true;
+  const turretRim = BABYLON.MeshBuilder.CreateTorus('vagTurretPadRim', { diameter: 5.9, thickness: 0.18, tessellation: 20 }, scene);
+  turretRim.parent = turretPlat; turretRim.position.y = 0.30; turretRim.material = copperMat; turretRim.isPickable = false;
+  // Authentic WWII 8.8cm FlaK 36/37 anti-aircraft battery mounted cleanly on aft-starboard superstructure (flight deck 100% clear!)
+  const mainFlak = buildFlak88Turret(scene, 'vagFlak88Main', turretPlat, new BABYLON.Vector3(0, 0.45, 0), 0.35, shadowGen);
   asteroidBase.flakTurrets = [mainFlak];
 
-  // Dual Port & Starboard Sculpted Interbellum / Dieselpunk Quad-Tube SAM Batteries (ЗРК ПВО)
-  const vagSamPort = buildSculptedSamLauncher(scene, 'vagSamPort', asteroidBase.group, new BABYLON.Vector3(-5.0, 21.35, -16.5), shadowGen);
-  vagSamPort.base.scaling.setAll(1.18);
-  const vagSamStbd = buildSculptedSamLauncher(scene, 'vagSamStbd', asteroidBase.group, new BABYLON.Vector3(-5.0, 21.35, 16.5), shadowGen);
-  vagSamStbd.base.scaling.setAll(1.18);
+  // Dual Port & Starboard Sculpted Interbellum Quad-Tube SAM Batteries (ЗРК ПВО)
+  const vagSamPort = buildSculptedSamLauncher(scene, 'vagSamPort', asteroidBase.group, new BABYLON.Vector3(-12.0, 21.35, -17.5), shadowGen);
+  vagSamPort.base.scaling.setAll(1.12);
+  const vagSamStbd = buildSculptedSamLauncher(scene, 'vagSamStbd', asteroidBase.group, new BABYLON.Vector3(-12.0, 21.35, 17.5), shadowGen);
+  vagSamStbd.base.scaling.setAll(1.12);
   asteroidBase.samLaunchers = [vagSamPort, vagSamStbd];
 
   const radarPlat = new BABYLON.TransformNode('vagRadarPlatform', scene);
   radarPlat.parent = asteroidBase.group;
-  radarPlat.position.set(14.0, 15.2, -26.0);
+  radarPlat.position.set(-2.0, 21.2, -17.5);
 
-  const rPad = BABYLON.MeshBuilder.CreateCylinder('vagRadarPad', { diameterTop: 14.0, diameterBottom: 12.2, height: 1.6, tessellation: 16 }, scene);
+  const rPad = BABYLON.MeshBuilder.CreateCylinder('vagRadarPad', { diameterTop: 5.8, diameterBottom: 5.4, height: 0.6, tessellation: 14 }, scene);
   rPad.parent = radarPlat;
-  applyWorldRockUVs(rPad, 14, 15.2, -26, 1, 1, 7.0);
   rPad.material = concreteMat;
   rPad.receiveShadows = true;
-  if (shadowGen) shadowGen.addShadowCaster(rPad, false);
 
-  const radarCollar = BABYLON.MeshBuilder.CreateCylinder('vagRadarMountCollar',{diameter:7.2,height:.18,tessellation:16},scene);
-  radarCollar.parent=radarPlat;radarCollar.position.y=.89;applyWorldRockUVs(radarCollar,14,16.1,-26,1,1,4.0);radarCollar.material=grateMat;radarCollar.receiveShadows=true;
-  const radarRim = BABYLON.MeshBuilder.CreateTorus('vagRadarPadRim', { diameter: 13.8, thickness: 0.22, tessellation: 24 }, scene);
-  radarRim.parent = radarPlat; radarRim.position.y = 0.80; radarRim.material = copperMat; radarRim.isPickable = false;
+  const radarCollar = BABYLON.MeshBuilder.CreateCylinder('vagRadarMountCollar',{diameter:5.4,height:.18,tessellation:14},scene);
+  radarCollar.parent=radarPlat;radarCollar.position.y=.35;radarCollar.material=grateMat;radarCollar.receiveShadows=true;
+  const radarRim = BABYLON.MeshBuilder.CreateTorus('vagRadarPadRim', { diameter: 5.7, thickness: 0.18, tessellation: 20 }, scene);
+  radarRim.parent = radarPlat; radarRim.position.y = 0.30; radarRim.material = copperMat; radarRim.isPickable = false;
 
-  // Sculpted Interbellum Würzburg-Riese Parabolic Lattice Radar — zero cubes, curved parabolic mesh & copper horn
-  const vagRadar = buildSculptedRadar(scene, 'vagRadar', radarPlat, new BABYLON.Vector3(0, 0.95, 0), shadowGen);
+  // Sculpted Interbellum Würzburg-Riese Parabolic Lattice Radar on aft-port superstructure (flight deck 100% clear!)
+  const vagRadar = buildSculptedRadar(scene, 'vagRadar', radarPlat, new BABYLON.Vector3(0, 0.42, 0), shadowGen);
   vagRadar.rotor.name = 'vagRadarRotor';
   asteroidBase._radarRotor = vagRadar.rotor;
 
@@ -1319,17 +1315,10 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   const mCaps = BABYLON.Mesh.MergeMeshes(capParts, true, true, undefined, false, false);
   if (mCaps) { mCaps.name = 'vagBuildCaps'; mCaps.parent = asteroidBase.group; mCaps.material = warmGlowMat; mCaps.isPickable = false; }
 
-  // 4A. Upper Control Tower (high-detail riveted dieselpunk GLB on port carrier island flank)
-  // A real raised footing separates the model's base faces from the courtyard.
-  const towerFooting = BABYLON.MeshBuilder.CreateBox('vagTowerFooting', {width:11.4,height:.76,depth:10.8},scene);
-  towerFooting.parent=asteroidBase.group;towerFooting.position.set(-28,21.49,-22.5);
-  applyWorldRockUVs(towerFooting, -28, 21.49, -22.5, 1, 1, 5.5);
-  towerFooting.material=concreteMat;towerFooting.receiveShadows=true;
-  // 4. Control Tower & Rotating Aviation Lighthouse Beacon (soft gradient beam + Fresnel lens, 0 lights!)
-  instantiateGLBInto(scene, './assets/buildings/', 'control_tower.glb', asteroidBase.group, new BABYLON.Vector3(-28.0, 21.95, -22.5), 1.0, 0.0, shadowGen);
+  // 4A. Rotating Aviation Lighthouse Beacon perched atop the 1930s Cruiser Bridge Director (x = -54, y = 41.2, z = 0)
   const beaconRig = new BABYLON.TransformNode('vagTowerBeaconRig', scene);
   beaconRig.parent = asteroidBase.group;
-  beaconRig.position.set(-28.0, 35.6, -22.5);
+  beaconRig.position.set(-54.0, 41.2, 0.0);
 
   const lensMat = new BABYLON.StandardMaterial('vagTowerLensMat', scene);
   lensMat.emissiveColor = c3('#ffe29c');
@@ -1399,13 +1388,7 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
     asteroidBase._exhaustFans.push(fanHub);
   }
 
-  // 4B. Upper Workshop & Ether Generator Complex (high-detail dieselpunk GLB on starboard flank)
-  const generatorFooting = BABYLON.MeshBuilder.CreateBox('vagGeneratorFooting', {width:14,height:.76,depth:18},scene);
-  generatorFooting.parent=asteroidBase.group;generatorFooting.position.set(-28,21.49,20.5);
-  applyWorldRockUVs(generatorFooting, -28, 21.49, 20.5, 1, 1, 5.5);
-  generatorFooting.material=concreteMat;generatorFooting.receiveShadows=true;
-  // This GLB has minimum y=-.25: compensate explicitly, then leave 8cm surface clearance.
-  instantiateGLBInto(scene, './assets/buildings/', 'ether_generator.glb', asteroidBase.group, new BABYLON.Vector3(-28.0, 22.20, 20.5), 1.0, 0.0, shadowGen);
+  // 4B. Clean cruiser deck — legacy bulky generator complex removed so the 1930s cruiser superstructure stays sleek & uncluttered!
 
   // 5. «Бродяга» — Authentic 1931 Flight-Deck Cruiser (CF) lofted warship model!
   const hullKit = buildFlightDeckCruiserModel(asteroidBase, scene, shadowGen);
@@ -1531,6 +1514,11 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
     }
     for (const child of asteroidBase.group.getChildMeshes()) {
       if (/^islandRotor/i.test(child.name)) child.visibility = 0.0;
+    }
+    // Match exterior hangar bulkhead walls to the 1930s Haze-Grey cruiser hull steel for seamless stern view
+    for (const hName of ['vagHangarNorthFacade', 'vagHangarSide_1', 'vagHangarCeil']) {
+      const hm = scene.getMeshByName(hName);
+      if (hm) hm.material = hullKit.hullMat;
     }
   }
 }

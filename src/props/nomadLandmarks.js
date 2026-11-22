@@ -163,7 +163,7 @@ export function decorateVagabondCarrier(asteroidBase, scene, shadowGen = null) {
   if (!(scene.getEngine() instanceof BABYLON.NullEngine) && typeof document !== 'undefined') {
     const emitter = new BABYLON.TransformNode('vagFunnelSmokeEmitter', scene);
     emitter.parent = asteroidBase.group;
-    emitter.position.set(-36.2, 32.6, -19.5);
+    emitter.position.set(-39.6, 37.6, -16.8);
     const ps = new BABYLON.ParticleSystem('vagFunnelSmokePS', 28, scene);
     const tex = new BABYLON.DynamicTexture('vagFunnelSmokeTex', { width: 64, height: 64 }, scene, false);
     const ctx = tex.getContext();
