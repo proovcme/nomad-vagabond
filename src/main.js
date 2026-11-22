@@ -1527,6 +1527,7 @@ function openAtlas(){
   atlasDialog.showModal();atlasFrame.focus();
 }
 document.getElementById('atlas-menu').onclick=openAtlas;
+document.getElementById('atlas-menu').disabled=false;
 document.getElementById('atlas-pause').onclick=openAtlas;
 window.addEventListener('message',e=>{
   if(e.origin===location.origin && e.source===atlasFrame?.contentWindow && e.data==='nomad:close-atlas' && atlasDialog.open)atlasDialog.close();

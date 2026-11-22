@@ -25,7 +25,7 @@ async function main(){
    assert.equal(await page.locator('#parts button').count(),count+1);
    await page.click('#undo');assert.equal(await page.locator('#parts button').count(),count);
   }
-  await page.goto(base,{waitUntil:'domcontentloaded',timeout:90000});await page.click('#atlas-menu');
+  await page.goto(base,{waitUntil:'domcontentloaded',timeout:90000});await page.locator('dialog').waitFor({state:'attached',timeout:90000});await page.click('#atlas-menu');
   const atlas=page.frameLocator('dialog iframe');await atlas.getByRole('searchbox').fill('Tribal');
   await atlas.getByRole('heading',{name:/Tribal/}).waitFor();await atlas.getByRole('button',{name:'Закрыть'}).click();
   await page.waitForFunction(()=>!document.querySelector('dialog[open]'));
