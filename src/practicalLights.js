@@ -82,18 +82,18 @@ export class PracticalLights {
     // Actual strip bottoms are y=12.80 in island coordinates. Point sources sit
     // just below those lenses, rather than inheriting an unrelated legacy parent.
     const defs=[
-      {name:'vagHangarFlood',position:[-15,14.55,0],range:27,intensity:230},
-      {name:'baseHangarLamp',position:[-15,14.55,20],range:27,intensity:230},
-      {name:'baseWorkLamp',position:[2.5,12.72,0],range:24,intensity:140},
-      {name:'hangarInteriorLight_-31',position:[-31,14.55,0],range:25,intensity:200},
-      {name:'hangarInteriorLight_-16',position:[-31,14.55,20],range:25,intensity:200},
+      {name:'vagHangarFlood',position:[-10,12.7,4],range:28,intensity:720},
+      {name:'baseHangarLamp',position:[-10,12.7,16],range:28,intensity:720},
+      {name:'baseWorkLamp',position:[1,9.4,10],range:38,intensity:580,daylight:true},
+      {name:'hangarInteriorLight_-31',position:[-25,12.7,4],range:28,intensity:650},
+      {name:'hangarInteriorLight_-16',position:[-25,12.7,16],range:28,intensity:650},
     ];
     for(const d of defs){
       let light=this.scene.getLightByName(d.name);
       if(light)this._captureLight(light);
       else{light=new BABYLON.PointLight(`practical_${d.name}`,new BABYLON.Vector3(...d.position),this.scene);this.newLights.push(light);}
       light.parent=this.base.group;light.position.set(...d.position);
-      light.diffuse=BABYLON.Color3.FromHexString('#ffe0ad').toLinearSpace();light.specular=BABYLON.Color3.FromHexString('#d8ba88').toLinearSpace();
+      light.diffuse=BABYLON.Color3.FromHexString(d.daylight?'#cee1ff':'#ffe8c5').toLinearSpace();light.specular=BABYLON.Color3.FromHexString(d.daylight?'#c8dbed':'#e6cdb0').toLinearSpace();
       light.intensityMode=BABYLON.Light.INTENSITYMODE_LUMINOUSINTENSITY;light.falloffType=BABYLON.Light.FALLOFF_GLTF;
       light.intensity=d.intensity;light.range=d.range;light.shadowEnabled=false;light.renderPriority=20;
       this._hangarLights.push(light);

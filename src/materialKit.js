@@ -63,7 +63,7 @@ export class MaterialKit {
     const cloth=/^(shipyardPennantCloth|vagBannerMat)/;
     for(const mat of scene.materials.slice()) {
       if(mat.getClassName()!=='PBRMaterial')continue;
-      if(indDeck.test(mat.name))this.apply(mat,'armored-deck-plates.png',.34,.58,[.74,.78,.78,.28]);
+      if(indDeck.test(mat.name))this.apply(mat,'aviation-runway-graphite-v1.jpg',.32,.72,[.58,.56,.52,.48]);
       else if(metal.test(mat.name))this.apply(mat,'aviation-runway-graphite-v1.jpg',.48,.52,[.58,.56,.52,.42]);
       else if(rust.test(mat.name))this.apply(mat,'weathered-iron-v2.jpg',.28,.74,[.56,.38,.24,.64]);
       else if(cloth.test(mat.name)){
@@ -71,7 +71,7 @@ export class MaterialKit {
       }
     }
     const runway=scene.getMeshByName('vagCarrierRunway');
-    if(runway){
+    if(runway && runway.material?.name !== 'cfCruiserDeckSteelMat'){
       const mat=new BABYLON.PBRMaterial('aviationRunwaySteel',scene);
       this.apply(mat,'aviation-runway-graphite-v1.jpg',.28,.78,[.84,.82,.78,.22]);
       runway.material=mat;runway.receiveShadows=true;
@@ -79,7 +79,7 @@ export class MaterialKit {
     const wall=new BABYLON.PBRMaterial('paintedHangarWallOlive',scene);this.apply(wall,'aviation-runway-graphite-v1.jpg',.24,.74,[.58,.56,.50,.48]);
     for(const mesh of scene.meshes)if(/^vagHangar(?:Back|Side|Ceil)/.test(mesh.name))mesh.material=wall;
     const floor=scene.getMeshByName('hangarInnerFloor');
-    if(floor){const mat=new BABYLON.PBRMaterial('aviationHangarFloorSteel',scene);this.apply(mat,'armored-deck-plates.png',.36,.62,[.78,.80,.78,.24]);floor.material=mat;}
+    if(floor && floor.material?.name !== 'cfCruiserDeckSteelMat'){const mat=new BABYLON.PBRMaterial('aviationHangarFloorSteel',scene);this.apply(mat,'armored-deck-plates.png',.36,.62,[.78,.80,.78,.24]);floor.material=mat;}
     scene.onDisposeObservable.addOnce(()=>this.dispose());
   }
   texture(file){

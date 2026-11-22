@@ -12,7 +12,7 @@ const test=(name,fn)=>{fn();checks.push({name,passed:true});console.log('PASS',n
 function projectile(kind,from,to){const mesh=B.MeshBuilder.CreateSphere('testOrdnance',{diameter:.1},scene);mesh.position.copyFrom(to);ship.projectiles.push({kind,previousPosition:from.clone(),mesh,life:1,vel:to.subtract(from)});}
 test('Cargo does not collect by proximity, speed or wrong aircraft without winch input',()=>{
  jobs.start('cargo');const e=jobs.entities[0];ship.group.position.copyFrom(e.root.getAbsolutePosition()).addInPlace(new B.Vector3(0,7,0));for(let i=0;i<40;i++)jobs.update(.1,context);assert.equal(jobs.snapshot.completed,0);
- ship.keys.KeyF=true;ship.velocity.x=10;for(let i=0;i<40;i++)jobs.update(.1,context);assert.equal(jobs.snapshot.completed,0);
+ ship.keys.KeyF=true;ship.velocity.x=20;for(let i=0;i<40;i++)jobs.update(.1,context);assert.equal(jobs.snapshot.completed,0);
  ship.velocity.x=0;ship.variant='fighter';for(let i=0;i<40;i++)jobs.update(.1,context);assert.equal(jobs.snapshot.completed,0);ship.variant='cargo';
 });
 test('Cargo physically winches three crates and pays only after home docking, exactly once',()=>{

@@ -13,28 +13,29 @@ let failures=0;
 async function check(name,fn){try{const evidence=await fn();checks.push({name,status:'pass',evidence});}catch(error){failures++;checks.push({name,status:'fail',error:error.message});}}
 const poolSystems=fx.slots.map(slot=>[slot.fire,slot.smoke,slot.spark]);
 let nativeStopEvents=0;for(const systems of poolSystems)for(const ps of systems)ps.onStoppedObservable.add(()=>nativeStopEvents++);
-await check('Actual native particle systems have a fixed six-burst, 312-particle capacity',()=>{
+await check('Actual native particle systems have a fixed six-burst, 444-particle capacity',()=>{
  assert.equal(scene.particleSystems.length,18);
  assert(scene.particleSystems.every(ps=>ps instanceof B.ParticleSystem));
- assert.equal(fx.slots.reduce((sum,slot)=>sum+slot.fire.getCapacity()+slot.smoke.getCapacity()+slot.spark.getCapacity(),0),312);
+ assert.equal(fx.slots.reduce((sum,slot)=>sum+slot.fire.getCapacity()+slot.smoke.getCapacity()+slot.spark.getCapacity(),0),444);
  for(let i=0;i<6;i++)assert(fx.spawn(position,1));
  assert.equal(fx.spawn(position,1),false);assert.equal(fx.snapshot.activeBursts,6);assert.equal(fx.snapshot.dropped,1);
  return fx.snapshot;
 });
-await check('Warm flash disappears before 100ms and soot starts after its 100ms delay',()=>{
+await check('Soot starts at 80ms and warm flash fades by 110ms',()=>{
  assert(fx.slots.every(slot=>slot.flash.isEnabled()));
- fx.update(.09);assert(fx.slots.every(slot=>!slot.flash.isEnabled()));
+ fx.update(.07);assert(fx.slots.every(slot=>slot.flash.isEnabled()));
  assert(fx.slots.every(slot=>!slot.smokeStarted));
  fx.update(.02);assert(fx.slots.every(slot=>slot.smokeStarted&&slot.smoke.isStarted()));
- return {flashLifetimeSeconds:.085,sootDelaySeconds:.1,elapsedSeconds:.11};
+ fx.update(.03);assert(fx.slots.every(slot=>!slot.flash.isEnabled()));
+ return {flashLifetimeSeconds:.11,sootDelaySeconds:.08,elapsedSeconds:.12};
 });
 await check('Large bursts retire after their finite lifetime and hide every fragment',()=>{
- for(let i=0;i<24;i++)fx.update(.1);
+ for(let i=0;i<25;i++)fx.update(.1);
  assert.equal(fx.snapshot.activeBursts,0);
  assert(fx.slots.every(slot=>slot.shards.every(shard=>!shard.mesh.isEnabled())));
  assert.equal(nativeStopEvents,18,'all18 native systems signal stopped at retirement');
  assert(fx.slots.every(slot=>[slot.fire,slot.smoke,slot.spark].every(ps=>ps.manualEmitCount===0)));
- return {largeDurationSeconds:2.3,active:fx.snapshot.activeBursts,nativeStopEvents};
+ return {largeDurationSeconds:2.45,active:fx.snapshot.activeBursts,nativeStopEvents};
 });
 await check('Small impacts reuse original native systems, with seeded emission directions',()=>{
  assert(fx.spawn(position,.45));
@@ -42,9 +43,9 @@ await check('Small impacts reuse original native systems, with seeded emission d
  const slot=fx.slots[0],a=new B.Vector3(),b=new B.Vector3();
  slot.seed=123;slot.spark.startDirectionFunction(null,a);slot.seed=123;slot.spark.startDirectionFunction(null,b);
  assert(a.equals(b));assert(a.y>0);
- for(let i=0;i<15;i++)fx.update(.1);
+ for(let i=0;i<16;i++)fx.update(.1);
  assert.equal(fx.snapshot.activeBursts,0);assert.equal(scene.particleSystems.length,18);
- return {smallDurationSeconds:1.45,systemsReused:true,seededDirection:a.asArray()};
+ return {smallDurationSeconds:1.55,systemsReused:true,seededDirection:a.asArray()};
 });
 await check('Disposal releases all native systems, fragment meshes and its scene observer',async()=>{
  const observer=fx.disposeObserver;fx.dispose();

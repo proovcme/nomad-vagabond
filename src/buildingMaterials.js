@@ -1,8 +1,8 @@
 const BUILDING_PALETTES = Object.freeze({
-  generator: {body:'#574f44',panel:'#8b7c67',trim:'#d6ae5e'},
+  generator: {body:'#574f44',panel:'#b67b50',trim:'#d6ae5e'},
   turret: {body:'#4f4941',panel:'#7d7160',trim:'#ccaa60'},
-  radar: {body:'#534c43',panel:'#847866',trim:'#d4b264'},
-  tower: {body:'#5a5146',panel:'#91816b',trim:'#d9b466'},
+  radar: {body:'#534c43',panel:'#659590',trim:'#d4b264'},
+  tower: {body:'#5a5146',panel:'#939ab0',trim:'#d9b466'},
 });
 
 function buildingKind(value) {
@@ -73,9 +73,9 @@ export function configureBuildingMaterial(material,kind,engine) {
     material.albedoColor.set(1,1,1);
     material.metallic=.22;material.roughness=.78;
   }else if(role==='body'){
-    material.albedoColor.copyFrom(color(palette.body));material.metallic=.66;material.roughness=.40;
+    material.albedoColor.copyFrom(color(palette.body));material.metallic=.66;material.roughness=.57;
   }else if(role==='trim'){
-    material.albedoColor.copyFrom(color(palette.trim));material.metallic=.84;material.roughness=.28;
+    material.albedoColor.copyFrom(color(palette.trim));material.metallic=.84;material.roughness=.39;
   }else if(role==='oxide'){
     material.albedoColor.copyFrom(color('#8c4f32'));material.metallic=.12;material.roughness=.86;
   }

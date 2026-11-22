@@ -107,7 +107,9 @@ export function generateIslandGeometry(options = {}) {
   }
   const rock = {positions: [], indices: [], uvs: [], colors: []};
   // Tall sheer upper cliff wall (t=0..0.44) with stepped lower strata and multi-lobed roots
-  const profile = [[0,1.0],[.08,1.03],[.20,.99],[.32,.94],[.44,.86],[.56,.68],[.68,.52],[.80,.34],[.90,.17],[.97,.06],[1.0,.015]];
+  const profile = forest
+    ? [[0,1],[.05,.99],[.17,.97],[.23,.88],[.30,.90],[.47,.85],[.52,.71],[.64,.65],[.79,.42],[.9,.22],[.97,.07],[1,.015]]
+    : [[0,1],[.09,.99],[.15,.88],[.22,.89],[.35,.84],[.39,.70],[.52,.72],[.58,.59],[.73,.47],[.85,.28],[.95,.10],[1,.015]];
   for (let layer = 0; layer < profile.length; layer++) {
     const [t, width] = profile[layer];
     for (let i = 0; i < segments; i++) {
@@ -119,9 +121,13 @@ export function generateIslandGeometry(options = {}) {
       const rib8 = Math.cos(a * 8 - phase * 1.3);
       const rib13 = Math.sin(a * 13 + phase * 0.7);
       const cragNoise = fbm3(Math.cos(a) * 2.4 + t * 2.0, t * 2.6, Math.sin(a) * 2.4 - t * 1.6, seed + 91, 3) - 0.5;
-      const stepShelf = Math.sin(t * Math.PI * 4.0 + fault3 * 0.8) * 0.065 * (1 - t);
+      const bedStep = Math.floor((t + fault3 * .045 + rib8 * .018) * 8.0) / 8.0;
+      const shelf = Math.sin(bedStep * Math.PI * (forest ? 3.0 : 5.0)) * (forest ? .075 : .11);
+      const fractures = Math.pow(Math.max(0, rib13), 3) * .082;
+      const stepShelf = (shelf - fractures) * (1 - t);
       const angularCrag = fault3 * 0.15 + rib5 * 0.15 + rib8 * 0.09 + rib13 * 0.04 + cragNoise * 0.22 + stepShelf;
-      const buttress = Math.max(0.38, 1 + angularCrag * Math.sin(Math.pow(t, 0.65) * Math.PI));
+      const cleft = Math.pow(Math.max(0, Math.cos(a * 6 + phase + t * 1.4)), 5);
+      const buttress = Math.max(0.38, 1 + (angularCrag - cleft * .31) * Math.sin(Math.pow(t, 0.65) * Math.PI));
       const x = ex * width * buttress - rx * 0.14 * t;
       const z = ez * width * buttress + rz * 0.09 * t;
       const rootLobe = (Math.pow(Math.max(0, fault3), 2) * 0.22 + Math.pow(Math.max(0, rib5), 2) * 0.16) * depth;
@@ -159,10 +165,9 @@ export function generateIslandGeometry(options = {}) {
   // Keep a crisp geological cliff rim while slightly coupling normals across the seam.
   for (let i = 0; i < segments; i++) {
     const ti = (1 + (rings - 1) * segments + i) * 3, ri = i * 3;
-    const nt = [0, 1, 2].map(k => top.normals[ti + k] * 0.96 + rock.normals[ri + k] * 0.04);
-    const nr = [0, 1, 2].map(k => rock.normals[ri + k] * 0.96 + top.normals[ti + k] * 0.04);
-    const lt = Math.hypot(...nt) || 1, lr = Math.hypot(...nr) || 1;
-    for (let k = 0; k < 3; k++) { top.normals[ti + k] = nt[k] / lt; rock.normals[ri + k] = nr[k] / lr; }
+    const shared = [0, 1, 2].map(k => top.normals[ti+k] * .55 + rock.normals[ri+k] * .45);
+    const length = Math.hypot(...shared) || 1;
+    for (let k = 0; k < 3; k++) top.normals[ti+k] = rock.normals[ri+k] = shared[k] / length;
   }
   // Split only the cylindrical UV seam; its geometric positions/normals stay welded.
   const seamCopies = new Map();
@@ -227,7 +232,7 @@ async function bakeTerrainTexture(scene, geometry, material) {
     const h = geometry.getHeight(wx, wz);
     const slope = Math.hypot(geometry.getHeight(wx + 0.5, wz) - geometry.getHeight(wx - 0.5, wz), geometry.getHeight(wx, wz + 0.5) - geometry.getHeight(wx, wz - 0.5));
     const at = (z * 128 + x) * 2;
-    field[at] = Math.max(smooth(0.40, 1.15, slope), smooth(0.77, 1.00, geometry.radial(wx,wz)));
+    field[at] = Math.max(smooth(0.48, 1.55, slope), smooth(0.72, 1.01, geometry.radial(wx,wz) + .09 * Math.sin(wx*.18 + Math.sin(wz*.22)) + .04 * Math.sin(wz*.34)));
     field[at + 1] = geometry.style === 'forest' ? (1 - smooth(-1, 3.4, h - geometry.topY)) * 0.6 : 0.7;
   }
   for (let z = 0; z < size; z++) for (let x = 0; x < size; x++) {
@@ -264,16 +269,17 @@ async function bakeTerrainTexture(scene, geometry, material) {
     const isInd = geometry.style === 'industrial';
     // Distinct, high-contrast regional palettes: deep Adriatic olive + warm terracotta/chalk vs dark iron-slate + copper rust
     const grassDeep = isInd ? [48, 52, 58] : [46, 72, 42];
-    const grassSun = isInd ? [92, 96, 102] : [114, 128, 66];
+    const grassSun = isInd ? [92, 96, 102] : [121, 139, 65];
     const warmAccent = isInd ? [142, 84, 52] : [178, 134, 72];
-    const sandstoneRim = isInd ? [102, 98, 96] : [196, 178, 146];
+    const sandstoneRim = isInd ? [101, 88, 79] : [166, 125, 86];
     const tGrass = Math.min(1, Math.max(0, (texLuma - 0.18) * 1.45));
     const warmMix = Math.min(1, Math.max(0, soil * 0.42 + broadZone * 0.32));
     for (let c = 0; c < 3; c++) {
       let veg = grassDeep[c] * (1 - tGrass) + grassSun[c] * tGrass;
       veg = veg * (1 - warmMix * 0.55) + warmAccent[c] * (warmMix * 0.55);
-      const rimCol = sandstoneRim[c] * (0.80 + cliffLuma * 0.36);
-      const ground = veg * (1 - stone * 0.86) + rimCol * (stone * 0.86);
+      const rimCol = sandstoneRim[c] * (0.73 + cliffLuma * 0.52);
+      const scree = smooth(0.12, 0.76, stone + (cliffLuma - 0.43) * .34) * .79;
+      const ground = veg * (1 - scree) + rimCol * scree;
       const pathTone = (isInd ? [116, 114, 110] : [206, 176, 134])[c];
       pixels.data[at + c] = Math.min(255, Math.max(0, ground * (1 - clearing * 0.52) + pathTone * clearing * 0.52));
     }
@@ -290,7 +296,7 @@ async function bakeTerrainTexture(scene, geometry, material) {
   bump.uScale = 14; bump.vScale = 14;
   bump.wrapU = bump.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
   bump.gammaSpace = false;
-  bump.level = 0.85;
+  bump.level = 0.36;
   material.bumpTexture = bump;
 }
 
@@ -317,6 +323,7 @@ export function buildGeneratedIsland(scene, options = {}) {
     options.shadowGenerator?.addShadowCaster(mesh, false);
     return mesh;
   });
+  meshes[1].metadata = { ...meshes[1].metadata, turfEdge: { material: topMat, width: geometry.radiusX * 2.4, depth: geometry.radiusZ * 2.4 } };
   const readyPromise = bakeTerrainTexture(scene, geometry, topMat).catch(error => console.warn('Terrain texture bake unavailable; keeping vertex-painted PBR terrain.', error));
   return {terrain:meshes[0], rock:meshes[1], getHeight:geometry.getHeight, contains:geometry.contains, bounds:geometry.bounds,
     readyPromise, seed:geometry.seed, geometry,

@@ -111,7 +111,7 @@ export class GameUI {
     } else if (mode === 'drive') {
       this.modeLabel.textContent = 'На грунте';
     } else if (mode === 'asteroid') {
-      this.modeLabel.textContent = 'Штурвал острова';
+      this.modeLabel.textContent = 'Штурвал';
     } else {
       this.modeLabel.textContent = 'На палубе';
     }
@@ -228,7 +228,7 @@ export class GameUI {
       this.sailEffPct.textContent = `${thrPct}%`;
       this.sailFill.style.width = `${thrPct}%`;
       if (mode === 'asteroid') {
-        this.modeLabel.textContent = 'ОСТРОВ «БРОДЯГА»';
+        this.modeLabel.textContent = world.isSkyWorld ? 'КРЕЙСЕР «БРОДЯГА»' : 'ОСТРОВ «БРОДЯГА»';
         this.hullLabel.textContent = 'ЦЕЛОСТНОСТЬ';
         this.sailStateLabel.textContent = 'ДВИГАТЕЛИ';
       } else if (mode === 'drive' || ship.dockedPlanet) {
@@ -257,7 +257,8 @@ export class GameUI {
       let fwdX = 0;
       let fwdZ = -1;
       if (mode === 'asteroid') {
-        fwdX = Math.sin(asteroidBase.group.rotation.y); fwdZ = Math.cos(asteroidBase.group.rotation.y);
+        const forward = asteroidBase.pilotForward();
+        fwdX = forward.x; fwdZ = forward.z;
       } else if (mode === 'foot' && player.camera) {
         const dir = player.camera.getForwardRay().direction;
         fwdX = dir.x;
@@ -542,7 +543,7 @@ export class GameUI {
     if (this._radioBox) this._radioBox.style.display = 'none';
   }
 
-  showRadio(speakerKey, text, duration = 5200) {
+  showRadio(speakerKey, text, duration = 5200, callsign) {
     if (typeof document === 'undefined') return;
     if (!this._radioBox) {
       const box = document.createElement('div');
@@ -592,7 +593,7 @@ export class GameUI {
     this._radioBox.style.borderLeftColor = sp.color;
     this._radioBox.querySelector('#radio-avatar').innerHTML = sp.svg;
     const spEl = this._radioBox.querySelector('#radio-speaker');
-    spEl.textContent = sp.name;
+    spEl.textContent = callsign || sp.name;
     spEl.style.color = sp.color;
     this._radioBox.querySelector('#radio-text').textContent = text;
     this._radioBox.style.display = 'flex';

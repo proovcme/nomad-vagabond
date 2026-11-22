@@ -1,3 +1,4 @@
+import { fitInterbellumAircraft } from './props/interbellumAircraft.js?v=mission1';
 import { configureImportedAircraftMaterial } from './explorerAircraft.js?v=mission1';
 export const HANGAR_FLEET=Object.freeze([
  {variant:'cargo',name:'Грузовой «Бродяга»',role:'Доставка припасов',file:'scrapyard_plane.glb',x:-29,z:0},
@@ -16,6 +17,7 @@ export class HangarFleet {
    const root=new BABYLON.TransformNode(`parkedAircraft_${record.variant}`,this.scene);
    root.rotationQuaternion=BABYLON.Quaternion.RotationYawPitchRoll(-Math.PI/2,0,0);
    for(const n of res.meshes.filter(m=>!m.parent))n.parent=root;
+   fitInterbellumAircraft(res.meshes,this.scene,record.variant,this.shadowGenerator);
    root.computeWorldMatrix(true);const bounds=root.getHierarchyBoundingVectors(true);
    root.position.set(record.x,3.38-bounds.min.y,record.z);root.parent=this.base.group;
    for(const m of res.meshes){m.isPickable=false;m.checkCollisions=true;if(!m.sourceMesh)m.receiveShadows=true;configureImportedAircraftMaterial(m.material,this.scene.getEngine(),record.variant);if(m.getTotalVertices()>0)this.shadowGenerator?.addShadowCaster(m,false);}

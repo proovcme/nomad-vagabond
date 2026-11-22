@@ -12,7 +12,7 @@ import { createRustedMetalTexture } from './textures.js?v=mission1';
 import { buildFlak88Turret } from './flak88.js?v=mission1';
 import { buildSculptedRadar, buildSculptedSamLauncher } from './props/dieselpunkStructures.js?v=mission1';
 import { decorateVagabondCarrier, buildAncientWindmillLandmark, buildSkyLighthouseLandmark, buildAetherMonolithLandmark, populateSatelliteIslandDiorama } from './props/nomadLandmarks.js?v=mission1';
-import { buildFlightDeckCruiserModel } from './props/flightDeckCruiser.js?v=mission1';
+import { applyCruiserDeckMaterial, buildFlightDeckCruiserModel } from './props/flightDeckCruiser.js?v=mission1';
 import { applyDoverChalkCliffs, buildDoverCliffVillage, buildContinentalSkyCity, buildAlpineCastleDiorama, buildGothicRuinsDiorama, buildEuropeHorizonArchipelago } from './props/europeIslands.js?v=mission1';
 import { AssetManager } from './engine/assetManager.js?v=mission1';
 import { getLevel } from './levels/levelRegistry.js?v=mission1';
@@ -108,28 +108,28 @@ function registerSkyShaders() {
           col = mix(horizCol, midSkyCol, t1);
           col = mix(col, zenithCol, t2);
         } else {
-          col = mix(horizCol, abyssCol, smoothstep(0.0, -0.35, h));
+          col = mix(horizCol, abyssCol, smoothstep(0.0, 0.35, -h));
         }
 
         // High altitude wispy cirrus streaks
         vec3 sunSkyDir = normalize(vec3(uSunDir.x, 0.125, uSunDir.z));
         float sunDot = max(0.0001, dot(d, sunSkyDir));
 
-        // Painted 360-degree panorama, gently desaturated & warm-graded so turquoise clouds read as 1930s oil-painted cumulus
+        // Painted panorama with cool blues and ivory sunlit clouds.
         vec2 artUv=vec2(fract(atan(d.z,d.x)/6.2831853+.5+uTime*.00008),acos(clamp(d.y,-1.0,1.0))/3.14159265);
         vec3 rawArt=texture2D(uSkyArtwork,artUv).rgb;
         float artLuma = dot(rawArt, vec3(0.299, 0.587, 0.114));
-        vec3 gradedArt = mix(vec3(artLuma), rawArt, 0.62) * vec3(1.04, 0.99, 0.92);
+        vec3 gradedArt = mix(vec3(artLuma), rawArt, 0.73) * vec3(1.01, 1.01, 1.05);
         vec3 skyArt = (gradedArt * gradedArt) * 0.96;
         float seamDistance=min(artUv.x,1.0-artUv.x);
         if(seamDistance<.035){
           vec3 seamRaw=.5*(texture2D(uSkyArtwork,vec2(.001,artUv.y)).rgb+texture2D(uSkyArtwork,vec2(.999,artUv.y)).rgb);
           float sLuma = dot(seamRaw, vec3(0.299, 0.587, 0.114));
-          vec3 sGraded = mix(vec3(sLuma), seamRaw, 0.62) * vec3(1.04, 0.99, 0.92);
+          vec3 sGraded = mix(vec3(sLuma), seamRaw, 0.73) * vec3(1.01, 1.01, 1.05);
           skyArt=mix((sGraded * sGraded) * 0.96,skyArt,smoothstep(0.0,.035,seamDistance));
         }
         float artWeight=smoothstep(.0,.14,artUv.y)*(1.0-smoothstep(.94,1.0,artUv.y))*smoothstep(-.20,.04,h);
-        col=mix(col,skyArt * mix(1.0, 0.08, nightMask), artWeight * mix(0.56, 0.28, nightMask));
+        col=mix(col,skyArt * mix(1.0, 0.08, nightMask), artWeight * mix(0.69, 0.28, nightMask));
 
         // Rich bright twinkling night stars (2 layered starfields: bright hero stars + dense faint star dust)
         if (nightMask > 0.05 && h > 0.01) {
@@ -209,6 +209,7 @@ function registerSkyShaders() {
       uniform vec3 uCamPos;
       uniform vec3 uSunDir;
       uniform float uTimeOfDay;
+      uniform float uCloudVolume;
 
       float hash21(vec2 p) {
         p = fract(p * vec2(127.1, 311.7));
@@ -237,7 +238,7 @@ function registerSkyShaders() {
         float n1 = noise2(p);
         float n2 = noise2(p * 2.15 - vec2(uTime * 0.015, 0.0));
         float billow = n1 * 0.65 + n2 * 0.35;
-        float density = smoothstep(0.28, 0.76, billow);
+        float density = smoothstep(0.20, 0.67, billow);
 
         // Fast 1-tap directional self-shadowing + golden sun-glint path across the cloud sea
         vec2 sunXZ = normalize(uSunDir.xz + vec2(0.001));
@@ -253,15 +254,14 @@ function registerSkyShaders() {
 
         float nightMask = 1.0 - smoothstep(0.02, 0.18, uTimeOfDay);
         vec3 shadowCol = mix(
-          mix(vec3(0.20, 0.36, 0.66), vec3(0.46, 0.36, 0.54), sunAlign * 0.48),
+          mix(vec3(0.32, 0.47, 0.68), vec3(0.55, 0.46, 0.60), sunAlign * 0.38),
           vec3(0.012, 0.024, 0.068),
           nightMask
         );
         vec3 litCol = mix(vec3(1.00, 0.96, 0.86), vec3(0.10, 0.17, 0.32), nightMask);
-        vec3 warmRim = mix(vec3(1.00, 0.78, 0.40), vec3(0.28, 0.44, 0.72), nightMask);
+        vec3 warmRim = mix(vec3(.89, .86, .81), vec3(0.28, 0.44, 0.72), nightMask);
         vec3 col = mix(shadowCol, litCol, smoothstep(0.08, 0.95, lit));
-        col = mix(col, warmRim, smoothstep(0.38, 0.92, lit) * 0.58 + sunGlint * 0.62);
-        col += vec3(1.00, 0.84, 0.50) * (sa4 * sa4 * sa4) * smoothstep(0.55, 0.96, lit) * (1.0 - nightMask) * 0.35;
+        col = mix(col, warmRim, smoothstep(0.38, 0.92, lit) * 0.35 + sunGlint * 0.42);
 
         // Abyssal chaos below the clouds: intermittent deep storm-lightning blooms & sunken ether-engine flashes!
         vec2 cellId = floor(vWorldPos.xz * 0.0024);
@@ -272,7 +272,7 @@ function registerSkyShaders() {
         float flashEnv = (flashBase * flashBase * flashBase) * step(0.68, cRnd);
         float flashRad = exp(-dot(cellF, cellF) * 16.0);
         vec3 flashCol = mix(vec3(0.35, 0.86, 1.00), vec3(1.00, 0.52, 0.18), fract(cRnd * 13.7));
-        col += flashCol * flashEnv * flashRad * (0.75 + 0.85 * nightMask) * (0.45 + 0.55 * density);
+        col += flashCol * flashEnv * flashRad * (.04 + .85 * nightMask) * (0.45 + 0.55 * density);
 
         // Faint glowing abyssal fissures shimmering in the deepest cloud troughs (reuses n2 — 0 extra noise fetches!)
         float trough = (1.0 - smoothstep(0.18, 0.58, density)) * smoothstep(0.62, 0.88, n2);
@@ -286,6 +286,36 @@ function registerSkyShaders() {
         );
         col = mix(col, horizonHaze, horizonBlend);
         float alpha = density * uOpacity * (1.0-smoothstep(1700.0,6000.0,dist));
+        // Integrate a bounded cloud layer above this proxy plane. The low preset
+        // and distant horizon retain the cheaper sheet for consistent frame time.
+        vec3 ray = normalize(vWorldPos - uCamPos);
+        if (uCloudVolume > .5 && ray.y < -.09 && dist < 1550.0) {
+          float farT = length(vWorldPos - uCamPos) - 4.0 / -ray.y;
+          float nearT = max(0.0, farT - 104.0 / -ray.y);
+          float stepSize = max(0.0, farT - nearT) / 12.0;
+          float transmission = 1.0;
+          vec3 scattered = vec3(0.0);
+          for (int i = 0; i < 12; ++i) {
+            float t = nearT + (float(i) + .5) * stepSize;
+            vec3 w = uCamPos + ray * t;
+            float altitude = (w.y - vWorldPos.y - 4.0) / 104.0;
+            vec2 q = w.xz * .007 + vec2(uTime * .008, uTime * .003);
+            float large = noise2(q + altitude * .61);
+            float folds = noise2(q * 2.65 - altitude * 2.24);
+            float body = large * .76 + folds * .24;
+            float envelope = smoothstep(0.0,.16,altitude) * (1.0-smoothstep(.59,1.0,altitude));
+            float thickness = smoothstep(.42,.75,body) * envelope;
+            float extinction = 1.0 - exp(-thickness * stepSize * .051);
+            vec3 silver = mix(vec3(.32,.43,.57), vec3(.74,.79,.83), clamp(altitude * 1.44 + (1.0 - thickness) * .23,0.0,1.0));
+            silver = mix(silver, vec3(.12,.19,.35), nightMask);
+            scattered += transmission * extinction * silver;
+            transmission *= 1.0 - extinction;
+            if (transmission < .025) break;
+          }
+          float fog = (1.0 - smoothstep(850.0,1550.0,dist)) * smoothstep(.09,.17,-ray.y);
+          col = mix(col, scattered / max(.01,1.0-transmission), fog * smoothstep(.02,.22,1.0-transmission));
+          alpha = max(alpha * (1.0 - .55 * fog), (1.0-transmission) * fog * .68);
+        }
         gl_FragColor = vec4(col, alpha);
         #include<imageProcessingCompatibility>
       }
@@ -939,7 +969,6 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
     applyWorldRockUVs(blk, b.x, b.y, b.z, b.sx, b.sz, 9.0);
     blk.material = rockMat;
     blk.receiveShadows = true;
-    blk.alwaysSelectAsActiveMesh = true;
     if (shadowGen) shadowGen.addShadowCaster(blk, false);
   });
 
@@ -1297,7 +1326,7 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
     [-23.85, 0.0, 0.32, 26.0],   [3.85, 0.0, 0.32, 26.0],
   ]) {
     const strip = BABYLON.MeshBuilder.CreateBox(`vagBzTrim_${tx}_${tz}`, { width: tw, height: 0.08, depth: td }, scene);
-    strip.position.set(tx, 21.74, tz);
+    strip.position.set(tx, 21.77, tz);
     strip.computeWorldMatrix(true);
     bzTrimParts.push(strip);
   }
@@ -1499,13 +1528,16 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   instantiateGLBInto(scene, './assets/benchmark/models/old_military_crate/', 'old_military_crate_1k.gltf', asteroidBase.group, new BABYLON.Vector3(1.8, 3.38, 5.8), 1.2, 0.8, shadowGen);
   decorateVagabondCarrier(asteroidBase, scene, shadowGen);
   finishRockHangar(scene, asteroidBase, shadowGen, rockMasses);
+  const floor = scene.getMeshByName('hangarInnerFloor');
+  if (floor && hullKit?.deckMat) applyCruiserDeckMaterial(floor, hullKit.deckMat);
+  if (hullKit?.deckMat) applyCruiserDeckMaterial(runway, hullKit.deckMat);
   // Disable redundant legacy space-era point lights on Vagabond so PBR materials don't shade 12 lights per pixel
   for (const lName of ['baseHouseLamp', 'baseGenLight', 'baseDeckLight', 'hangarInteriorLight_1']) {
     const l = scene.getLightByName(lName);
     if (l) l.setEnabled(false);
   }
   for (const mesh of asteroidBase.group.getChildMeshes()) {
-    if (mesh.isVisible && mesh.visibility > 0 && !/Leaf|Vine|Flame|Lamp|Light|Screen|Steam|Rotor|LiftRail|Sign|Glow|Trail|Smoke|Particle|Atmosphere/i.test(mesh.name)) makeSolid(mesh);
+    if (mesh.isVisible && mesh.visibility > 0 && !mesh.metadata?.visualOnly && !/Leaf|Vine|Flame|Lamp|Light|Screen|Steam|Rotor|LiftRail|Sign|Glow|Trail|Smoke|Particle|Atmosphere/i.test(mesh.name)) makeSolid(mesh);
   }
   // Hide legacy rock shell, round flying-saucer upper disc, side oil-drum nacelles & hanging helicopter rings visually
   // (keep checkCollisions=true on vagabondUnifiedRockShell & vagUpperCourtyard so all 7 validators stay 100% green!)
@@ -1521,8 +1553,8 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
     for (const child of asteroidBase.group.getChildMeshes()) {
       if (/^islandRotor/i.test(child.name)) child.visibility = 0.0;
     }
-    // Match exterior hangar bulkhead walls to the 1930s Haze-Grey cruiser hull steel for seamless stern view
-    for (const hName of ['vagHangarNorthFacade', 'vagHangarSide_1', 'vagHangarCeil']) {
+    // Match the portal's exposed load-bearing frame to the exterior plating.
+    for (const hName of ['vagHangarPillar_0', 'vagHangarPillar_1', 'vagHangarLintel']) {
       const hm = scene.getMeshByName(hName);
       if (hm) hm.material = hullKit.hullMat;
     }
@@ -1623,7 +1655,6 @@ export class ForestIsland {
       ],
       { step: 3.1, seed: this.seedNum + 19, material: this.generated.rock.material, parent: this.group, shadowGen }
     );
-    forestRootCluster.alwaysSelectAsActiveMesh = true;
     makeSolid(forestRootCluster);
 
     // Organic satellite island fragments flanking ForestIsland in the mid/background vista
@@ -1684,7 +1715,6 @@ export class ForestIsland {
     fall.rotation.x = -0.08;
     fall.rotation.y = 0.14;
     fall.material = this.waterfallMat;
-    fall.alwaysSelectAsActiveMesh = true;
 
     // Falling water and foam are drawn by the waterfall shader, without sphere puffs.
   }
@@ -1837,7 +1867,6 @@ export class ForestIsland {
           mesh.thinInstanceSetBuffer('matrix', buf, 16, true);
           mesh.thinInstanceRefreshBoundingInfo(true);
           mesh.receiveShadows = true;
-          mesh.alwaysSelectAsActiveMesh = true;
           if (shadowGen && sp.file.includes('pine')) shadowGen.addShadowCaster(mesh, false);
           this.detailNodes.push(mesh);
         }
@@ -1926,7 +1955,6 @@ export class IndustrialIsland {
       ],
       { step: 3.0, seed: this.seedNum + 37, material: this.generated.rock.material, parent: this.group, shadowGen }
     );
-    indRootCluster.alwaysSelectAsActiveMesh = true;
     makeSolid(indRootCluster);
 
     // Organic satellite quarry islands flanking IndustrialIsland in the mid/background vista
@@ -1948,7 +1976,6 @@ export class IndustrialIsland {
     mainApron.position.set(2, 1.75, 2);
     mainApron.material = concreteMat;
     mainApron.receiveShadows = true;
-    mainApron.alwaysSelectAsActiveMesh = true;
 
     // Cantilevered steel grate cargo dock overhanging the cliff
     const dockPlatform = BABYLON.MeshBuilder.CreateBox('indDockPlatform', { width: 24, height: 0.7, depth: 20 }, this.scene);
@@ -1957,7 +1984,6 @@ export class IndustrialIsland {
     dockPlatform.position.set(28, 2.65, 14);
     dockPlatform.material = grateMat;
     dockPlatform.receiveShadows = true;
-    dockPlatform.alwaysSelectAsActiveMesh = true;
 
     // Underside industrial girders, ore hoppers & fuel tanks hanging beneath the island
     const rustTex = createRustedMetalTexture(this.scene, [128, 96, 78]);
@@ -1973,14 +1999,12 @@ export class IndustrialIsland {
       tank.position.set(-10 + i * 10, -24 - i * 2.0, -6 + (i % 2) * 10);
       tank.rotation.z = Math.PI * 0.5;
       tank.material = rustMat;
-      tank.alwaysSelectAsActiveMesh = true;
 
       const hopper = BABYLON.MeshBuilder.CreateCylinder(`indHopper_${i}`, { diameterTop: 8.5, diameterBottom: 2.0, height: 12, tessellation: 6 }, this.scene);
       hopper.parent = this.group;
       hopper.position.set(-8 + i * 8, -28 - i * 2.0, 6);
       hopper.rotation.x = 0.06;
       hopper.material = grateMat;
-      hopper.alwaysSelectAsActiveMesh = true;
     }
   }
 
@@ -2016,9 +2040,15 @@ export class IndustrialIsland {
     hall.position.set(-14, 8.2, -7.75);
     hall.material = rustMat;
     hall.receiveShadows = true;
-    hall.alwaysSelectAsActiveMesh = true;
     if (shadowGen) shadowGen.addShadowCaster(hall, false);
 
+    // Recessed furnace bays with a masonry sill, steel lintels and cast mullions.
+    const windowFrames = [];
+    const framePiece = (name, x, y, z, width, height, depth) => {
+      const mesh = BABYLON.MeshBuilder.CreateBox(name, {width,height,depth}, this.scene);
+      mesh.position.set(x,y,z);
+      windowFrames.push(mesh);
+    };
     // Sawtooth roof bays + glowing skylights
     for (let i = 0; i < 3; i++) {
       const bay = BABYLON.MeshBuilder.CreateCylinder(`indRoofBay_${i}`, { diameter: 7.5, height: 17.5, tessellation: 3 }, this.scene);
@@ -2031,7 +2061,21 @@ export class IndustrialIsland {
       win.parent = this.group;
       win.position.set(-21 + i * 7, 7.2, 1.1);
       win.material = glowMat;
+      const wx = win.position.x;
+      for (const side of [-1,1]) {
+        framePiece('indWindowJamb',wx+side*2.32,7.2,1.29,.20,2.45,.46);
+        framePiece('indWindowMullion',wx+side*.76,7.2,1.34,.105,2.2,.18);
+      }
+      framePiece('indWindowTransom',wx,7.53,1.34,4.5,.12,.22);
+      framePiece('indWindowLintel',wx,8.48,1.26,5,.26,.62);
+      framePiece('indWindowSill',wx,5.99,1.33,4.95,.21,.72);
     }
+    const ironwork = BABYLON.Mesh.MergeMeshes(windowFrames,true,true);
+    ironwork.name = 'indRefineryWindowIronwork';
+    ironwork.parent = this.group;
+    ironwork.material = steelMat;
+    ironwork.receiveShadows = true;
+
 
     // 3 Tall Smokestacks sharing ONE smoke DynamicTexture for lower GPU memory & faster startup
     const emberCollarMat = new BABYLON.StandardMaterial('indEmberCollarGlow', this.scene);
@@ -2136,7 +2180,6 @@ export class IndustrialIsland {
     hangarRoof.parent = this.group;
     hangarRoof.position.set(-10, 12.5, 14);
     hangarRoof.material = steelMat;
-    hangarRoof.alwaysSelectAsActiveMesh = true;
     for (const sx of [-18, -2]) {
       for (const sz of [7, 21]) {
         const leg = BABYLON.MeshBuilder.CreateBox(`indHangarLeg_${sx}_${sz}`, { width: 1.3, height: 10.5, depth: 1.3 }, this.scene);
@@ -2157,7 +2200,6 @@ export class IndustrialIsland {
       mast.position.set(cr.x, 2 + cr.h * 0.5, cr.z);
       mast.rotation.y = cr.rotY;
       mast.material = hazardMat;
-      mast.alwaysSelectAsActiveMesh = true;
       if (shadowGen) shadowGen.addShadowCaster(mast, false);
 
       const boom = BABYLON.MeshBuilder.CreateBox(`indCraneBoom_${idx}`, { width: cr.boom, height: 1.8, depth: 1.8 }, this.scene);
@@ -2166,7 +2208,6 @@ export class IndustrialIsland {
       boom.rotation.y = cr.rotY;
       boom.rotation.z = 0.14;
       boom.material = hazardMat;
-      boom.alwaysSelectAsActiveMesh = true;
     });
 
     // 4. Overhead Pipelines
@@ -2273,14 +2314,14 @@ export class SkyArchipelagoWorld {
     this.timeOfDay = isNight ? 0.0 : isStorm ? 0.25 : isDawn ? 0.92 : 0.72;
     if (this.sunDirLight) {
       this.sunDirLight.intensity = isNight ? 0.52 : isStorm ? 2.05 : isDawn ? 3.55 : 3.35;
-      this.sunDirLight.diffuse = c3(isNight ? '#82aef5' : isStorm ? '#ff9c6e' : isDawn ? '#ffd8c4' : '#ffe4b5');
+      this.sunDirLight.diffuse = c3(isNight ? '#82aef5' : isStorm ? '#ff9c6e' : isDawn ? '#ffd8c4' : '#ffeacc');
     }
     if (this.hemiLight) {
       this.hemiLight.intensity = isNight ? 0.26 : isStorm ? 0.34 : 0.42;
-      this.hemiLight.diffuse = c3(isNight ? '#2c4670' : isStorm ? '#707e96' : isDawn ? '#c8e4fa' : '#b2d6f5');
-      this.hemiLight.groundColor = c3(isNight ? '#151c29' : isStorm ? '#3c3430' : '#7d5b3b');
+      this.hemiLight.diffuse = c3(isNight ? '#2c4670' : isStorm ? '#707e96' : isDawn ? '#c8e4fa' : '#99c6fa');
+      this.hemiLight.groundColor = c3(isNight ? '#151c29' : isStorm ? '#3c3430' : '#455b7a');
     }
-    this.scene.fogColor = c3(isNight ? '#162034' : isStorm ? '#6e5c58' : isDawn ? '#e4d6d2' : '#d8cec0');
+    this.scene.fogColor = c3(isNight ? '#162034' : isStorm ? '#6e5c58' : isDawn ? '#e4d6d2' : '#b8cde1');
     this.scene.environmentIntensity = isNight ? 0.18 : isStorm ? 0.56 : 0.78;
     if (this._sunFlareMesh) this._sunFlareMesh.isVisible = !isNight;
   }
@@ -2301,7 +2342,7 @@ export class SkyArchipelagoWorld {
     this.sunDirLight = new BABYLON.DirectionalLight('archSunLight', this.sunDir.scale(-1), this.scene);
     this.sunDirLight.position = this.sunDir.scale(220);
     this.sunDirLight.intensity = isNight ? 0.52 : isStorm ? 2.05 : isDawn ? 3.55 : 3.35;
-    this.sunDirLight.diffuse = c3(isNight ? '#82aef5' : isStorm ? '#ff9c6e' : isDawn ? '#ffd8c4' : '#ffe4b5');
+    this.sunDirLight.diffuse = c3(isNight ? '#82aef5' : isStorm ? '#ff9c6e' : isDawn ? '#ffd8c4' : '#ffeacc');
     this.sunDirLight.specular = c3(isNight ? '#9ec0ff' : isStorm ? '#ffb284' : '#ffcb88');
     this._baseSunIntensity = this.sunDirLight.intensity;
 
@@ -2312,8 +2353,8 @@ export class SkyArchipelagoWorld {
 
     this.hemiLight = new BABYLON.HemisphericLight('archHemiLight', new BABYLON.Vector3(0, 1, 0), this.scene);
     this.hemiLight.intensity = isNight ? 0.26 : isStorm ? 0.34 : 0.42;
-    this.hemiLight.diffuse = c3(isNight ? '#2c4670' : isStorm ? '#707e96' : isDawn ? '#c8e4fa' : '#b2d6f5');
-    this.hemiLight.groundColor = c3(isNight ? '#151c29' : isStorm ? '#3c3430' : '#7d5b3b');
+    this.hemiLight.diffuse = c3(isNight ? '#2c4670' : isStorm ? '#707e96' : isDawn ? '#c8e4fa' : '#99c6fa');
+    this.hemiLight.groundColor = c3(isNight ? '#151c29' : isStorm ? '#3c3430' : '#455b7a');
     this.scene.environmentIntensity = 1.25;
 
     if (this.scene.getEngine().constructor.name !== 'NullEngine') {
@@ -2330,10 +2371,10 @@ export class SkyArchipelagoWorld {
     const ipc = this.scene.imageProcessingConfiguration;
     ipc.toneMappingEnabled = true;
     ipc.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
-    ipc.exposure = isNight ? 0.62 : isStorm ? 0.88 : isDawn ? 1.02 : 0.98;
+    ipc.exposure = isNight ? 0.62 : isStorm ? 0.88 : isDawn ? 1.02 : 1.06;
     ipc.contrast = isNight ? 1.22 : isStorm ? 1.20 : 1.12;
     ipc.vignetteEnabled = true;
-    ipc.vignetteWeight = isNight ? 1.85 : 1.35;
+    ipc.vignetteWeight = isNight ? 1.85 : isStorm ? 1.35 : 0.82;
     ipc.vignetteStretch = 0.45;
     ipc.vignetteColor = new BABYLON.Color4(0.04, 0.06, 0.12, 0);
     // Unified Interbellum 1930s Aviation Poster Color Grading (warm parchment-gold highlights + Adriatic-azure depth, 0ms GPU cost)
@@ -2343,8 +2384,8 @@ export class SkyArchipelagoWorld {
     curves.highlightsDensity = isNight ? 10 : 22;
     curves.highlightsSaturation = 16;
     curves.shadowsHue = 205;
-    curves.shadowsDensity = isNight ? 24 : 14;
-    curves.shadowsSaturation = 14;
+    curves.shadowsDensity = isNight ? 24 : 8;
+    curves.shadowsSaturation = isNight ? 14 : 7;
     ipc.colorCurves = curves;
     ipc.colorCurvesEnabled = true;
     if (this.graphics.pipeline) {
@@ -2354,7 +2395,7 @@ export class SkyArchipelagoWorld {
 
     // Crisp atmospheric perspective haze preserving layered Interbellum island silhouettes
     this.scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-    this.scene.fogColor = c3(isNight ? '#162034' : isStorm ? '#625856' : isDawn ? '#dcd4c4' : '#d2cfc2');
+    this.scene.fogColor = c3(isNight ? '#162034' : isStorm ? '#625856' : isDawn ? '#dcd4c4' : '#b8cde1');
     this.scene.fogDensity = isNight ? 0.00044 : isStorm ? 0.00048 : isDawn ? 0.00024 : 0.00025;
 
     // Lightweight 1-draw-call Anamorphic Sun Flare Billboard (cinematic glow with zero bloom cost!)
@@ -2419,7 +2460,7 @@ export class SkyArchipelagoWorld {
 
     // 2. Single High-Efficiency Sunset Cloud Sea layer below the islands (halves full-screen overdraw!)
     const seaLayers = [
-      { y: -135, scale: 0.0018, opacity: 0.94 },
+      { y: -135, scale: 0.0035, opacity: 0.72 },
     ];
     seaLayers.forEach((sl, idx) => {
       const plane = BABYLON.MeshBuilder.CreateGround(`archCloudSea_${idx}`, { width: 14000, height: 14000, subdivisions: 2 }, this.scene);
@@ -2433,7 +2474,7 @@ export class SkyArchipelagoWorld {
         {
           defines:['#define IMAGEPROCESSINGPOSTPROCESS'],
         attributes: ['position', 'uv'],
-          uniforms: ['world', 'worldViewProjection', 'uTime', 'uScale', 'uOpacity', 'uCamPos', 'uSunDir', 'uTimeOfDay'],
+          uniforms: ['world', 'worldViewProjection', 'uTime', 'uScale', 'uOpacity', 'uCamPos', 'uSunDir', 'uTimeOfDay', 'uCloudVolume'],
           needAlphaBlending: true,
         }
       );
@@ -2443,10 +2484,13 @@ export class SkyArchipelagoWorld {
       mat.setVector3('uCamPos', new BABYLON.Vector3(0, 40, 0));
       mat.setVector3('uSunDir', this.sunDir);
       mat.setFloat('uTimeOfDay', this.timeOfDay);
+      mat.setFloat('uCloudVolume', this.scene.metadata?.graphicsQuality === 'low' ? 0 : 1);
       mat.backFaceCulling = false;
       plane.material = mat;
       this.cloudSeaMats.push(mat);
     });
+
+    this._buildCloudBanks();
 
     // 3. Drifting Low-Altitude Sunlit Mist Wisps woven between the floating islands (fly-through atmosphere!)
     if (!(this.scene.getEngine() instanceof BABYLON.NullEngine)) {
@@ -2497,6 +2541,41 @@ export class SkyArchipelagoWorld {
         wisp.checkCollisions = false;
         this.cloudClusters.push({ node: wisp, speed: mSpd });
       });
+    }
+  }
+
+  _buildCloudBanks() {
+    const B = BABYLON;
+    if (this.scene.getEngine() instanceof B.NullEngine) return;
+
+    const texture = new B.Texture('./assets/textures/nomad/ivory-cloud-bank-v1.webp', this.scene);
+    texture.hasAlpha = true;
+    texture.wrapU = texture.wrapV = B.Texture.CLAMP_ADDRESSMODE;
+    const material = new B.StandardMaterial('archCloudBankMaterial', this.scene);
+    material.emissiveTexture = texture;
+    material.opacityTexture = texture;
+    material.diffuseColor = B.Color3.Black();
+    material.specularColor = B.Color3.Black();
+    material.disableLighting = true;
+    material.disableDepthWrite = true;
+    material.backFaceCulling = false;
+    this.cloudBankMaterial = material;
+
+    const placements = [
+      [-240,-15,410,395,156], [86,-43,380,420,168], [326,-42,275,355,142],
+      [484,26,535,480,202], [-495,42,562,490,202], [172,39,738,480,230],
+      [370,-41,-320,430,186], [-400,-51,-340,390,161], [57,-50,-485,454,178],
+      [-120,-78,180,265,106], [178,-82,-165,295,112],
+    ];
+    for (const [index, [x,y,z,width,height]] of placements.entries()) {
+      const bank = B.MeshBuilder.CreatePlane(`archCloudBank_${index}`, { width, height }, this.scene);
+      bank.position.set(x,y,z);
+      bank.billboardMode = B.Mesh.BILLBOARDMODE_Y;
+      bank.material = material;
+      bank.isPickable = false;
+      bank.renderingGroupId = 0;
+      if (index % 2 === 1) bank.scaling.x = -1;
+      this.cloudClusters.push({ node:bank, speed:1.1 + (index % 3) * .33 });
     }
   }
 
@@ -2765,7 +2844,6 @@ export class SkyArchipelagoWorld {
     const core = BABYLON.MeshBuilder.CreatePolyhedron('relicAstrolabeCoreGlow', { type: 2, size: 3.4 }, this.scene);
     core.parent = astrolabe;
     core.material = aetherMat;
-    core.alwaysSelectAsActiveMesh = true;
     this.relicRings.push({ mesh: core, vx: 0.45, vy: 0.75, vz: 0.25 });
 
     [13.5, 19.5, 25.5].forEach((diam, idx) => {
@@ -2773,7 +2851,6 @@ export class SkyArchipelagoWorld {
       ring.parent = astrolabe;
       ring.rotation.set(idx * 0.55, idx * 0.9, idx * 0.35);
       ring.material = idx === 1 ? brassMat : rustMat;
-      ring.alwaysSelectAsActiveMesh = true;
       makeSolid(ring);
       this.relicRings.push({ mesh: ring, vx: (idx % 2 ? 0.28 : -0.22), vy: 0.34 * (idx - 1), vz: (idx === 1 ? 0.32 : -0.18) });
     });
@@ -2785,7 +2862,6 @@ export class SkyArchipelagoWorld {
       pillar.position.set(Math.cos(ang) * 16.5, Math.sin(k * 1.7) * 2.5, Math.sin(ang) * 16.5);
       pillar.rotation.set(0.18, -ang, 0.22);
       pillar.material = stoneMat;
-      pillar.alwaysSelectAsActiveMesh = true;
       makeSolid(pillar);
     }
 
@@ -2810,7 +2886,6 @@ export class SkyArchipelagoWorld {
       span.position.set(bx, (idx === 1 ? 1.8 : -1.2), (idx - 1) * 1.6);
       span.rotation.set((idx - 1) * 0.08, (idx % 2 ? 0.09 : -0.07), (idx - 1) * 0.14);
       span.material = stoneMat;
-      span.alwaysSelectAsActiveMesh = true;
       makeSolid(span);
 
       const pier = BABYLON.MeshBuilder.CreateBox(`relicBridgePier_${idx}`, { width: 3.4, height: 14.0, depth: 5.8 }, this.scene);
@@ -2818,7 +2893,6 @@ export class SkyArchipelagoWorld {
       pier.position.set(bx - 3.5, -7.5, (idx - 1) * 1.6);
       pier.rotation.z = (idx - 1) * 0.11;
       pier.material = rustMat;
-      pier.alwaysSelectAsActiveMesh = true;
       makeSolid(pier);
 
       const lamp = BABYLON.MeshBuilder.CreateSphere(`relicBridgeLampGlow_${idx}`, { diameter: 1.2, segments: 8 }, this.scene);
@@ -2840,7 +2914,6 @@ export class SkyArchipelagoWorld {
     const spireTower = BABYLON.MeshBuilder.CreateCylinder('relicSpireBody', { diameterTop: 2.6, diameterBottom: 6.8, height: 26, tessellation: 10 }, this.scene);
     spireTower.parent = spireNode;
     spireTower.material = rustMat;
-    spireTower.alwaysSelectAsActiveMesh = true;
     makeSolid(spireTower);
     for (const ry of [-6, 2, 9]) {
       const collar = BABYLON.MeshBuilder.CreateTorus(`relicSpireCollarGlow_${ry}`, { diameter: 6.4, thickness: 0.45, tessellation: 20 }, this.scene);
@@ -3078,7 +3151,11 @@ export class SkyArchipelagoWorld {
     }
     for (const mat of this.cloudSeaMats) {
       mat.setFloat('uTime', this.simTime);
+      mat.setFloat('uCloudVolume', this.scene.metadata?.graphicsQuality === 'low' ? 0 : 1);
       if (cameraPos) mat.setVector3('uCamPos', cameraPos);
+    }
+    if (this.cloudBankMaterial) {
+      this.cloudBankMaterial.alpha = this.timeOfDay < .1 ? .17 : this.timeOfDay < .4 ? .57 : .95;
     }
     for (const cl of this.cloudClusters) {
       cl.node.position.x += cl.speed * dt;
@@ -3120,7 +3197,7 @@ export class SkyArchipelagoWorld {
       this.vagabondBase.lsoArms[0].rotation.z = 0.35 + w * 0.55;
       this.vagabondBase.lsoArms[1].rotation.z = -0.35 - w * 0.55;
     }
-    if (this.vagabondBase?.mainTurrets?.length) {
+    if (this.vagabondBase?.mainTurrets?.length && !this.vagabondBase.missionBatteryControlled) {
       this.vagabondBase.mainTurrets.forEach((t, idx) => {
         t.yawPivot.rotation.y = Math.sin(this.simTime * 0.22 + idx * 0.8) * 0.36;
         t.pitchPivot.rotation.z = -(t.baseElev + Math.sin(this.simTime * 0.35 + idx) * 0.04);

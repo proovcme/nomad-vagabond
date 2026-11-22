@@ -773,6 +773,11 @@ export class AsteroidBase {
   /**
    * Direct manual piloting of the Asteroid Base between planets.
    */
+  pilotForward() {
+    const heading = this.group.rotation.y + (this.pilotHeadingOffset ?? 0);
+    return new BABYLON.Vector3(Math.sin(heading), 0, Math.cos(heading));
+  }
+
   applyPilotInput(keys, dt) {
     let thrusting = false;
     const turnSpeed = 0.75;
@@ -785,7 +790,7 @@ export class AsteroidBase {
       thrusting = true;
     }
 
-    const fwd = new BABYLON.Vector3(Math.sin(this.group.rotation.y), 0, Math.cos(this.group.rotation.y));
+    const fwd = this.pilotForward();
     const boost = keys['ShiftLeft'] || keys['ShiftRight'] ? 1.85 : 1.0;
     const accel = 15.5 * boost;
 

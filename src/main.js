@@ -1,3 +1,5 @@
+import { FogPassage } from './levels/fogPassage.js';
+import { RADIO_CUES, CALLSIGNS } from './levels/passageRadio.js';
 import { BakedLighting } from './bakedLighting.js?v=mission1';
 import { HangarFleet } from './hangarFleet.js?v=mission1';
 import { AircraftJobs } from './aircraftJobs.js?v=mission1';
@@ -183,7 +185,8 @@ const defeatModal = document.getElementById('defeat-modal');
 const victoryModal = document.getElementById('victory-modal');
 const seedInput = document.getElementById('seed-input');
 
-function initWorld(seedStr, { menuPreview = false } = {}) {
+function initWorld(seedStr, { menuPreview = false, fogMission = false } = {}) {
+  audio.stopPassageRadio?.();
   if (scene) {
     scene.dispose();
   }
@@ -229,7 +232,7 @@ function initWorld(seedStr, { menuPreview = false } = {}) {
       construction.restoreSavedState();
     }
     islandOrigin = asteroidBase.group.position.clone();
-    safeZone = islandOrigin.add(new BABYLON.Vector3(0, 0, 180));
+    safeZone = islandOrigin.add(asteroidBase.pilotForward().scale(180));
     atmosphereFX = new AtmosphereFX(scene, {
       theme: activeMissionTheme,
       asteroidBase,
@@ -352,23 +355,24 @@ function initWorld(seedStr, { menuPreview = false } = {}) {
       smokeTimer: 0,
     };
 
+    if (fogMission) demoState.passage=new FogPassage(scene,world,asteroidBase,explosionEffects.smokeTexture);
     if (!shotMode) {
       asteroidBase.enginePower = 0.15;
       player.boardShip();
-      ship.undockFromAsteroid();
-      ship.hull = 42;
+      ship.undockFromAsteroid({force:true});
+      ship.hull = fogMission ? ship.maxHull : 42;
       ship.fuel = 80;
       ship.throttle = 0.62;
       const vPos = asteroidBase.group.position;
-      const startPos = vPos.add(new BABYLON.Vector3(1200, 95, -360));
-      const firstGate = ringPositions[0];
+      const startPos = demoState.passage?.start || vPos.add(new BABYLON.Vector3(1200, 95, -360));
+      const firstGate = demoState.passage?.fix.position || ringPositions[0];
       ship.group.position.copyFrom(startPos);
       const fwd = firstGate.subtract(startPos).normalize();
       ship.group.rotationQuaternion = aircraftHeading(fwd);
       ship.velocity.copyFrom(fwd.scale(30));
       controlMode = 'aircraft';
       ui.setMode('aircraft');
-      prologue = new Prologue(camera, ship, asteroidBase);
+      prologue = new Prologue(camera, ship, asteroidBase, demoState.passage);
     }
   }
 
@@ -422,10 +426,25 @@ if (shotMode && worldMode === 'sky') {
     camera.position.set(1000,120,-300);camera.setTarget(camera.position.add(new BABYLON.Vector3(-900,280,-180)));camera.fov=.95;
   } else if (['arch_turret','arch_radar','arch_fleet','arch_crane','arch_runway'].includes(shotMode)) {
     player.boardShip();controlMode='aircraft';ui.setMode('aircraft');
-    const poses={arch_runway:{at:[22,3.4,0],from:[43,17,21]},arch_turret:{at:[16,17,25],from:[30,22,40]},arch_radar:{at:[14,20,-26],from:[31,25,-44]},arch_fleet:{at:[-23,8,11],from:[7,11,6]},arch_crane:{at:[16,18,-10],from:[60,32,40]}};
+    const poses={arch_runway:{at:[22,3.4,0],from:[43,17,21]},arch_turret:{at:[16,17,25],from:[30,22,40]},arch_radar:{at:[14,20,-26],from:[31,25,-44]},arch_fleet:{at:[-24,5.5,11],from:[.4,9.1,10.9]},arch_crane:{at:[16,18,-10],from:[60,32,40]}};
     const p=poses[shotMode],origin=shotMode==='arch_crane'?iPos:vPos;camera.position.copyFrom(origin.add(new BABYLON.Vector3(...p.from)));camera.setTarget(origin.add(new BABYLON.Vector3(...p.at)));camera.fov=shotMode==='arch_fleet'?1.1:.85;
     if(shotMode==='arch_fleet'){world.fleet?.setActiveVariant(null);ship.group.setEnabled(false);}
     if(shotMode==='arch_radar')demoState.powerOn=true;
+  } else if (shotMode === 'arch_airframe') {
+    player.boardShip(); controlMode = 'aircraft'; ui.setMode('aircraft');
+    const parked = world.fleet?.records.find(entry => entry.variant === urlParams.get('airframe')) || world.fleet?.records.find(entry => entry.variant === 'fighter');
+    if (parked) {
+      world.fleet.setActiveVariant(null); ship.group.setEnabled(false);
+      const side = parked.z > 10 ? -1 : 1;
+      const offsets = {
+        fighter: [-3.6, 6.7, 7.2], attacker: [4.4, 6.2, 7.8],
+        cargo: [-3.9, 7.2, 8.4], bomber: [-4.5, 7.6, 8.8],
+      };
+      const offset = offsets[parked.variant];
+      camera.position.copyFrom(vPos).addInPlace(new BABYLON.Vector3(parked.x + offset[0], offset[1], parked.z + side * offset[2]));
+      camera.setTarget(vPos.add(new BABYLON.Vector3(parked.x + .6, 5.05, parked.z)));
+      camera.fov = .87;
+    }
   } else if (shotMode === 'arch_hangar') {
     player.boardShip();controlMode='aircraft';ui.setMode('aircraft');
     camera.position.copyFrom(vPos).addInPlace(new BABYLON.Vector3(17,8,6));camera.setTarget(vPos.add(new BABYLON.Vector3(-12,8,-1)));camera.fov=.95;
@@ -440,13 +459,20 @@ if (shotMode && worldMode === 'sky') {
     camera.upVector.set(0, 1, 0);
     camera.setTarget(new BABYLON.Vector3(20, 28, -210));
     camera.fov = 1.04;
+  } else if (shotMode === 'arch_cruiser_detail') {
+    player.boardShip();
+    controlMode = 'aircraft';
+    ui.setMode('aircraft');
+    camera.position.copyFrom(vPos).addInPlace(new BABYLON.Vector3(11, 32, -52));
+    camera.setTarget(vPos.add(new BABYLON.Vector3(-25, 17, -13)));
+    camera.fov = .88;
   } else if (shotMode === 'arch_vagabond') {
     player.boardShip();
     controlMode = 'aircraft';
     ui.setMode('aircraft');
-    camera.position.copyFrom(vPos).addInPlace(new BABYLON.Vector3(88, 34, 72));
+    camera.position.copyFrom(vPos).addInPlace(new BABYLON.Vector3(-134, 49, -150));
     camera.upVector.set(0, 1, 0);
-    camera.setTarget(vPos.add(new BABYLON.Vector3(6, 5, 0)));
+    camera.setTarget(vPos.add(new BABYLON.Vector3(-54, 13, 0)));
     camera.fov = 0.88;
   } else if (shotMode === 'arch_forest') {
     player.boardShip();
@@ -885,12 +911,17 @@ if (shotMode && worldMode === 'sky') {
   const aspect=engine.getAspectRatio(camera);
   if(aspect<1.25){camera.fovMode=BABYLON.Camera.FOVMODE_HORIZONTAL_FIXED;camera.fov=Math.min(1.35,camera.fov*1.25);}
 }
-if (shotMode && urlParams.get('hud') === '0') ui.showHUD(false);
+if (shotMode && urlParams.get('hud') === '0') {
+  ui.showHUD(false);
+  for (const mesh of scene.meshes) {
+    if (mesh.name.startsWith('artifactBeacon_')) mesh.isVisible = false;
+  }
+}
 
 async function startRun(seedStr, { skipPrologue = false } = {}) {
   const generation = ++runGeneration;
   audio.init();
-  initWorld(seedStr);
+  initWorld(seedStr,{fogMission:!skipPrologue && !activeMissionId});
   menuOverlay.style.display = 'none';
   defeatModal.style.display = 'none';
   victoryModal.style.display = 'none';
@@ -907,19 +938,18 @@ async function startRun(seedStr, { skipPrologue = false } = {}) {
     if (r.status === 'rejected') console.warn('[startRun] Asset/subsystem load warning:', r.reason);
   }
   if (generation !== runGeneration) return;
-  // Texture upload/shader compilation completes before the opening's clock starts.
-  await scene.whenReadyAsync();
-  if (generation !== runGeneration) return;
+  // Hidden and distant meshes compile lazily. Gameplay only depends on the assets above.
   // The menu's Enter/Space must never skip the opening or fire on handoff.
   ship.keys = {};
   gameState = 'playing';
   ui.showHUD(!prologue || skipPrologue);
-  if (prologue && !skipPrologue) prologue.frame(0);
+  if (prologue && !skipPrologue) {prologue.frame(0);if(demoState.passage)passageRadio('chase');}
 }
 
 function finishPrologue() {
   if (!demoState || demoState.stage !== 'intro_cutscene') return;
-  demoState.stage = 'tutorial_flight';
+  demoState.stage = demoState.passage ? 'fog_search' : 'tutorial_flight';
+  if(demoState.passage) passageRadio('escape');
   demoState.tutorialTimer = 0;
   introSkipRequested = false;
   ship.keys = {};
@@ -1273,7 +1303,7 @@ document.getElementById('hangar-start-btn').addEventListener('click',async()=>{
   activeMissionId = null;
   activeMissionTheme = 'sunset';
   hideCombatOverlays();
-  const generation=runGeneration+1;await startRun(seedInput.value);if(generation!==runGeneration)return;
+  const generation=runGeneration+1;await startRun(seedInput.value,{skipPrologue:true});if(generation!==runGeneration)return;
   demoState.freeFlight=true;demoState.powerOn=true;demoState.stage='free_flight';prologue?.hide();document.body.classList.remove('in-prologue');
   construction.stage=null;construction.addSalvage(40);for(const [i,type]of ['generator','turret','radar'].entries())construction.build(type,i);
   world.fleet.parkActive(ship);player.placeOnAsteroid(asteroidBase,new BABYLON.Vector3(-18,3.38,10));controlMode='foot';ui.setMode('foot');ui.showHUD(true);
@@ -1423,7 +1453,7 @@ document.getElementById('new-seed-defeat-btn').addEventListener('click', () => {
 });
 document.getElementById('new-seed-victory-btn').addEventListener('click', () => {
   victoryModal.style.display = 'none';
-  const nextId = activeMissionId ? LEVEL_REGISTRY[activeMissionId]?.nextLevelId : null;
+  const nextId = demoState?.passage ? 'dreadnought' : LEVEL_REGISTRY[activeMissionId]?.nextLevelId;
   if (nextId && LEVEL_REGISTRY[nextId]) {
     startStandaloneMission(nextId);
   } else {
@@ -1438,6 +1468,7 @@ document.getElementById('menu-victory-btn').addEventListener('click', () => {
   ui.showHUD(false);
   hideCombatOverlays();
   menuOverlay.style.display = 'flex';
+  audio.stopPassageRadio();
   gameState = 'menu';
 });
 
@@ -1477,17 +1508,35 @@ document.getElementById('pause-menu-btn').addEventListener('click', () => {
   ui.showHUD(false);
   hideCombatOverlays();
   menuOverlay.style.display = 'flex';
+  audio.stopPassageRadio();
   gameState = 'menu';
 });
 
 // Keyboard navigation for Main Menu
 let menuFocusIdx = 0;
 const menuBtns = Array.from(document.querySelectorAll('#menu-nav .menu-item'));
+const atlasDialog=document.createElement('dialog');
+atlasDialog.style.cssText='padding:0;border:2px solid #a18d65;width:min(1060px,94vw);height:86vh;background:#efe2c8';
+document.body.append(atlasDialog);
+let atlasFrame;
+function openAtlas(){
+  if(!atlasFrame){
+    atlasFrame=document.createElement('iframe');atlasFrame.title='Атлас интербеллума';
+    atlasFrame.src='./src/content/atlas.html';atlasFrame.style.cssText='width:100%;height:100%;border:none';atlasDialog.append(atlasFrame);
+  }
+  atlasDialog.showModal();atlasFrame.focus();
+}
+document.getElementById('atlas-menu').onclick=openAtlas;
+document.getElementById('atlas-pause').onclick=openAtlas;
+window.addEventListener('message',e=>{
+  if(e.origin===location.origin && e.source===atlasFrame?.contentWindow && e.data==='nomad:close-atlas' && atlasDialog.open)atlasDialog.close();
+});
 function setMenuFocus(idx) {
   menuFocusIdx = (idx + menuBtns.length) % menuBtns.length;
   menuBtns.forEach((b, i) => b.classList.toggle('selected', i === menuFocusIdx));
 }
 window.addEventListener('keydown', (e) => {
+  if(atlasDialog.open)return;
   if (gameState === 'menu' && document.activeElement !== seedInput) {
     if (e.code === 'ArrowDown' || e.code === 'KeyS') {
       e.preventDefault();
@@ -1540,7 +1589,7 @@ window.addEventListener('keydown', (e) => {
   }
 
   if (gameState !== 'playing' || demoState?.stage === 'intro_cutscene' || construction?.isOpen) return;
-  if (e.code === 'KeyB' && controlMode === 'foot' && demoState?.powerOn) {
+  if (e.code === 'KeyB' && !demoState?.passage && controlMode === 'foot' && demoState?.powerOn) {
     openConstruction();
     return;
   }
@@ -1568,6 +1617,7 @@ window.addEventListener('keydown', (e) => {
     }
   }
 
+  if (demoState?.passage && ['KeyG','Digit2','KeyT','KeyB'].includes(e.code)) return;
   if (e.code === 'KeyG' && (!demoState || !['find_lever', 'build_generator', 'build_defense', 'board_fighter'].includes(demoState.stage))) {
     if (controlMode === 'missile_cam') {
       if (controlledHeavyMissile) controlledHeavyMissile.manual = false;
@@ -1584,7 +1634,7 @@ window.addEventListener('keydown', (e) => {
       player.placeOnAsteroid(asteroidBase, asteroidBase.helmLocalPos.add(new BABYLON.Vector3(0, 0, 1.5)));
       controlMode = 'foot';
       ui.setMode('foot');
-      ui.showToast('🧭 Вы отошли от штурвала астероида «Бродяга»', 2200);
+      ui.showToast('Вы отошли от штурвала «Бродяги»', 2200);
     } else if (controlMode === 'drive' || controlMode === 'water' || (controlMode === 'aircraft' && ship.dockedAsteroid)) {
       player.disembarkFromShip(ship);
       controlMode = 'foot';
@@ -1650,7 +1700,7 @@ function updateInteractions() {
 
   if (demoState && missionInteraction()) return;
   if (controlMode === 'asteroid') {
-    nearestAction = { label: '[G] Вернуться в ангар', execute: () => {} };
+    nearestAction = { label: 'W — ход · A/D — руль · S — тормоз · Space/C — высота · G — отойти', execute: () => {} };
     ui.setPrompt(nearestAction.label);
     return;
   }
@@ -1678,7 +1728,7 @@ function updateInteractions() {
       const isLandingPhase = Boolean(demoState && worldMode === 'sky' && !ship._runwayState);
       const dockRadius = isLandingPhase ? 100.0 : 11.0;
       const maxDockSpd = isLandingPhase ? 38.0 : 18.0;
-      if (distPad < dockRadius && relPadSpeed < maxDockSpd) {
+      if (distPad < dockRadius && relPadSpeed < maxDockSpd && (!demoState?.passage || demoState.stage==='approach')) {
         const doLand = () => {
           ship.dockOnAsteroid(asteroidBase);
           audio?.playDock?.();
@@ -1695,7 +1745,7 @@ function updateInteractions() {
                 : !demoState.powerOn
                   ? 'Ты на месте! Остров обесточен. Включи аварийный рубильник у входа в ангар.'
                   : 'Отличная посадка! В ангаре доступны другие машины и верстак.';
-            ui.showRadio('dispatcher', landingMsg, 5600);
+            if(demoState.passage)passageRadio('landed');else ui.showRadio('dispatcher', landingMsg, 5600);
           } else {
             ui.showToast('🪨 Стыковка с базой «Бродяга»! [G] — выйти на палубу.', 3200);
           }
@@ -1714,6 +1764,7 @@ function updateInteractions() {
       }
     }
 
+    if(demoState?.passage)return;
     // Check landing zones on ForestIsland ("Изумрудный Утёс") & IndustrialIsland ("Ржавый Док")
     if (worldMode === 'sky' && world.islands) {
       for (const isl of world.islands) {
@@ -2016,11 +2067,27 @@ function missionInteraction() {
   if (stage === 'find_lever' && near(demoState.leverNode.getAbsolutePosition())) {
     return action('[E] Включить аварийное питание', () => {
       demoState.powerOn = true;
+      if(demoState.passage){
+        demoState.stage='fog_start';demoState.leverBeaconMat.emissiveColor=BABYLON.Color3.FromHexString('#45df9a');
+        audio.playUpgrade();passageRadio('power');return;
+      }
       demoState.stage = 'build_generator';
       demoState.leverBeaconMat.emissiveColor = BABYLON.Color3.FromHexString('#45df9a');
       audio.playUpgrade();
       ui.showRadio('dispatcher', 'Аварийное питание есть. Основной генератор потерян. Поднимайся грузовым лифтом и поставь новый: в запасе 80 единиц лома.', 6500);
     });
+  }
+  if(demoState.passage){
+    if(stage==='fog_start' && near(deckPoint(...asteroidBase.helmLocalPos.asArray()),3.6))
+      return action('[E] Запустить подъёмные машины',()=>{
+        demoState.stage='fog_lift';audio.playPassageSound('starter');passageRadio('ignite');
+      });
+    if(stage==='fog_battery')
+      return action('[E] Дать залп главным калибром',()=>{
+        demoState.stage='fog_salvo';demoState.passage.fire(scene,asteroidBase,spawnDemoExplosion);
+        audio.playPassageSound('broadside');
+      });
+    return true;
   }
   const onUpper = player.localPos.y > 14;
   const liftPoint = onUpper ? deckPoint(-8, 21.73, 6.5) : deckPoint(-8, 3.38, 6.5);
@@ -2077,11 +2144,13 @@ function missionInteraction() {
       });
     }
   }
-  if (stage === 'take_helm' && near(deckPoint(-2.6, 3.38, -2.4), 5)) {
-    return action('[E] Встать за штурвал острова', () => {
+  if (['take_helm', 'free_flight'].includes(stage) && near(deckPoint(...asteroidBase.helmLocalPos.asArray()), 4.5)) {
+    return action('[E] Взять штурвал «Бродяги»', () => {
       player.boardShip(); controlMode = 'asteroid'; ui.setMode('asteroid');
-      demoState.stage = 'move_island';
-      ui.showRadio('dispatcher', 'Теперь остров твой. W — ход, A/D — курс, S — торможение. Доведи «Бродягу» в безопасный сектор по компасу и останови.', 7000);
+      if (stage === 'take_helm') {
+        demoState.stage = 'move_island';
+        ui.showRadio('dispatcher', 'Доведи «Бродягу» в безопасный сектор по компасу и остановись.', 5500);
+      }
     });
   }
   // Allow player to man any Flak 88 anti-aircraft gun on foot!
@@ -2251,8 +2320,42 @@ function checkMissionClear() {
   return false;
 }
 
+function passageRadio(id) {
+  const {speaker,text,clip,recordedText}=RADIO_CUES[id];
+  ui.showRadio(speaker,text,6500,CALLSIGNS[speaker]);
+  if(clip && text===recordedText)audio.playPassageRadio(clip);
+  else audio.stopPassageRadio();
+}
+
+function updateFogMission(dt) {
+  const mission=demoState.passage,stage=demoState.stage;
+  if(stage==='intro_cutscene')return;
+  if(!['fog_salvo','mission_complete'].includes(stage)){
+    mission.pursue(dt,ship,asteroidBase,controlMode==='aircraft',spawnDemoExplosion,()=>{
+      ship.hull=Math.max(0,ship.hull-12);ship.recoilShake=.45;audio.playExplosion(.65);
+      ui.showToast('Осколки у крыла! Увеличьте тягу и смените курс.',2700);checkWinLose();
+    });
+  }
+  if(stage==='fog_search'){
+    const report=mission.search(ship.group.position,asteroidBase);
+    if(report==='found'){demoState.stage='approach';passageRadio('found');}
+    else if(report==='bearing' && mission.fixes[mission.index-1].cue)passageRadio(mission.fixes[mission.index-1].cue);
+  }
+  if(stage==='fog_lift' && mission.lift(dt,asteroidBase)){
+    demoState.stage='fog_battery';passageRadio('battery');
+  }
+  if(stage==='fog_salvo' && mission.resolveSalvo(dt,spawnDemoExplosion)){
+    demoState.stage='mission_complete';demoState.kills=1;passageRadio('clear');
+    saveMissionRecord('prologue',runTime,1);audio.playVictory();gameState='victory';ui.showHUD(false);
+    document.getElementById('victory-title').textContent='«Бродяга» снова в строю';
+    document.getElementById('victory-stats').textContent='Крейсер снялся с камней. Эсминец уничтожен одним залпом.';
+    victoryModal.style.display='flex';
+  }
+}
+
 function updateMission(dt) {
   if (!demoState || freezeCameraForShot) return;
+  if(demoState.passage)updateFogMission(dt);
   const state = construction.snapshot;
   if (!demoState.seenShipyard && world.landmarks && ['tutorial_flight','archipelago_flyby'].includes(demoState.stage) && BABYLON.Vector3.Distance(ship.group.position,world.landmarks.root.position)<230) {
     demoState.seenShipyard=true;
@@ -2498,7 +2601,10 @@ function updateMission(dt) {
     }
   }
   let target = null, name = '';
-  if (['tutorial_flight', 'archipelago_flyby'].includes(stage)) {
+  if(stage==='fog_search'){target=demoState.passage.fix.position;name=demoState.passage.fix.name;}
+  else if(stage==='fog_start'){target=deckPoint(...asteroidBase.helmLocalPos.asArray());name='Пусковой пульт';}
+  else if(stage==='fog_battery'){target=demoState.passage.escort.position;name='Эсминец';}
+  else if (['tutorial_flight', 'archipelago_flyby'].includes(stage)) {
     target = deckPoint(36,7,0); name = 'Остров «Бродяга» · посадочная полоса';
   } else if (['approach', 'return_to_base'].includes(stage)) { target = deckPoint(36, 7, 0); name = 'ВПП · S снизить скорость · E посадка';
   } else if (stage === 'find_lever') { target = demoState.leverNode.getAbsolutePosition(); name = 'Аварийный рубильник';
@@ -2509,13 +2615,17 @@ function updateMission(dt) {
     if (aliveFighter) { target = aliveFighter.root.position; name = 'Воздушная цель'; }
     else if (demoState.dreadnought?.alive) { target = demoState.dreadnought.root.position; name = demoState.dreadnought.name || 'Дредноут'; }
     else if (demoState.enemyIsland?.alive) { target = demoState.enemyIsland.root.position; name = 'Остров-крепость «Монолит»'; }
-  } else if (stage === 'take_helm') {target = player.localPos.y > 14 ? deckPoint(-8,22,6.5) : deckPoint(-2.6,4,-2.4); name = 'Штурвал острова';
+  } else if (stage === 'take_helm') {target = player.localPos.y > 14 ? deckPoint(-8,22,6.5) : deckPoint(...asteroidBase.helmLocalPos.asArray()); name = 'Штурвал «Бродяги»';
+  } else if (stage === 'free_flight' && controlMode === 'foot' && player.currentAsteroid) {
+    target = player.localPos.y > 14 ? deckPoint(-8,22,6.5) : deckPoint(...asteroidBase.helmLocalPos.asArray());
+    name = player.localPos.y > 14 ? 'Подъёмник в ангар' : 'Штурвал «Бродяги»';
   } else if (stage === 'move_island') {target = safeZone; name = 'Безопасный сектор · остановитесь у маяка';}
   const contractTarget=controlMode==='aircraft'&&(world.jobs?.snapshot.active||world.jobs?.snapshot.stage==='complete')&&world.jobs.snapshot.variant===ship.variant?world.jobs.target:null;
   if(contractTarget){target=contractTarget.position;name=contractTarget.name;}
   world.missionTarget = target ? {position:target, name} : null;
   if (demoState.marker) {
-    demoState.marker.isVisible = Boolean(target) && stage !== 'intro_cutscene' && !construction.isOpen;
+    const compassOnly = stage === 'fog_search' || stage === 'fog_battery' || stage === 'free_flight' && controlMode === 'foot';
+    demoState.marker.isVisible = Boolean(target) && stage !== 'intro_cutscene' && !compassOnly && !construction.isOpen;
     if (target) {demoState.marker.position.copyFrom(target); demoState.marker.rotation.y += dt * 0.4;}
     demoState.marker.scaling.setAll(controlMode === 'foot' ? 0.24 : (stage === 'move_island' ? 3 : 1));
   }
@@ -2526,7 +2636,14 @@ function getQuestState() {
     const state = construction?.snapshot;
     const lessons = demoState.flightLessons;
     const stages = {
-      free_flight: ['Ангар эскадрильи', 'E у самолёта — выбрать борт и задание. После вылета вернитесь и попробуйте другую машину.'],
+      free_flight: controlMode === 'asteroid'
+        ? ['Крейсер «Бродяга»', 'Задайте курс кораблю. G — вернуться в ангар.']
+        : ['Ангар эскадрильи', 'E у самолёта — выбрать борт и задание. E у штурвала в ангаре — вести крейсер.'],
+      fog_search: ['Уйти от эсминца · '+(demoState.passage?.fix.name||''), demoState.passage?.fix.hint+' W/S — тяга, A/D — курс, стрелки — высота.'],
+      fog_start: ['Запустить «Бродягу»','Подойдите к штурвалу в ангаре и нажмите E.'],
+      fog_lift: ['Подъём с острова','Машины набирают обороты.'],
+      fog_battery: ['Эсминец на прицеле','E — дать залп главным калибром.'],
+      fog_salvo: ['Залп «Бродяги»','Наблюдайте за целью.'],
       intro_cutscene: ['Пролог · Аварийный курс', 'Space — пропустить'],
       tutorial_flight: ['1 · Почувствовать самолёт', `${lessons.thrust ? '✓' : '○'} W/S тяга · ${lessons.turn ? '✓' : '○'} A/D курс · ${lessons.altitude ? '✓' : '○'} ↑/↓ высота. Держите курс на базу.`],
       archipelago_flyby: ['2 · К острову «Бродяга»', 'Держите курс на остров. У полосы удерживайте S, затем E для посадки.'],
@@ -2613,7 +2730,7 @@ engine.runRenderLoop(() => {
     world._skyLifeCtx = {
       playerPos: controlMode === 'foot' ? player.group.position : ship.group.position,
       camera,
-      isPlaying: true,
+      isPlaying: !freezeCameraForShot,
       ship,
       construction,
       ui,
@@ -2637,7 +2754,7 @@ engine.runRenderLoop(() => {
       for (const mesh of ship.group.getChildMeshes()) mesh.checkCollisions = controlMode === 'foot' && mesh.isVisible && !/Flame|Trail|Nozzle|Shadow|LightBulb/i.test(mesh.name);
     }
     construction?.update(dt, {controlMode, stage: demoState?.stage});
-    world.artifacts?.update(dt, controlMode === 'foot' ? player.group.position : ship.group.position, camera, true);
+    world.artifacts?.update(dt, controlMode === 'foot' ? player.group.position : ship.group.position, camera, !freezeCameraForShot);
     updateMission(dt);
 
     if (asteroidBase && !freezeCameraForShot) {
@@ -2646,7 +2763,10 @@ engine.runRenderLoop(() => {
         else asteroidBase.applyPilotInput(ship.keys, dt);
         questTakenOff = true;
       }
-      asteroidBase.update(dt, ship.keys, world);
+      if(demoState?.passage){
+        asteroidBase.prevPos.copyFrom(asteroidBase.group.position);asteroidBase.velocity.setAll(0);
+        if(demoState.passage.liftTime>0)asteroidBase.update(dt,null,world);
+      }else asteroidBase.update(dt, ship.keys, world);
     } else if (asteroidBase) {
       asteroidBase.prevPos.copyFrom(asteroidBase.group.position);
     }
@@ -2775,7 +2895,7 @@ engine.runRenderLoop(() => {
                 : !demoState.powerOn
                   ? 'Ты на месте! Остров обесточен. Включи аварийный рубильник у входа в ангар.'
                   : 'Отличная посадка! В ангаре доступны другие машины и верстак.';
-            ui.showRadio('dispatcher', landingMsg, 5600);
+            if(demoState.passage)passageRadio('landed');else ui.showRadio('dispatcher', landingMsg, 5600);
           }
         }
       }
@@ -2788,11 +2908,19 @@ engine.runRenderLoop(() => {
         if(ship.undockFromAsteroid()!==false)ui.showToast('Отрыв от полосы',1800);
       }
       if (controlMode === 'asteroid') {
-        const fwdA = new BABYLON.Vector3(Math.sin(asteroidBase.group.rotation.y), 0, Math.cos(asteroidBase.group.rotation.y));
-        const desiredCam = asteroidBase.group.position.subtract(fwdA.scale(95)).add(new BABYLON.Vector3(0, 52, 0));
+        const forward = asteroidBase.pilotForward();
+        const isCruiser = asteroidBase.pilotHeadingOffset !== undefined;
+        const target = asteroidBase.group.position.add(forward.scale(isCruiser ? 32 : 8));
+        target.y += 10;
+        const desiredCam = asteroidBase.group.position.subtract(forward.scale(isCruiser ? 135 : 95));
+        desiredCam.y += isCruiser ? 82 : 52;
+        if (isCruiser) {
+          desiredCam.x += forward.z * 160;
+          desiredCam.z -= forward.x * 160;
+        }
         BABYLON.Vector3.LerpToRef(camera.position, desiredCam, Math.min(1, dt * 4.5), camera.position);
         camera.upVector.set(0, 1, 0);
-        camera.setTarget(asteroidBase.group.position.add(fwdA.scale(8)).add(new BABYLON.Vector3(0, 10, 0)));
+        camera.setTarget(target);
       }
       if (controlMode === 'turret' && activeFlakRig?.yawNode && activeFlakRig?.pitchNode && !activeFlakRig.root.isDisposed?.()) {
         // First-person WWII Flak 88 manual aiming, recoil & 88mm shell firing!
@@ -3908,6 +4036,12 @@ engine.runRenderLoop(() => {
       player.update(dt, ship, world.simTime);
     }
 
+    if(demoState?.passage && ['fog_lift','fog_battery','fog_salvo'].includes(demoState.stage)){
+      const mission=demoState.passage, enemyView=demoState.stage==='fog_salvo' && mission.salvoTime>.65;
+      const subject=enemyView?mission.escort.position:asteroidBase.group.position;
+      camera.position.copyFrom(subject).addInPlaceFromFloats(enemyView?-95:-144,enemyView?39:61,enemyView?95:-145);
+      camera.setTarget(subject.add(new BABYLON.Vector3(enemyView?-10:-34,9,0)));camera.fov=.85;
+    }
     // Atmospheric perspective fog & adaptive day/sunset/night lighting (SolarWorld mode only)
     if (worldMode === 'space') {
       let inAtmo = false;

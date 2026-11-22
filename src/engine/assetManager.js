@@ -26,6 +26,13 @@ export const ASSET_MANIFEST = Object.freeze({
   nature_boulder:     { dir: './assets/benchmark/models/boulder_01/', file: 'boulder_01_1k.gltf', castShadow: false },
 });
 
+function assetSpec(assetId){
+    const workshop = /^workshop\/([-a-z0-9_]{1,50})$/.exec(assetId);
+    return ASSET_MANIFEST[assetId] || (workshop && {
+      dir:'./assets/workshop/', file:workshop[1]+'.glb', castShadow:true,
+    });
+}
+
 export class AssetManager {
   constructor(scene) {
     this.scene = scene;
@@ -37,7 +44,7 @@ export class AssetManager {
 
   async loadContainer(assetId) {
     if (this._disposed) return null;
-    const spec = ASSET_MANIFEST[assetId];
+    const spec=assetSpec(assetId);
     if (!spec) {
       console.warn(`[AssetManager] Unknown assetId: ${assetId}`);
       return null;
@@ -68,7 +75,7 @@ export class AssetManager {
   async instantiate(assetId, { parent = null, position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, shadowGenerator = null } = {}) {
     const container = await this.loadContainer(assetId);
     if (!container || this._disposed) return null;
-    const spec = ASSET_MANIFEST[assetId];
+    const spec=assetSpec(assetId);
     const holder = new BABYLON.TransformNode(`asset_${assetId}_${Date.now().toString(36)}`, this.scene);
     holder.parent = parent;
     holder.position.set(position[0] || 0, position[1] || 0, position[2] || 0);

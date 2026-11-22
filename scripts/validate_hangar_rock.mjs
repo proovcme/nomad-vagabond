@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Detect visible rock triangles penetrating the actual open hangar, not just coplanar faces. */
+/** Detect visible rock and cruiser plating triangles penetrating the actual open hangar, not just coplanar faces. */
 import fs from 'node:fs';import path from 'node:path';import assert from 'node:assert/strict';import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url);globalThis.BABYLON=require('../vendor/babylon.js');const B=BABYLON;
 Object.defineProperty(B.NullEngine,'name',{value:'NullEngine',configurable:true});
@@ -20,7 +20,7 @@ const world=new SkyArchipelagoWorld(scene,'AETHER-742'),base=new AsteroidBase(sc
 const findings=[],checked=[];
 for(const mesh of base.group.getChildMeshes()){
  if(!mesh.isEnabled()||!mesh.isVisible||mesh.visibility<.999)continue;
- if(!/vagStrata|vagabondUnifiedRockShell|vagCarrierRock|asteroidBaseRock|vagUpperMoss/.test(mesh.name)&&!/^vagabondRock|vagabondMossRock/.test(mesh.material?.name||''))continue;
+ if(!/vagStrata|vagabondUnifiedRockShell|vagCarrierRock|asteroidBaseRock|vagUpperMoss|cfSuperstructure|cfHangar.*Armor/.test(mesh.name)&&!/^vagabondRock|vagabondMossRock/.test(mesh.material?.name||''))continue;
  const positions=mesh.getVerticesData(B.VertexBuffer.PositionKind),indices=mesh.getIndices();if(!positions||!indices)continue;
  const matrix=mesh.computeWorldMatrix(true).multiply(baseInverse),vertices=[];let vertexHits=0,triangleHits=0;const examples=[];
  for(let i=0;i<positions.length;i+=3){const point=B.Vector3.TransformCoordinates(B.Vector3.FromArray(positions,i),matrix);vertices.push(point);if(inside(point)){vertexHits++;if(examples.length<8)examples.push({kind:'vertex',position:point.asArray()});}}
@@ -30,6 +30,6 @@ for(const mesh of base.group.getChildMeshes()){
  }
  const entry={mesh:mesh.name,vertices:vertices.length,triangles:indices.length/3,vertexHits,triangleHits,examples};checked.push(entry);if(vertexHits||triangleHits)findings.push(entry);
 }
-const report={date:new Date().toISOString(),status:findings.length?'fail':'pass',method:'Transform actual visible rock vertices, triangle centroids and edge midpoints into base coordinates and test against open room volume.',marginMetres:margin,bounds:HANGAR_BOUNDS,northFacadeX:2.4,selfTest:{interiorDetected:true,floorExcluded:true,northFacadeExteriorExcluded:true},checked,findings};
+const report={date:new Date().toISOString(),status:findings.length?'fail':'pass',method:'Transform actual visible rock and armor vertices, triangle centroids and edge midpoints into base coordinates and test against open room volume.',marginMetres:margin,bounds:HANGAR_BOUNDS,northFacadeX:2.4,selfTest:{interiorDetected:true,floorExcluded:true,northFacadeExteriorExcluded:true},checked,findings};
 const ri=process.argv.indexOf('--report'),output=path.resolve(ri>=0?process.argv[ri+1]:'artifacts/deploy-20261114/hangar-rock-validation.json');fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output,JSON.stringify(report,null,2)+'\n');
-console.log(`${findings.length?'FAIL':'PASS'} ${checked.length} visible rock meshes; ${findings.length} intruding meshes`);for(const f of findings)console.log(f.mesh,'vertices',f.vertexHits,'triangles',f.triangleHits,JSON.stringify(f.examples.slice(0,2)));console.log(`REPORT ${output}`);scene.dispose();engine.dispose();if(findings.length)process.exitCode=1;
+console.log(`${findings.length?'FAIL':'PASS'} ${checked.length} visible rock or armor meshes; ${findings.length} intruding meshes`);for(const f of findings)console.log(f.mesh,'vertices',f.vertexHits,'triangles',f.triangleHits,JSON.stringify(f.examples.slice(0,2)));console.log(`REPORT ${output}`);scene.dispose();engine.dispose();if(findings.length)process.exitCode=1;

@@ -50,6 +50,40 @@ export class SoundEngine {
     this._setupContinuousLoops();
   }
 
+  stopPassageRadio() {
+    this.passageGeneration=(this.passageGeneration||0)+1;
+    for(const source of this.passageSources||[])source.stop();
+    this.passageSources=new Set();
+    this.radioVoice=null;
+  }
+
+  playPassageRadio(id) {
+    this.radioRequest=(this.radioRequest||0)+1;
+    if(this.radioVoice){this.radioVoice.stop();this.radioVoice=null;}
+    this.playPassageSound(id,this.radioRequest);
+  }
+
+  async playPassageSound(id,radioRequest=null) {
+    if(!this.ctx)return;
+    this.passageCache ||= new Map();
+    this.passageSources ||= new Set();
+    const generation=this.passageGeneration;
+    try {
+      if(!this.passageCache.has(id))this.passageCache.set(id,(async()=>{
+        const response=await fetch('./assets/audio/fog-passage/'+id+'.mp3');
+        if(!response.ok)throw Error(response.status);
+        return this.ctx.decodeAudioData(await response.arrayBuffer());
+      })());
+      const buffer=await this.passageCache.get(id);
+      if(generation!==this.passageGeneration || (radioRequest!==null && radioRequest!==this.radioRequest))return;
+      const source=this.ctx.createBufferSource();
+      source.buffer=buffer;source.connect(this.masterGain);this.passageSources.add(source);
+      if(radioRequest!==null)this.radioVoice=source;
+      source.onended=()=>{this.passageSources.delete(source);if(this.radioVoice===source)this.radioVoice=null;source.disconnect();};
+      source.start();
+    }catch(error){this.passageCache.delete(id);console.warn('Mission audio unavailable',id,error);}
+  }
+
   _buildNoiseBuffer() {
     if (!this.ctx) return;
     const len = this.ctx.sampleRate * 2;

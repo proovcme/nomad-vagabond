@@ -61,6 +61,8 @@ B открывает вид сверху. ЛКМ выбирает свободн
 ### Four-aircraft hangar
 The menu’s «Ангар · свободный вылет» starts in the powered hangar with all four original aircraft. Walk to a plane and press E; the ground crew moves it onto the runway. W accelerates, Up/Space rotates, S brakes. Each variant has its own acceleration, rotation/liftoff speeds, mass and turn response. Cargo: hover and hold F to winch three crates, then land at home. Fighter: intercept two scouts. Attacker: destroy two flak positions. Bomber: bomb two fuel depots with F. The first tutorial mission remains a separate menu entry.
 
+The period airframes use the original GLBs with fitted canopy frames, variant-specific propeller spinners and period liveries. The original four pin-up designs in `assets/textures/nomad/squadron-nose-art.webp` were generated for this project and normalized into one alpha atlas. Preview with `?shot=arch_airframe&airframe=fighter&hud=0` or use `cargo`, `attacker` and `bomber`.
+
 Pre-release artifact gate: `node scripts/validate_artifacts.mjs`. Packaging runs it automatically.
 
 
@@ -68,3 +70,20 @@ Pre-release artifact gate: `node scripts/validate_artifacts.mjs`. Packaging runs
 Engine and glTF loader are self-hosted, pinned to Babylon.js8.56.2; provenance and checksums: `vendor/babylon-version.json`. No engine CDN request. Native procedural mesh indices use Babylon clockwise front faces with outward physical normals. The generated terrain/top and cave shell now follow the same convention as the engine’s built-in meshes.
 
 `node scripts/bake_static_lighting.mjs` traces24 cosine-weighted visibility rays and5 sun-disc rays at sampled vertices. Large walls/decks are subdivided at3m spacing without changing their shape. The offline cache covers27 static terrain/rock/architecture meshes of the shipped seed. PBR reads independent vertex irradiance and visibility attributes; repeated albedo UVs do not carry baked lighting. Moving carrier sunlight and aircraft remain dynamically lit. New procedural seeds compute missing vertex bakes in7ms work slices while loading. The cache is checked against all static occluder geometry before release. This is bounded diffuse occlusion, one-bounce colour transfer and static sun visibility, not full-scene path-traced GI; foliage, moving aircraft and newly constructed objects still rely on live lights/shadows.
+
+### Мастерская игры
+
+Запуск из корня проекта: `npm run workshop`. Адрес: <http://127.0.0.1:5191/workshop/>. Для предпросмотра нужны WebGL и современный настольный браузер. Сервер слушает только локальную машину.
+
+- **Модели и материалы.** Начните с катера, моноплана или острова. Редактируйте детали, размеры, сечения и покрытие. Сохраняйте исходники как `.nomad.json` в `workshop/projects/`. Экспорт GLB включает текстуры. Игровые GLB лежат в `assets/`, идентификаторы загрузчика — в `src/engine/assetManager.js`.
+- **Сценарий, сюжет, персонажи и радио.** В первой миссии точки заданы относительно корпуса крейсера. У точки можно выбрать реплику. Для новой озвучки положите MP3 в `assets/audio/fog-passage/`. Радио с изменённым текстом остаётся с субтитрами до синхронизации записи.
+- **Ролики и эффекты.** Предпросмотр использует ту же функцию камеры и те же эффекты взрывов, что и игра. Можно переставить планы, поменять якорь, координаты, длительность и поле зрения, просмотреть по времени и записать видео WebM. Модели в окне превиза показываются в постановочной сцене. Кнопка «В игру» открывает игровой свет, окружение и полёт.
+- **Сохранение.** «Записать в проект» обновляет `src/content/passage.js` после проверки связей и наличия записей. Игра читает этот файл при следующем открытии. Конфликт двух редакторов предлагает сохранить отдельный черновик. Новые главы в разделе «Сюжет» — рабочие записи; самостоятельные игровые механики реализуются в коде уровня.
+- **Атлас интербеллума.** Каталог и тексты находятся в `src/content/references.js`. Игрок открывает книгу из меню и паузы. В мастерской у каждой записи есть отдельная заметка для художника или сценариста. Фото ZR-3 и радиотелетайпа — Library of Congress, National Photo Company Collection, LC-DIG-ppmsca-40794 и LC-USZ62-42074, «No known restrictions on publication». Остальные карточки ведут к каталогам учреждений и издателя.
+- **Проверки.** `npm run workshop:check` проверяет связи, аудиофайлы, допустимые параметры сцен и заполнение атласа. Эта проверка входит в сборку игры. Инструменты разработки в публичную игровую сборку не копируются.
+
+Экспортёр GLB мастерской — официальный `babylonjs-serializers` 8.56.2, Apache-2.0 (см. `vendor/BABYLON-LICENSE.txt`).
+
+Для воспроизводимой сборки отдельной модели установите зависимости проекта (`npm install` и `npx playwright install chromium`). Команда `npm run asset:build -- workshop/projects/harbor-launch.nomad.json harbor-launch` создаёт GLB, исходник и PNG вида из мастерской и повторно открывает GLB загрузчиком Babylon. Модель доступна уровням как `workshop/harbor-launch` через обычный `AssetManager`. Для нового изделия используйте собственный ID; повторная сборка обновляет файлы этого ID.
+
+Браузерная проверка открытой мастерской: `npm run workshop:smoke`. Она записывает WebM, проверяет анимации персонажа, сборку модели и возврат из атласа в игру.

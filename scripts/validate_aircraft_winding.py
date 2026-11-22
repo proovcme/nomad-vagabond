@@ -36,9 +36,15 @@ def audit(doc,blob):
 def run(name,repair):
  path=ROOT/'assets/aircraft'/f'{name}.glb';raw=path.read_bytes();doc,blob=read_glb(path);rows=audit(doc,blob);before=sum(r['inwardTriangles']for r in rows);binary=bytearray(blob)
  index_views={doc['accessors'][r['indexAccessor']]['bufferView']for r in rows}
+ # Compare repairs within one model revision. A retained backup can belong to an older design.
+ revision=hashlib.sha256(json.dumps(doc,sort_keys=True).encode())
+ for i,view in enumerate(doc['bufferViews']):
+  if i not in index_views:
+   start=view.get('byteOffset',0);revision.update(blob[start:start+view['byteLength']])
+ backup_path=ROOT/'artifacts/aircraft-winding'/revision.hexdigest()/f'{name}.before.glb'
  if repair and before:
-  backup=ROOT/'artifacts/deploy-20261114/aircraft-winding'/f'{name}.before.glb';backup.parent.mkdir(parents=True,exist_ok=True)
-  if not backup.exists():shutil.copy2(path,backup)
+  backup_path.parent.mkdir(parents=True,exist_ok=True)
+  if not backup_path.exists():shutil.copy2(path,backup_path)
   for row in rows:
    bad=row['bad']
    if not len(bad):continue
@@ -52,7 +58,6 @@ def run(name,repair):
    at+=8+size
   path.write_bytes(output)
  finaldoc,finalbin=read_glb(path);after=audit(finaldoc,finalbin);assert finaldoc==doc
- backup_path=ROOT/'artifacts/deploy-20261114/aircraft-winding'/f'{name}.before.glb'
  reference_raw=raw
  if backup_path.exists():
   reference_doc,reference_blob=read_glb(backup_path);assert reference_doc==finaldoc,'Original asset JSON changed'

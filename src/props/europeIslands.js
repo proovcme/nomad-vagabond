@@ -102,6 +102,15 @@ function createTimberCottageTextures(scene) {
   nCtx.fillStyle = 'rgb(128,128,255)';
   nCtx.fillRect(0, 0, 256, 256);
 
+  // Flecks of lime and coarse sand in the render, carried through the normal map.
+  for(let i=1;i<=8500;i++) {
+    const hash=Math.imul(i ^ (i>>>3),0x45d9f3b)>>>0;
+    const x=hash&255,y=(hash>>>12)&255;
+    ctx.fillStyle=(hash&1024)?'rgba(95,77,56,.13)':'rgba(255,242,211,.28)';
+    ctx.fillRect(x,y,1+(hash>>>28)%3,2);
+    nCtx.fillStyle=(hash&1024)?'rgb(117,132,253)':'rgb(137,122,253)';
+    nCtx.fillRect(x,y,2,2);
+  }
   // Dark oak timber framing beams
   ctx.fillStyle = '#4d3b2c';
   nCtx.fillStyle = 'rgb(156,156,245)';
@@ -112,14 +121,7 @@ function createTimberCottageTextures(scene) {
   for (let x = 0; x < 256; x += 64) {
     ctx.fillRect(x, 0, 12, 256);
     nCtx.fillRect(x, 0, 12, 256);
-    // Warm cottage windows between timbers
-    ctx.fillStyle = '#3b2e22';
-    ctx.fillRect(x + 20, 36, 30, 44);
-    ctx.fillStyle = '#f2c774';
-    ctx.fillRect(x + 23, 39, 24, 38);
-    ctx.fillStyle = '#4d3b2c';
-    ctx.fillRect(x + 34, 39, 2, 38);
-    ctx.fillRect(x + 23, 57, 24, 2);
+
   }
   // Stone foundation plinth
   ctx.fillStyle = '#8b8272';
@@ -153,16 +155,24 @@ function createRoofTileTextures(scene, name, baseHex, darkHex) {
     nCtx.fillRect(0, r * rh, 256, 3);
     nCtx.fillStyle = 'rgb(128, 170, 240)';
     nCtx.fillRect(0, r * rh + 3, 256, 2);
-    const off = (r % 2) * 10;
-    for (let x = 0; x < 256; x += 20) {
-      ctx.fillStyle = 'rgba(0,0,0,0.18)';
-      ctx.fillRect((x + off) % 256, r * rh, 1.5, rh);
+    const stagger = (r % 2) * 8;
+    for (let tile = -1; tile < 16; tile++) {
+      const x = tile * 16 + stagger;
+      const grain = ((tile + 16) % 16 * 71 + r * 43 + r * tile * tile) & 31;
+      ctx.fillStyle = grain < 16 ? `rgba(235,198,147,${.06 + grain*.008})`
+                                  : `rgba(49,45,40,${.08 + (grain-16)*.01})`;
+      ctx.fillRect(x+1, r*rh+3, 15, rh-3);
+      ctx.fillStyle = darkHex;
+      ctx.fillRect(x, r*rh+2, 1, rh-2);
+      ctx.fillStyle = 'rgba(244,217,171,.28)';
+      ctx.fillRect(x+2+(grain%3), (r+1)*rh-1, 5+grain%7, 1);
     }
   }
   albedo.update();
   normal.update();
-  albedo.uScale = normal.uScale = 2.0;
-  albedo.vScale = normal.vScale = 2.0;
+  albedo.wrapU = albedo.wrapV = normal.wrapU = normal.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
+  albedo.uScale = normal.uScale = 1.4;
+  albedo.vScale = normal.vScale = 1;
   return { albedo, normal };
 }
 
@@ -214,8 +224,8 @@ export function getEuropePalette(scene) {
 
   const slateRoof = getOrCreateMat(scene, 'euSlateRoofMat', () => {
     const m = new B.PBRMaterial('euSlateRoofMat', scene);
-    m.albedoColor = c3('#596675');
-    m.metallic = 0.14; m.roughness = 0.66;
+    m.albedoColor = c3('#dedbd4');
+    m.metallic = 0; m.roughness = 0.83;
     if (!isNull) {
       const t = createRoofTileTextures(scene, 'euSlate', '#505d6b', '#2c343d');
       m.albedoTexture = t.albedo;
@@ -227,8 +237,8 @@ export function getEuropePalette(scene) {
 
   const terracotta = getOrCreateMat(scene, 'euTerracottaMat', () => {
     const m = new B.PBRMaterial('euTerracottaMat', scene);
-    m.albedoColor = c3('#ba563a');
-    m.metallic = 0.04; m.roughness = 0.76;
+    m.albedoColor = c3('#f1dbc4');
+    m.metallic = 0; m.roughness = 0.92;
     if (!isNull) {
       const t = createRoofTileTextures(scene, 'euTerra', '#b34f34', '#6e2c1b');
       m.albedoTexture = t.albedo;
@@ -326,11 +336,30 @@ export function applyDoverChalkCliffs(builtSat, scene) {
  * Helper: Creates a pitched gable roof prism (much more European than a cone!).
  */
 function addGableRoof(arr, scene, name, width, height, depth, x, y, z, ry = 0) {
-  const roof = BABYLON.MeshBuilder.CreateCylinder(name, { diameter: depth * 1.18, height: width, tessellation: 3 }, scene);
-  roof.position.set(x, y + height * 0.38, z);
-  roof.rotation.set(0, ry, Math.PI * 0.5);
-  roof.scaling.set(height / (depth * 0.58), 1.0, 1.0);
-  arr.push(roof);
+  const B = BABYLON, halfSpan = depth / 2;
+  const pitch = Math.atan2(height, halfSpan);
+  for (const side of [-1, 1]) {
+    const slope = B.MeshBuilder.CreateBox(name + side, {
+      width, height: .18, depth: Math.hypot(height, halfSpan) + .08,
+    }, scene);
+    const offset = side * halfSpan * .5;
+    slope.position.set(x + Math.sin(ry)*offset, y + height*.5, z + Math.cos(ry)*offset);
+    slope.rotationQuaternion = B.Quaternion.RotationYawPitchRoll(ry, side*pitch, 0);
+    arr.push(slope);
+  }
+  // Close both gables underneath the ridge so the loft reads solid at eye level.
+  for (const side of [-1, 1]) {
+    const end = new B.Mesh(name + 'Gable' + side, scene);
+    const vd = new B.VertexData();
+    const ex = side * (width*.5 - .14);
+    vd.positions = [ex,0,-halfSpan, ex,height,0, ex,0,halfSpan];
+    vd.indices = side > 0 ? [2,1,0] : [0,1,2];
+    vd.normals = [side,0,0,side,0,0,side,0,0];
+    vd.uvs = [0,0,.5,1,1,0];
+    vd.applyToMesh(end);
+    end.position.set(x,y,z); end.rotation.y = ry;
+    arr.push(end);
+  }
 }
 
 /**
@@ -375,13 +404,87 @@ export function buildDoverCliffVillage(scene, parent, island, rx = 24, rz = 19) 
     { x: 1.5, z: -8.0, ry: 0.8, redRoof: true },
     { x: -10.0, z: -6.5, ry: 0.1, redRoof: false },
   ];
+  const joinery=[], windowGlass=[], brick=[];
+  function cottageFinish(name, hex, roughness) {
+    return getOrCreateMat(scene,name,()=>{
+      const mat=new B.PBRMaterial(name,scene);
+      mat.albedoColor=c3(hex).toLinearSpace();mat.metallic=0;mat.roughness=roughness;
+      return mat;
+    });
+  }
+  const oak=cottageFinish('dvOiledOak','#694634',.84);
+  const glazing=cottageFinish('dvOldGlazing','#789590',.29);
+  const firedBrick=cottageFinish('dvFiredBrick','#a15d40',.91);
+  if (!(scene.getEngine() instanceof B.NullEngine) && !firedBrick.albedoTexture) {
+    const clay=new B.DynamicTexture('dvFlemishBond',{width:256,height:256},scene,true);
+    const ctx=clay.getContext();ctx.fillStyle='#95877a';ctx.fillRect(0,0,256,256);
+    for(let r=0;r<16;r++) for(let c=-1;c<8;c++) {
+      const x=c*32+(r%2)*16, shade=(r*37+((c+8)%8)*29+r*r*7)%34;
+      ctx.fillStyle=`rgb(${137+shade},${76+shade},${55+shade})`;
+      ctx.fillRect(x,r*16+1,30,14);
+      ctx.fillStyle='rgba(220,180,130,.26)';ctx.fillRect(x+1,r*16+2,28,1);
+    }
+    clay.update();firedBrick.albedoColor.set(.94,.85,.77);firedBrick.albedoTexture=clay;
+    const glassTex=new B.DynamicTexture('dvWindowSky',{width:64,height:128},scene,true);
+    const gc=glassTex.getContext(),gradient=gc.createLinearGradient(0,0,20,128);
+    gradient.addColorStop(0,'#c0c5ac');gradient.addColorStop(.46,'#8eacb1');gradient.addColorStop(.63,'#596e70');gradient.addColorStop(1,'#3e4340');
+    gc.fillStyle=gradient;gc.fillRect(0,0,64,128);glassTex.update();
+    glazing.albedoColor.set(.78,.88,.88);glazing.albedoTexture=glassTex;
+  }
   cottages.forEach((c, idx) => {
-    const y = hAt(c.x, c.z);
+    // Sample each rotated footprint. The uphill wall stays clear of the turf,
+    // and the foundation extends below the downhill corner.
+    const grade=[];
+    for (const dx of [-2.5,0,2.5]) for(const dz of [-2,0,2]) {
+      grade.push(hAt(c.x+Math.cos(c.ry)*dx+Math.sin(c.ry)*dz,c.z-Math.sin(c.ry)*dx+Math.cos(c.ry)*dz));
+    }
+    const y=Math.max(...grade)+.08;
+    const footing=y-Math.min(...grade)+.68;
     put(timber, B.MeshBuilder.CreateBox(`dvCot_${idx}`, { width: 5.0, height: 3.2, depth: 3.8 }, scene), c.x, y + 1.4, c.z, 0, c.ry);
     addGableRoof(c.redRoof ? red : slate, scene, `dvCotR_${idx}`, 5.5, 2.2, 4.2, c.x, y + 3.0, c.z, c.ry);
-    put(stone, B.MeshBuilder.CreateBox(`dvChim_${idx}`, { width: 0.75, height: 2.8, depth: 0.75 }, scene), c.x + 1.4, y + 3.9, c.z + 0.6, 0, c.ry);
+    const roofSide = c.redRoof ? red : slate;
+    const detail = (arr, tag, width, height, depth, dx, dy, dz) => {
+      const px = c.x + Math.cos(c.ry)*dx + Math.sin(c.ry)*dz;
+      const pz = c.z - Math.sin(c.ry)*dx + Math.cos(c.ry)*dz;
+      put(arr, B.MeshBuilder.CreateBox(tag + idx, {width,height,depth}, scene), px,y+dy,pz,0,c.ry);
+    };
+    detail(brick,'dvFoundation',5.15,footing,3.95,0,.38-footing*.5,0);
+    detail(joinery,'dvPlankDoor',.94,1.92,.14,-1.10,1.09,1.94);
+    detail(windowGlass,'dvDoorLight',.51,.47,.05,-1.10,1.67,2.03);
+    // Projecting frames, sill and shaded glass give the walls depth at street level.
+    for(const side of [-1,1]) {
+      const centers=side>0?[.96]:[-1.25,1.25];
+      for(const wx of centers) {
+        const z=side*1.94;
+        detail(joinery,'dvWindowCase',1.2,1.32,.14,wx,1.75,z);
+        detail(windowGlass,'dvWindowPane',1.01,1.12,.06,wx,1.75,z+side*.095);
+        detail(joinery,'dvWindowStile',.068,1.13,.06,wx,1.75,z+side*.15);
+        detail(joinery,'dvWindowBar',1.02,.075,.055,wx,1.87,z+side*.18);
+        detail(joinery,'dvWindowSill',1.36,.13,.31,wx,1.06,z+side*.07);
+      }
+    }
+    for(const end of [-1,1]) {
+      detail(joinery,'dvGableBeam',.18,.16,3.84,end*2.46,2.89,0);
+      detail(joinery,'dvAtticFrame',.2,.82,.72,end*2.60,3.65,0);
+      detail(windowGlass,'dvAtticPane',.08,.62,.53,end*2.72,3.65,0);
+    }
+    detail(brick,'dvDoorstep',1.45,.24,.65,-1.1,.14,2.12);
+    const approachHeight=hAt(c.x-Math.cos(c.ry)*1.1+Math.sin(c.ry)*3.2,c.z+Math.sin(c.ry)*1.1+Math.cos(c.ry)*3.2);
+    const steps=Math.min(18,Math.ceil(Math.max(0,y-approachHeight)/.24));
+    for(let step=0;step<steps;step++){
+      const top=.04-(step+1)*.23, height=Math.max(.24,footing+top);
+      detail(brick,'dvPorchTread'+step,1.45,height,.32,-1.1,top-height*.5,2.59+step*.31);
+    }
+    detail(roofSide,'dvDoorCanopy',1.72,.16,.82,-1.1,2.22,2.14);
+    for (const dx of [-1.78,-.42]) detail(joinery,'dvPorchPost'+dx,.12,2,.12,dx,1.14,2.43);
+    detail(brick,'dvChimney',.64,2.72,.68,1.40,4.13,.57);
+    detail(brick,'dvChimneyCrown',.82,.23,.86,1.40,5.53,.57);
+    detail(joinery,'dvFlue',.43,.045,.47,1.40,5.66,.57);
   });
 
+  mergeGroup(joinery,'euVillageOak',root,oak);
+  mergeGroup(windowGlass,'euVillageWindows',root,glazing);
+  mergeGroup(brick,'euVillageBrickwork',root,firedBrick);
   mergeGroup(stone, 'euDoverStone', root, pal.limestone, null);
   mergeGroup(timber, 'euDoverTimber', root, pal.timber, null);
   mergeGroup(slate, 'euDoverSlate', root, pal.slateRoof, null);
@@ -429,7 +532,12 @@ export function buildContinentalSkyCity(scene, parent, island, rx = 22, rz = 18)
   blocks.forEach((b, idx) => {
     const y = hAt(b.x, b.z);
     put(stone, B.MeshBuilder.CreateBox(`euHaus_${idx}`, { width: b.w, height: b.h, depth: b.d }, scene), b.x, y + b.h * 0.5 - 0.3, b.z, 0, b.ry);
-    put(slate, B.MeshBuilder.CreateCylinder(`euMans_${idx}`, { diameterTop: b.w * 0.72, diameterBottom: b.w * 1.12, height: 2.2, tessellation: 4 }, scene), b.x, y + b.h + 0.7, b.z, 0, b.ry + Math.PI * 0.25);
+    const cornice=B.MeshBuilder.CreateBox('euHausCornice',{width:b.w+.32,height:.24,depth:b.d+.32},scene);
+    put(stone,cornice,b.x,y+b.h-.27,b.z,0,b.ry);
+    const roof=B.MeshBuilder.CreateCylinder('euMansard',{diameterTop:1.04,diameterBottom:Math.SQRT2,height:2.15,tessellation:4},scene);
+    roof.bakeTransformIntoVertices(B.Matrix.RotationY(Math.PI/4));
+    roof.scaling.set(b.w+.38,1,b.d+.38);
+    put(slate,roof,b.x,y+b.h+.88,b.z,0,b.ry);
   });
 
   // Stone Multi-Arch Railway Viaduct jutting off the island flank
@@ -465,7 +573,7 @@ export function buildAlpineCastleDiorama(scene, parent, pos, shadowGen = null) {
   // Main textured Alpine Schloss keep with pitched gable roof & timber courtyard wing
   put(stone, B.MeshBuilder.CreateBox('euCastKeep', { width: 14.5, height: 11.8, depth: 9.8 }, scene), 0, 5.6, 0);
   addGableRoof(slate, scene, 'euCastKeepGable', 15.2, 5.2, 10.6, 0, 11.6, 0, 0);
-  put(timber, B.MeshBuilder.CreateBox('euCastWing', { width: 10.8, height: 7.4, depth: 6.6 }, scene), -10.8, 3.4, 2.0);
+  put(timber, B.MeshBuilder.CreateBox('euCastWing', { width: 10.8, height: 7.6, depth: 6.6 }, scene), -10.8, 3.3, 2.0);
   addGableRoof(slate, scene, 'euCastWingGable', 11.4, 3.6, 7.2, -10.8, 7.2, 2.0, 0);
 
   // Cylindrical corner turrets with lathed conical slate spires

@@ -39,7 +39,7 @@ check('Invalid, negative and over-range inputs keep finite needles inside their 
 });
 const ui=new GameUI();
 function fixture(){
- return {ship:{velocity:new B.Vector3(50,0,0),group:{position:new B.Vector3(0,125,0),rotationQuaternion:B.Quaternion.Identity()},hull:60,maxHull:120,fuel:79,throttle:.5,atmoDensity:1,upgrades:new Set(),spec:{name:'Проверочный самолёт'}},player:{velocity:B.Vector3.Zero(),group:{position:B.Vector3.Zero()},currentPlanet:null,currentAsteroid:null},world:{planets:[],seedStr:'HUD-QA',stormWarning:0,stormActive:false},base:{velocity:B.Vector3.Zero(),integrity:90,maxIntegrity:100,enginePower:.25,heat:0,group:{position:B.Vector3.Zero(),rotation:{y:0}},name:'Проверочный остров'}};
+ return {ship:{velocity:new B.Vector3(50,0,0),group:{position:new B.Vector3(0,125,0),rotationQuaternion:B.Quaternion.Identity()},hull:60,maxHull:120,fuel:79,throttle:.5,atmoDensity:1,upgrades:new Set(),spec:{name:'Проверочный самолёт'}},player:{velocity:B.Vector3.Zero(),group:{position:B.Vector3.Zero()},currentPlanet:null,currentAsteroid:null},world:{planets:[],seedStr:'HUD-QA',stormWarning:0,stormActive:false},base:{velocity:B.Vector3.Zero(),integrity:90,maxIntegrity:100,enginePower:.25,heat:0,group:{position:B.Vector3.Zero(),rotation:{y:0}},name:'Проверочный остров',pilotForward:()=>new B.Vector3(0,0,-1)}};
 }
 function update(f,mode){ui.setMode(mode);ui.updateHUD(f.ship,f.player,f.world,mode,0,f.base,{title:'Испытание приборов',desc:'Фактические показания',resources:'Лом 80'});}
 check('updateHUD writes actual flight values to all three SVG needles and windows',()=>{

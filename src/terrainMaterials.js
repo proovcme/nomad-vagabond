@@ -1,7 +1,9 @@
+const ROCK_STYLE_CODES = { forest: 0, industrial: 1, military: 2, volcanic: 3, glacier: 4, desert: 5, ancient: 6 };
+
 // World-space triplanar projection keeps cliffs at a fixed metre scale on every face.
 class RockProjection extends BABYLON.MaterialPluginBase {
   constructor(material, scene, style = 'forest') {
-    super(material, 'RockProjection', 200, {ROCK_PROJECTION:false}, true);
+    super(material, 'RockProjection', 200, {ROCK_PROJECTION:false, TURF_EDGE:false}, true);
     if (!scene._sharedRockCliffTex) {
       const tex = new BABYLON.Texture('./assets/benchmark/textures/aerial_rocks_02/Diffuse.jpg', scene);
       tex.anisotropicFilteringLevel = 8;
@@ -14,32 +16,43 @@ class RockProjection extends BABYLON.MaterialPluginBase {
     }
     this.texture = scene._sharedRockCliffTex;
     this.grassTexture = scene._sharedGrassTopTex;
-    const STYLE_CODES = { forest: 0.0, industrial: 1.0, military: 2.0, volcanic: 3.0, glacier: 4.0, desert: 5.0, ancient: 6.0 };
-    this.styleCode = STYLE_CODES[style] ?? 0.0;
+    this.styleCode = ROCK_STYLE_CODES[style] ?? 0;
     this._invMatrix = new BABYLON.Matrix();
     this.registerForExtraEvents=true;
     this._enable(true);
   }
   getClassName() {return 'RockProjection';}
-  prepareDefines(defines) {defines.ROCK_PROJECTION=true;}
-  getUniforms(){return {ubo:[{name:'rockTextureToLocal',size:16,type:'mat4'},{name:'rockStyleParams',size:4,type:'vec4'}],fragment:'uniform mat4 rockTextureToLocal; uniform vec4 rockStyleParams;'};}
+  prepareDefines(defines, scene, mesh) {
+    defines.ROCK_PROJECTION = true;
+    defines.TURF_EDGE = !!mesh?.metadata?.turfEdge && this.styleCode < 2;
+  }
+  getUniforms(){return {ubo:[{name:'edgeSpan',size:2,type:'vec2'},{name:'rockTextureToLocal',size:16,type:'mat4'},{name:'rockStyleParams',size:4,type:'vec4'}],fragment:'uniform vec2 edgeSpan; uniform mat4 rockTextureToLocal; uniform vec4 rockStyleParams;'};}
   hardBindForSubMesh(buffer,scene,engine,subMesh){
     const mesh = subMesh.getRenderingMesh();
+    const edge = mesh.metadata?.turfEdge;
+    if (edge && this.styleCode < 2) {
+      buffer.updateFloat2('edgeSpan', edge.width, edge.depth);
+      buffer.setTexture('edgeTerrainSampler', edge.material.albedoTexture || this.grassTexture);
+    }
     mesh.getWorldMatrix().invertToRef(this._invMatrix);
     buffer.updateMatrix('rockTextureToLocal',this._invMatrix);
     const pos = mesh.getAbsolutePosition();
     buffer.updateFloat4('rockStyleParams',this.styleCode,pos.x,pos.y,pos.z);
     buffer.update();
   }
-  getSamplers(samplers) {samplers.push('rockTriplanarSampler', 'grassTopSampler');}
+  getSamplers(samplers) {samplers.push('rockTriplanarSampler', 'grassTopSampler', 'edgeTerrainSampler');}
   bindForSubMesh(buffer) {
     buffer.setTexture('rockTriplanarSampler', this.texture);
     buffer.setTexture('grassTopSampler', this.grassTexture);
   }
   getCustomCode(shaderType) {
+    if (shaderType === 'vertex') return {
+      CUSTOM_VERTEX_DEFINITIONS: '#ifdef TURF_EDGE\nvarying float vEdgeDrop;\n#endif',
+      CUSTOM_VERTEX_MAIN_BEGIN: '#ifdef TURF_EDGE\nvEdgeDrop = uv.y * 9.0;\n#endif',
+    };
     if (shaderType !== 'fragment') return null;
     return {
-      CUSTOM_FRAGMENT_DEFINITIONS: '#ifdef ROCK_PROJECTION\nuniform sampler2D rockTriplanarSampler;\nuniform sampler2D grassTopSampler;\nfloat vAetherVeinMask;\nvec3 vSeamGlowColor;\nfloat vRockMicroRelief;\nfloat vRockStrataSlope;\nfloat vRockCreviceAO;\n#endif',
+      CUSTOM_FRAGMENT_DEFINITIONS: '#ifdef TURF_EDGE\nvarying float vEdgeDrop; uniform sampler2D edgeTerrainSampler;\n#endif\n#ifdef ROCK_PROJECTION\nuniform sampler2D rockTriplanarSampler;\nuniform sampler2D grassTopSampler;\nfloat vAetherVeinMask;\nvec3 vSeamGlowColor;\nfloat vRockMicroRelief;\n#endif',
       CUSTOM_FRAGMENT_UPDATE_ALBEDO: `
         #ifdef ROCK_PROJECTION
         vec3 rockLocal = (rockTextureToLocal*vec4(vPositionW,1.0)).xyz;
@@ -50,7 +63,9 @@ class RockProjection extends BABYLON.MaterialPluginBase {
         rockW /= max(dot(rockW, vec3(1.0)), 0.001);
 
         // Dual-scale anti-tiling triplanar sampling of real photogrammetry granite (aerial_rocks_02)
-        vec3 pMacro = rockWorld * 0.022;
+        float beddingY = rockWorld.y + rockWorld.x * 0.16 - rockWorld.z * 0.09;
+        float fold = sin(rockWorld.x * 0.044 + rockWorld.z * 0.031) * 2.8;
+        vec3 pMacro = vec3(rockWorld.x, (beddingY + fold) * 1.43, rockWorld.z) * 0.022;
         vec3 colMacro = texture2D(rockTriplanarSampler, pMacro.zy).rgb * rockW.x
                       + texture2D(rockTriplanarSampler, pMacro.xz).rgb * rockW.y
                       + texture2D(rockTriplanarSampler, pMacro.xy).rgb * rockW.z;
@@ -62,7 +77,8 @@ class RockProjection extends BABYLON.MaterialPluginBase {
                    : (rockW.x >= rockW.z ? pDetail.zy : pDetail.xy);
         vec3 colDetail = texture2D(rockTriplanarSampler, rot37 * domUv).rgb;
 
-        vec3 photoRock = mix(colMacro, colDetail, 0.48);
+        float detailWeight = smoothstep(0.44, 0.78, max(rockW.x, max(rockW.y, rockW.z)));
+        vec3 photoRock = mix(colMacro, colDetail, 0.48 * detailWeight);
         // Branch-guarded photogrammetry meadow turf: vertical cliffs & undersides skip BOTH grass fetches (50% less bandwidth!)
         vec3 realisticTurf = vec3(0.30, 0.36, 0.22);
         float grassLuma = 0.38;
@@ -83,22 +99,19 @@ class RockProjection extends BABYLON.MaterialPluginBase {
         float cliffLuma = dot(liftedRock, vec3(0.299, 0.587, 0.114));
         float crackMask = smoothstep(0.14, 0.52, cliffLuma);
 
-        // Broad non-periodic geological variation (domain-warped strata & elevation bands — ZERO patchwork quilt!)
-        float geoWarp = colMacro.r * 5.2 + colDetail.g * 2.1;
-        float macroPatch = smoothstep(0.18, 0.82, 0.5 + 0.5 * sin(rockWorld.y * 0.045 + rockWorld.x * 0.016 + geoWarp));
-        float mineralStreak = smoothstep(0.62, 0.90, 0.5 + 0.5 * sin(rockWorld.y * 0.19 - rockWorld.z * 0.022 + colMacro.b * 4.2));
-        float rainStreak = 0.88 + 0.12 * sin(rockWorld.x * 0.34 + rockWorld.z * 0.28 + colDetail.r * 4.0);
-        vRockCreviceAO = mix(0.42, 1.08, crackMask) * rainStreak;
-        vRockMicroRelief = dot(colDetail - colMacro, vec3(0.333)) * 1.45;
-        vRockStrataSlope = cos(rockWorld.y * 0.54 + cliffLuma * 5.2);
-
-        // Sharp geological strata shelves & cliff-top moss spill
-        float strataRaw = sin(rockWorld.y * 0.46 + cliffLuma * 3.8) * 0.58 + sin(rockWorld.y * 1.25 - colDetail.g * 4.5) * 0.42;
-        float strataWave = 0.82 + 0.18 * smoothstep(-0.65, 0.65, strataRaw);
-        float topLedge = smoothstep(0.36, 0.78, vNormalW.y) * smoothstep(-6.0, 8.0, rockLocal.y);
-        float mossSpill = smoothstep(12.5, 19.5, rockLocal.y) * smoothstep(0.10, 0.55, vNormalW.y + 0.22 * sin(rockWorld.x * 0.35 + rockWorld.z * 0.35));
+        // Tilted beds follow an erosion field driven by the photographed rock.
+        float mineralBed = beddingY + fold + (colMacro.g - 0.4) * 5.0;
+        float layer = sin(mineralBed * 0.37) * 0.68 + sin(mineralBed * 0.68 + 1.2) * 0.32;
+        float macroPatch = smoothstep(0.25, 0.70, colMacro.r + layer * 0.16);
+        float mineralStreak = smoothstep(0.25, 0.68, colMacro.r + layer * 0.27) * crackMask;
+        float crevice = mix(0.64, 1.06, crackMask);
+        float strataRaw = layer + (colDetail.g - 0.39) * 0.39;
+        float strataWave = 0.85 + 0.16 * smoothstep(-0.66, 0.63, strataRaw);
+        vRockMicroRelief = cliffLuma * 0.75 + (layer + (colDetail.g - 0.39) * 0.39 * detailWeight) * 0.24;
+        float topLedge = smoothstep(0.26, 0.78, vNormalW.y) * smoothstep(-5.0, 7.0, rockLocal.y);
+        float mossSpill = smoothstep(-1.5, 10.0, rockLocal.y) * smoothstep(0.16, 0.66, vNormalW.y + (colMacro.g - 0.4) * 0.45);
         float overhang = clamp(-vNormalW.y * 0.78 + 0.08, 0.0, 1.0);
-        float rootDepth = smoothstep(-1.5, -15.0, rockLocal.y);
+        float rootDepth = 1.0 - smoothstep(-15.0, -1.5, rockLocal.y);
 
         // Subtle glowing ancient aether-crystal veins deep inside the fractured hanging roots
         float veinCrack = (1.0 - smoothstep(0.10, 0.23, cliffLuma)) * smoothstep(0.25, 0.75, abs(sin(rockWorld.y * 0.35 + rockWorld.x * 0.18)));
@@ -180,18 +193,29 @@ class RockProjection extends BABYLON.MaterialPluginBase {
           // FOREST SANCTUARY ('forest'): High-contrast sunlit warm chalk-limestone cliffs with lush olive-terracotta turf
           vec3 creviceCol = vec3(0.24, 0.26, 0.30);
           vec3 slateTone = mix(vec3(0.56, 0.56, 0.52), vec3(0.86, 0.84, 0.76), cliffLuma);
-          vec3 warmStone = mix(vec3(0.74, 0.64, 0.50), vec3(0.96, 0.90, 0.76), cliffLuma);
+          vec3 warmStone = mix(vec3(0.69, 0.43, 0.27), vec3(0.94, 0.72, 0.49), cliffLuma);
           vec3 limestoneBody = mix(slateTone, warmStone, macroPatch);
           rockPaint = mix(creviceCol, limestoneBody, crackMask);
           rockPaint = mix(rockPaint, liftedRock * vec3(1.02, 0.98, 0.90), 0.38) * strataWave;
           // Natural photogrammetry alpine turf with exposed limestone outcrops
-          float fTurfHeight = topLedge * 0.92 + mossSpill * 0.48 + (grassLuma - cliffLuma) * 0.38;
+          float fTurfHeight = topLedge * 0.84 + mossSpill * 0.44 + (grassLuma - cliffLuma) * 0.54;
           float fTurfMask = smoothstep(0.32, 0.54, fTurfHeight) * (1.0 - smoothstep(0.72, 0.90, cliffLuma) * 0.55);
-          rockPaint = mix(rockPaint, realisticTurf * vec3(0.94, 1.06, 0.92), fTurfMask * 0.92);
+          float scree = smoothstep(0.11, 0.38, fTurfHeight) * (1.0 - fTurfMask);
+          rockPaint = mix(rockPaint, vec3(0.61, 0.41, 0.25) * (0.78 + cliffLuma * 0.30), scree * 0.62);
+          rockPaint = mix(rockPaint, realisticTurf * vec3(1.02, 1.09, 0.82), fTurfMask * 0.64);
           vRockMicroRelief = mix(vRockMicroRelief, grassRelief, fTurfMask);
           rockPaint = mix(rockPaint, vec3(0.20, 0.28, 0.38), clamp(overhang * 0.36 + rootDepth * 0.24, 0.0, 0.48));
         }
-        surfaceAlbedo = toLinearSpace(clamp(rockPaint * vRockCreviceAO, 0.0, 1.0));
+        surfaceAlbedo = toLinearSpace(clamp(rockPaint * crevice, 0.0, 1.0));
+        #ifdef TURF_EDGE
+        float soilDepth = 1.3 + 3.2 * smoothstep(.23,.62,colMacro.g) + sin(rockLocal.x*.31 + rockLocal.z*.23)*.75;
+        if (vEdgeDrop < soilDepth) {
+          vec3 turf = texture2D(edgeTerrainSampler, rockLocal.xz / edgeSpan + .5).rgb;
+          float erosion = smoothstep(.0, soilDepth, vEdgeDrop);
+          surfaceAlbedo = mix(toLinearSpace(turf), surfaceAlbedo, erosion);
+          vRockMicroRelief *= erosion;
+        }
+        #endif
         #endif
       `,
       CUSTOM_FRAGMENT_UPDATE_METALLICROUGHNESS: `
@@ -202,17 +226,22 @@ class RockProjection extends BABYLON.MaterialPluginBase {
         metallicRoughness.g = clamp(0.96 - smoothstep(0.28, 0.82, rockLuma) * 0.09, 0.87, 0.98);
         #endif
       `,
+      CUSTOM_FRAGMENT_BEFORE_LIGHTS: `
+        #ifdef ROCK_PROJECTION
+        // Derive surface relief in world metres and let the scene lights shade it.
+        vec3 tx = dFdx(vPositionW);
+        vec3 ty = dFdy(vPositionW);
+        vec3 u = cross(ty, normalW);
+        vec3 v = cross(normalW, tx);
+        float area = dot(tx, u);
+        vec3 relief = (u * dFdx(vRockMicroRelief) + v * dFdy(vRockMicroRelief)) * sign(area) / max(abs(area), 0.00001);
+        normalW = normalize(normalW - relief * min(0.62, 0.47 / max(length(relief), 0.001)));
+        #endif
+      `,
       CUSTOM_FRAGMENT_BEFORE_FINALCOLORCOMPOSITION: `
         #if defined(ROCK_PROJECTION) && !defined(UNLIT)
-        vec3 sunDirW = normalize(vec3(-0.66, 0.28, -0.69));
-        // Crisp matte triplanar rock relief normal (no glossy specular plastic blob!)
-        vec3 microNormalW = normalize(vNormalW + vec3(vRockMicroRelief * 0.48, vRockStrataSlope * 0.34, -vRockMicroRelief * 0.42));
-        float ndl = dot(microNormalW, sunDirW);
-        float diffuseLift = smoothstep(-0.08, 0.45, ndl);
-        vec3 warmRockSun = vec3(0.28, 0.18, 0.06) * diffuseLift;
-        vec3 coolShadow = vec3(0.10, 0.15, 0.24) * (1.0 - smoothstep(-0.15, 0.25, ndl));
-        vec3 skyUnderBounce = vec3(0.14, 0.17, 0.22) * clamp(-vNormalW.y * 0.65 + 0.25, 0.0, 1.0);
-        finalDiffuse += surfaceAlbedo * (warmRockSun + coolShadow + skyUnderBounce) + vSeamGlowColor * vAetherVeinMask * 0.58;
+        vec3 skyUnderBounce = vec3(0.22, 0.25, 0.31) * clamp(-vNormalW.y * 0.48 + 0.40, 0.0, 1.0);
+        finalDiffuse += surfaceAlbedo * skyUnderBounce + vSeamGlowColor * vAetherVeinMask * 0.58;
         #endif
       `,
     };
@@ -313,7 +342,7 @@ class SunlitCanopy extends BABYLON.MaterialPluginBase {
 export function applyRockProjection(material, scene, style = 'forest') {
   if (!material) return;
   if (material._rockProjection) {
-    material._rockProjection.styleCode = style === 'industrial' ? 1.0 : style === 'military' ? 2.0 : 0.0;
+    material._rockProjection.styleCode = ROCK_STYLE_CODES[style] ?? 0;
     return;
   }
   material._rockProjection = new RockProjection(material, scene, style);

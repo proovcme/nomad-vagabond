@@ -73,9 +73,13 @@ for(const [variant,file]of [['cargo','scrapyard_plane.glb'],['fighter','scrapyar
   const {mesh,positions,indices}=loadAirframe(file,root);root.computeWorldMatrix(true);
   const sockets=deriveAircraftLightSockets([mesh],root,variant);assert(sockets);ship.aircraftLightSockets=sockets;practical.update(.016);prepare();
   assert.equal(practical.aircraftFixtures.length,4);assert(practical.aircraftFixtures.every(f=>f.lens.parent===root&&f.housing.parent===root));assert(oldFixtures.every(f=>f.lens.isDisposed()&&f.housing.isDisposed()));
+  // Sockets are model-root local. Imported airframes may carry a non-unit node scale.
+  const toRoot = mesh.getWorldMatrix().multiply(root.getWorldMatrix().clone().invert());
+  const modelVerts = [];
+  for(let i=0;i<positions.length;i+=3)modelVerts.push(B.Vector3.TransformCoordinates(B.Vector3.FromArray(positions,i),toRoot));
   const distances={};for(const name of ['port','starboard','tail','beacon']){
    const point=B.Vector3.FromArray(sockets[name].surface);let minimum=Infinity;
-   for(let i=0;i<indices.length;i+=3){const v=index=>B.Vector3.FromArray(positions,index*3);minimum=Math.min(minimum,triangleDistance(point,v(indices[i]),v(indices[i+1]),v(indices[i+2])));}
+   for(let i=0;i<indices.length;i+=3){minimum=Math.min(minimum,triangleDistance(point,modelVerts[indices[i]],modelVerts[indices[i+1]],modelVerts[indices[i+2]]));}
    distances[name]=minimum;assert(minimum<.055,`${name} mount floats ${minimum}m away from airframe`);
   }
   for(const [index,name]of ['port','starboard','tail','beacon'].entries()){

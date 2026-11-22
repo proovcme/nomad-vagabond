@@ -10,9 +10,10 @@ export function refineBakeSurface(mesh,maxEdge=3){
   if(!/^(hangarInnerFloor|vagHangar(?:Back|Side|Ceil|NorthFacade)|vagCarrierRunway|vagUpperDeck|vagUpperCourtyard|vagCarrierDeck|indMainApron|indDockPlatform|indRefineryHall|indHangarRoof)/.test(mesh.name)||mesh.metadata?.bakeRefined)return;
   const p=mesh.getVerticesData('position'),n=mesh.getVerticesData('normal'),uv=mesh.getVerticesData('uv'),ids=mesh.getIndices();
   if(!p||!n||!ids)return;
-  const positions=[],normals=[],uvs=[],indices=[],lookup=new Map();
-  const emit=v=>{const key=v.map(x=>x.toFixed(5)).join(',');if(lookup.has(key))return lookup.get(key);const id=positions.length/3;lookup.set(key,id);positions.push(...v.slice(0,3));normals.push(...v.slice(3,6));uvs.push(...v.slice(6,8));return id;};
-  const vertex=id=>[...p.slice(id*3,id*3+3),...n.slice(id*3,id*3+3),...(uv?uv.slice(id*2,id*2+2):[0,0])];
+  const uv2=mesh.getVerticesData('uv2');
+  const positions=[],normals=[],uvs=[],plateUVs=[],indices=[],lookup=new Map();
+  const emit=v=>{const key=v.map(x=>x.toFixed(5)).join(',');if(lookup.has(key))return lookup.get(key);const id=positions.length/3;lookup.set(key,id);positions.push(...v.slice(0,3));normals.push(...v.slice(3,6));uvs.push(...v.slice(6,8));if(uv2)plateUVs.push(...v.slice(8,10));return id;};
+  const vertex=id=>[...p.slice(id*3,id*3+3),...n.slice(id*3,id*3+3),...(uv?uv.slice(id*2,id*2+2):[0,0]),...(uv2?uv2.slice(id*2,id*2+2):[])];
   const split=(a,b,c,depth=0)=>{
     const v=[a,b,c],lengths=v.map((x,i)=>Math.hypot(...x.slice(0,3).map((t,k)=>t-v[(i+1)%3][k])));
     const edge=lengths.indexOf(Math.max(...lengths));
@@ -21,7 +22,7 @@ export function refineBakeSurface(mesh,maxEdge=3){
     split(x,mid,z,depth+1);split(mid,y,z,depth+1);
   };
   for(let i=0;i<ids.length;i+=3)split(vertex(ids[i]),vertex(ids[i+1]),vertex(ids[i+2]));
-  mesh.setVerticesData('position',positions);mesh.setVerticesData('normal',normals);mesh.setVerticesData('uv',uvs);mesh.setIndices(indices);
+  mesh.setVerticesData('position',positions);mesh.setVerticesData('normal',normals);mesh.setVerticesData('uv',uvs);if(uv2)mesh.setVerticesData('uv2',plateUVs);mesh.setIndices(indices);
   mesh.refreshBoundingInfo();mesh.metadata={...mesh.metadata,bakeRefined:true};
 }
 export function geometryKey(mesh){

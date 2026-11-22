@@ -1,3 +1,5 @@
+import { fieldRepairTexture } from './props/repairTexture.js';
+import { fitInterbellumAircraft } from './props/interbellumAircraft.js?v=mission1';
 import { leadPoint } from './combatAim.js?v=mission1';
 import { createRustedMetalTexture } from './textures.js?v=mission1';
 import { resolveCameraCollision, createContactShadowTexture } from './graphics.js?v=mission1';
@@ -19,14 +21,21 @@ export function aircraftHeading(direction) {
   );
 }
 
-/** Preserve the authored Gemini atlas: adjust only its physical response in daylight.
- * The packed green/blue roughness/metalness channels still distinguish canvas,
- * painted panels and exposed steel. No replacement texture, tint or glow is added.
- */
+// Atlas tile order follows the paint contrast of cargo, fighter, attacker, and bomber.
+const NOSE_ART_ORDER = [0, 3, 2, 1];
+
+// Refinish the imported livery using its original seam, paint and metal data.
 class NomadAviationPaint extends BABYLON.MaterialPluginBase {
   constructor(material, variant = 'cargo') {
     super(material, 'NomadAviationPaint', 212, {NOMAD_AVIATION_PAINT:false}, true);
     this.setVariant(variant);
+    this.repairAtlas=fieldRepairTexture(material.getScene());
+    this.artTexture = material.getScene().getTextureByName('squadronNoseArt');
+    if (!this.artTexture) {
+      this.artTexture = new BABYLON.Texture('./assets/textures/nomad/squadron-nose-art.webp', material.getScene());
+      this.artTexture.name = 'squadronNoseArt';
+      this.artTexture.wrapU = this.artTexture.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
+    }
     this._enable(true);
   }
   setVariant(variant) {
@@ -35,18 +44,65 @@ class NomadAviationPaint extends BABYLON.MaterialPluginBase {
   getClassName() {return 'NomadAviationPaint';}
   prepareDefines(defines) {defines.NOMAD_AVIATION_PAINT=true;}
   getUniforms() {return {ubo:[{name:'aircraftLiveryParams',size:4,type:'vec4'}],fragment:'uniform vec4 aircraftLiveryParams;'};}
+  getSamplers(samplers) { samplers.push('aviationNoseArt','aviationRepairAtlas'); }
+  getActiveTextures(textures) { textures.push(this.artTexture,this.repairAtlas); }
   bindForSubMesh(buffer) {
-    buffer.updateFloat4('aircraftLiveryParams', this.variantCode, 0, 0, 0);
+    buffer.setTexture('aviationRepairAtlas',this.repairAtlas);
+    buffer.setTexture('aviationNoseArt', this.artTexture);
+    const noseArtReady = this.artTexture.isReady() && !this.artTexture.loadingError;
+    const artIndex = NOSE_ART_ORDER[this.variantCode];
+    buffer.updateFloat4('aircraftLiveryParams', this.variantCode, Number(noseArtReady), artIndex, Number(this.repairAtlas.isReady()&&!this.repairAtlas.loadingError));
     buffer.update();
   }
   getCustomCode(type) {
+    if (type === 'vertex') return {
+      CUSTOM_VERTEX_DEFINITIONS: `
+        #ifdef NOMAD_AVIATION_PAINT
+        varying vec3 aviationPoint;
+        varying vec3 aviationNormal;
+        #endif
+      `,
+      CUSTOM_VERTEX_UPDATE_POSITION: `
+        #ifdef NOMAD_AVIATION_PAINT
+        aviationPoint = positionUpdated;
+        #ifdef NORMAL
+        aviationNormal = normalUpdated;
+        #else
+        aviationNormal = vec3(0.0, 1.0, 0.0);
+        #endif
+        #endif
+      `,
+    };
     if (type !== 'fragment') return null;
     return {
+      CUSTOM_FRAGMENT_DEFINITIONS: `
+        #ifdef NOMAD_AVIATION_PAINT
+        varying vec3 aviationPoint;
+        varying vec3 aviationNormal;
+        uniform sampler2D aviationNoseArt;
+        uniform sampler2D aviationRepairAtlas;
+        float fieldRepair;
+        float patchCloth;
+        float aviationWear;
+        float aviationRelief;
+        #endif
+      `,
+      CUSTOM_FRAGMENT_BEFORE_LIGHTS: `
+        #if defined(NOMAD_AVIATION_PAINT) && defined(ALBEDO)
+        vec3 tx = dFdx(vPositionW);
+        vec3 ty = dFdy(vPositionW);
+        vec3 u = cross(ty, normalW);
+        vec3 v = cross(normalW, tx);
+        float area = dot(tx, u);
+        vec3 gradient = (u * dFdx(aviationRelief) + v * dFdy(aviationRelief)) * sign(area) / max(abs(area), 0.00001);
+        normalW = normalize(normalW - gradient * min(0.010, 0.22 / max(length(gradient), 0.001)));
+        #endif
+      `,
       CUSTOM_FRAGMENT_UPDATE_ALBEDO: `
         #if defined(NOMAD_AVIATION_PAINT) && defined(ALBEDO)
-        // Extract riveted panel seams, grime & grain from the authored atlas while replacing circus stripes
+        // Preserve the authored rivets, seams and markings under the new enamel.
         float rawLum = dot(surfaceAlbedo, vec3(0.2126, 0.7152, 0.0722));
-        float panelDetail = clamp(pow(max(rawLum, 0.004) / 0.22, 0.58), 0.30, 1.30);
+        float panelDetail = clamp(pow(max(rawLum, 0.006) / 0.19, 0.46), 0.39, 1.45);
         float oxideHint = smoothstep(0.06, 0.22, surfaceAlbedo.r - surfaceAlbedo.b);
         vec2 uv = vAlbedoUV;
         float vBand = fract(uv.y);
@@ -56,22 +112,22 @@ class NomadAviationPaint extends BABYLON.MaterialPluginBase {
         vec3 cowlingTone;
         if (aircraftLiveryParams.x < 0.5) {
           // CARGO ('cargo' — TaleSpin Sea Duck: weathered sand-ochre hull, deep maroon trim, dark anti-glare nose)
-          bodyTone = vec3(0.76, 0.58, 0.33);
+          bodyTone = vec3(0.74, 0.55, 0.31);
           trimTone = vec3(0.52, 0.16, 0.14);
           cowlingTone = vec3(0.24, 0.27, 0.26);
         } else if (aircraftLiveryParams.x < 1.5) {
           // FIGHTER ('fighter' — Porco Rosso Savoia/Curtiss: weathered Adriatic crimson-terracotta, warm cream band, charcoal nose)
-          bodyTone = vec3(0.64, 0.19, 0.15);
+          bodyTone = vec3(0.73, 0.24, 0.16);
           trimTone = vec3(0.84, 0.78, 0.64);
           cowlingTone = vec3(0.21, 0.24, 0.26);
         } else if (aircraftLiveryParams.x < 2.5) {
           // ATTACKER ('attacker' — Project Nomads gunship: utilitarian olive-drab, tactical ochre band, gunmetal armor)
-          bodyTone = vec3(0.35, 0.41, 0.32);
+          bodyTone = vec3(0.39, 0.46, 0.29);
           trimTone = vec3(0.70, 0.54, 0.28);
           cowlingTone = vec3(0.23, 0.26, 0.28);
         } else {
           // BOMBER ('bomber' — Expedition khaki-bronze, deep naval slate band, soot-bronze nacelles)
-          bodyTone = vec3(0.52, 0.45, 0.35);
+          bodyTone = vec3(0.52, 0.55, 0.49);
           trimTone = vec3(0.25, 0.30, 0.34);
           cowlingTone = vec3(0.23, 0.22, 0.21);
         }
@@ -93,22 +149,80 @@ class NomadAviationPaint extends BABYLON.MaterialPluginBase {
           vec3 strapOrBrass = fract(uv.x) < 0.5 ? vec3(0.36, 0.33, 0.30) : vec3(0.76, 0.58, 0.30);
           targetLinear = toLinearSpace(strapOrBrass) * panelDetail;
         }
-        surfaceAlbedo = clamp(targetLinear, vec3(0.0), vec3(1.0));
+        // UV-bound flaking of aged enamel. The bright atlas flecks drive localized wear.
+        float brightFleck = smoothstep(0.31, 0.73, rawLum);
+        float wearZone = 0.5 + 0.5 * sin(uv.x * 67.0 + cos(uv.y * 53.0) * 3.0);
+        aviationWear = brightFleck * smoothstep(0.31, 0.85, wearZone) * (1.0 - step(0.5, vBand));
+        aviationRelief = clamp(rawLum, 0.04, 0.58);
+        surfaceAlbedo = clamp(mix(targetLinear, toLinearSpace(vec3(0.55, 0.58, 0.57)), aviationWear * 0.75), 0.0, 1.0);
+
+        vec3 p = aviationPoint;
+        vec3 n = normalize(aviationNormal);
+        // Four fuselage-side paint zones in the original glTF model coordinates.
+        vec4 panel = vec4(1.64, 2.08, 1.66, 1.22);
+        float maxWidth = 1.22;
+        float wingMark = 4.90;
+        if (aircraftLiveryParams.x > 2.5) {
+          panel = vec4(2.02, 2.10, 1.74, 1.41); maxWidth = 1.34; wingMark = 7.10;
+        } else if (aircraftLiveryParams.x > 1.5) {
+          panel = vec4(-2.90, 1.88, 1.48, 1.20); maxWidth = 1.15; wingMark = 4.30;
+        } else if (aircraftLiveryParams.x > 0.5) {
+          panel = vec4(0.56, 1.89, 1.51, 1.30); maxWidth = 1.10; wingMark = 3.80;
+        }
+        vec2 printUv = (p.zy - panel.xy) / panel.zw + 0.5;
+        printUv.x = mix(1.0 - printUv.x, printUv.x, step(0.0, p.x));
+        if (aircraftLiveryParams.y > 0.5 && abs(n.x) > 0.52 && abs(p.x) > 0.42 && abs(p.x) < maxWidth &&
+            all(greaterThan(printUv, vec2(0.0))) && all(lessThan(printUv, vec2(1.0)))) {
+          float artIndex = aircraftLiveryParams.z;
+          vec2 tile = vec2(mod(artIndex, 2.0), 1.0 - floor(artIndex * 0.5));
+          vec4 decal = texture2D(aviationNoseArt, (printUv + tile) * 0.5);
+          float retention = smoothstep(0.09, 0.27, panelDetail) * (1.0 - aviationWear * 0.40);
+          vec3 painted = toLinearSpace(decal.rgb) * clamp(panelDetail, 0.67, 1.12);
+          surfaceAlbedo = mix(surfaceAlbedo, painted, decal.a * retention * 0.95);
+        }
+        // Fictional squadron roundel, sized in metres on both wings.
+        float roundel = length(vec2(abs(p.x) - wingMark, p.z + 0.88));
+        float wing = smoothstep(0.60, 0.84, abs(n.y)) * step(0.7, p.y);
+        float mark = (1.0 - smoothstep(0.54, 0.58, roundel)) * wing;
+        vec3 ring = mix(vec3(0.10, 0.19, 0.24), vec3(0.79, 0.71, 0.51), 1.0 - smoothstep(0.42, 0.45, roundel));
+        ring = mix(ring, vec3(0.63, 0.23, 0.14), 1.0 - smoothstep(0.20, 0.23, roundel));
+        surfaceAlbedo = mix(surfaceAlbedo, toLinearSpace(ring) * clamp(panelDetail, 0.58, 1.18), mark * (0.92 - aviationWear * 0.22));
+        // Salvaged metal and stitched fabric repairs follow the host skin even on the moving aircraft.
+        float role=aircraftLiveryParams.x;
+        // Exhaust follows the slipstream along the cowling and narrows down the fuselage.
+        float outlet=role<.5?-3.8:role<1.5?-2.75:role<2.5?-3.52:-4.25;
+        float aft=p.z-outlet;
+        float trail=exp(-pow((p.y-(1.83+.12*aft))/(.12+.12*clamp(aft,0.,2.)),2.));
+        float oil=smoothstep(0.,.24,aft)*(1.-smoothstep(.5,2.9,aft))*trail*smoothstep(.54,.88,abs(n.x))*(1.-smoothstep(1.12,1.50,abs(p.x)));
+        surfaceAlbedo*=1.-oil*(.42+.25*panelDetail);
+        vec2 wingCenter=role<.5?vec2(3.85,-1.55):role<1.5?vec2(-2.95,-1.24):role<2.5?vec2(3.24,-1.27):vec2(-5.5,-1.9);
+        bool wingRepair=abs(n.y)>.62 && abs(p.x)>1.55;
+        vec2 repairCoord=wingRepair?(p.xz-wingCenter)/vec2(1.85,1.17):
+          (p.zy-vec2(role<.5?-1.0:role<1.5?2.10:role<2.5?.1:-1.32,1.76))/vec2(1.24,.78);
+        repairCoord.y+=repairCoord.x*(role<1.5?.13:-.19);
+        vec2 patchUv=repairCoord+.5;
+        float tile=wingRepair?(role<.5?2.:role<1.5?3.:role<2.5?1.:0.):(role<1.5?0.:3.);
+        fieldRepair=0.;patchCloth=step(1.5,tile)*(1.-step(2.5,tile));
+        if(aircraftLiveryParams.w>.5 && (wingRepair || (abs(n.x)>.57 && abs(p.x)<1.6)) &&
+           all(greaterThan(patchUv,vec2(.0))) && all(lessThan(patchUv,vec2(1.)))) {
+          vec4 repairTexel=texture2D(aviationRepairAtlas,(patchUv+vec2(mod(tile,2.),1.-floor(tile*.5)))*.5);
+          fieldRepair=repairTexel.a;
+          surfaceAlbedo=mix(surfaceAlbedo,toLinearSpace(repairTexel.rgb)*clamp(panelDetail,.77,1.15),fieldRepair);
+          aviationRelief+=fieldRepair*.28;
+        }
         #endif
       `,
       CUSTOM_FRAGMENT_UPDATE_METALLICROUGHNESS: `
         #if defined(NOMAD_AVIATION_PAINT) && defined(ALBEDO)
         float vBandMR = fract(vAlbedoUV.y);
-        float panelLumMR = dot(surfaceAlbedo, vec3(0.2126, 0.7152, 0.0722));
-        if (vBandMR >= 0.50) {
-          // Exposed steel cowlings, gun barrels & brass straps gleam with metallic specular highlights
-          metallicRoughness.r = 0.76;
-          metallicRoughness.g = clamp(0.28 - panelLumMR * 0.08, 0.18, 0.36);
-        } else {
-          // Satin-gloss aviation enamel with crisp sunlit highlights along riveted panels
-          metallicRoughness.r = 0.38;
-          metallicRoughness.g = clamp(0.38 - panelLumMR * 0.12, 0.24, 0.46);
-        }
+        // The glTF atlas supplies micro-roughness and metal content; enamel is a dielectric.
+        float atlasMetal = metallicRoughness.r;
+        float atlasRough = metallicRoughness.g;
+        float hardware = smoothstep(0.48, 0.82, atlasMetal) * step(0.5, vBandMR);
+        metallicRoughness.r = clamp(max(hardware * 0.88, aviationWear * 0.68), 0.0, 0.88);
+        metallicRoughness.g = mix(clamp(atlasRough * 0.46 + 0.39 + (0.23 - aviationRelief) * 0.25, 0.46, 0.91),
+                                  clamp(atlasRough * 0.57 + 0.22, 0.29, 0.70), hardware);
+        metallicRoughness=mix(metallicRoughness,vec2(mix(.48,.0,patchCloth),mix(.61,.96,patchCloth)),fieldRepair);
         #endif
       `,
     };
@@ -119,9 +233,9 @@ export function configureImportedAircraftMaterial(material, engine, variant = 'c
   if (!material || material.getClassName?.() !== 'PBRMaterial') return false;
   if (/glass|canopy|window/i.test(material.name)) {
     material.albedoColor.set(0.18, 0.28, 0.36);
-    material.metallic = 0.35;
+    material.metallic = 0;
     material.roughness = 0.08;
-    material.environmentIntensity = 1.85;
+    material.environmentIntensity = 1.45;
     material.specularIntensity = 1.45;
     material.alpha = Math.min(material.alpha || 0.48, 0.52);
     if (material.clearCoat) {
@@ -138,14 +252,12 @@ export function configureImportedAircraftMaterial(material, engine, variant = 'c
   }
   if (!/atlas|armor/i.test(material.name)) return false;
   material.albedoColor.set(1.0, 1.0, 1.0);
-  material.metallic = 0.42;
-  material.roughness = 0.36;
-  material.environmentIntensity = 1.65;
-  material.specularIntensity = 1.35;
+  material.metallic = 1;
+  material.roughness = 1;
+  material.environmentIntensity = 1.24;
+  material.specularIntensity = 1.05;
   if (material.clearCoat) {
-    material.clearCoat.isEnabled = true;
-    material.clearCoat.intensity = 0.42;
-    material.clearCoat.roughness = 0.18;
+    material.clearCoat.isEnabled = false;
   }
   if (material._nomadAviationPaint) material._nomadAviationPaint.setVariant(variant);
   else material._nomadAviationPaint = new NomadAviationPaint(material, variant);
@@ -421,6 +533,7 @@ export class ExplorerAircraft {
       // Source GLBs already face -Z (propellers z=-3.82, tail gear z=+4.15).
       glbRoot.rotationQuaternion = BABYLON.Quaternion.Identity();
 
+      fitInterbellumAircraft(res.meshes, this.scene, variant);
       const tunedMaterials = new Set();
       for (const m of res.meshes) {
         if (m.name === '__root__') {
