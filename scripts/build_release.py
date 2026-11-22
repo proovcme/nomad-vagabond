@@ -14,6 +14,10 @@ shutil.copy2(root/'index.html',out/'index.html')
 p=out/'src/main.js'
 s=p.read_text().replace("if (urlParams.get('qa') === '1') {", "if (['localhost','127.0.0.1'].includes(location.hostname) && urlParams.get('qa') === '1') {")
 p.write_text(s)
+# Source files written atomically by an editor may have private local modes.
+# Every file in this allowlisted static release must be readable by the web server.
+for asset in out.rglob('*'):
+    asset.chmod(0o755 if asset.is_dir() else 0o644)
 manifest={str(p.relative_to(out)):{'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(out.rglob('*')) if p.is_file()}
 (out/'release.json').write_text(json.dumps({'files':manifest},indent=2)+'\n')
 print(json.dumps({'directory':str(out),'files':len(manifest),'bytes':sum(v['bytes'] for v in manifest.values())}))

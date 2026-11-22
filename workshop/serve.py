@@ -59,6 +59,7 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.respond(409,"Проект изменился в другой вкладке. Скачайте черновик и откройте свежую версию.")
                 with tempfile.NamedTemporaryFile(dir=CONTENT.parent,delete=False) as tmp:
                     tmp.write(content)
+                os.chmod(tmp.name,0o644)
                 os.replace(tmp.name,CONTENT)
             return self.respond(200,json.dumps({"revision":revision(content)}),"application/json")
         except (ValueError, OSError, subprocess.TimeoutExpired) as exc:
