@@ -3114,11 +3114,17 @@ export class SkyArchipelagoWorld {
       this.monolithLandmark.crystal.rotation.y += dt * 0.65;
       this.monolithLandmark.crystal.position.y = 9.5 + Math.sin(this.simTime * 1.6) * 0.85;
     }
-    // Animate LSO officer marshaling wands on the Vagabond runway
+    // Animate LSO officer marshaling wands & gently scan the 2 bow triple-barrel main cruiser turrets
     if (this.vagabondBase?.lsoArms?.length) {
       const w = Math.sin(this.simTime * 5.2);
       this.vagabondBase.lsoArms[0].rotation.z = 0.35 + w * 0.55;
       this.vagabondBase.lsoArms[1].rotation.z = -0.35 - w * 0.55;
+    }
+    if (this.vagabondBase?.mainTurrets?.length) {
+      this.vagabondBase.mainTurrets.forEach((t, idx) => {
+        t.yawPivot.rotation.y = Math.sin(this.simTime * 0.22 + idx * 0.8) * 0.36;
+        t.pitchPivot.rotation.z = -(t.baseElev + Math.sin(this.simTime * 0.35 + idx) * 0.04);
+      });
     }
     // Sweep AA searchlight beams across the night sky
     for (const sl of this.searchlights || []) {

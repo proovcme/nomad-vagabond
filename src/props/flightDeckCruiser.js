@@ -14,71 +14,99 @@ function c3(hex) {
 }
 
 /**
- * Generates a crisp 1930s Haze-Grey naval hull plate texture (horizontal welded/riveted strakes
- * + subtle weather streaking, eliminating blocky dark-blue tiles).
+ * Generates paired Albedo + Tangent-Space Normal Map (bumpTexture) for 1930s Haze-Grey naval steel
+ * with riveted horizontal strakes, vertical butt joints, and subtle sea-weathering (Babylon.js 8 PBR).
  */
-function createNavalHullPlateTexture(scene) {
-  const tex = new BABYLON.DynamicTexture('cfNavalHullPlatesTex', { width: 512, height: 512 }, scene, true);
-  const ctx = tex.getContext();
-  ctx.fillStyle = '#9aa3aa';
-  ctx.fillRect(0, 0, 512, 512);
+function createNavalHullTextures(scene) {
+  const albedo = new BABYLON.DynamicTexture('cfNavalHullPlatesTex', { width: 512, height: 512 }, scene, true);
+  const normal = new BABYLON.DynamicTexture('cfNavalHullPlatesNorm', { width: 512, height: 512 }, scene, true);
+  const ctx = albedo.getContext();
+  const nCtx = normal.getContext();
 
-  // Subtle horizontal hull plate strakes with slight per-plate tonal variation
+  ctx.fillStyle = '#9ea7ae';
+  ctx.fillRect(0, 0, 512, 512);
+  // Neutral tangent-space normal (128, 128, 255)
+  nCtx.fillStyle = 'rgb(128, 128, 255)';
+  nCtx.fillRect(0, 0, 512, 512);
+
   const rows = 8;
   const rowH = 512 / rows;
   for (let r = 0; r < rows; r++) {
-    const shade = 148 + ((r * 17) % 14) - 7;
+    const shade = 152 + ((r * 17) % 14) - 7;
     ctx.fillStyle = `rgb(${shade}, ${shade + 6}, ${shade + 11})`;
     ctx.fillRect(0, r * rowH, 512, rowH);
-    // Horizontal strake seam
-    ctx.fillStyle = 'rgba(42, 48, 54, 0.38)';
+    // Horizontal strake seam (albedo + real 3D normal bevel!)
+    ctx.fillStyle = 'rgba(38, 44, 50, 0.42)';
     ctx.fillRect(0, r * rowH, 512, 2);
-    ctx.fillStyle = 'rgba(235, 240, 244, 0.22)';
+    ctx.fillStyle = 'rgba(240, 244, 248, 0.24)';
     ctx.fillRect(0, r * rowH + 2, 512, 1);
+    nCtx.fillStyle = 'rgb(128, 86, 240)';
+    nCtx.fillRect(0, r * rowH, 512, 2);
+    nCtx.fillStyle = 'rgb(128, 174, 240)';
+    nCtx.fillRect(0, r * rowH + 2, 512, 2);
 
-    // Staggered vertical butt-joint seams & subtle rust/rain streaks
+    // Staggered vertical butt-joints, rivets & rain streaks
     const cols = 4;
     const colW = 512 / cols;
     const off = (r % 2) * (colW * 0.5);
     for (let c = 0; c <= cols; c++) {
       const vx = (c * colW + off) % 512;
-      ctx.fillStyle = 'rgba(45, 52, 58, 0.30)';
+      ctx.fillStyle = 'rgba(42, 48, 54, 0.34)';
       ctx.fillRect(vx, r * rowH, 2, rowH);
-      // Light rain/salt streak under seam
-      const grad = ctx.createLinearGradient(0, r * rowH, 0, r * rowH + rowH * 0.75);
-      grad.addColorStop(0, 'rgba(65, 58, 52, 0.16)');
+      nCtx.fillStyle = 'rgb(84, 128, 240)';
+      nCtx.fillRect(vx, r * rowH, 2, rowH);
+      nCtx.fillStyle = 'rgb(172, 128, 240)';
+      nCtx.fillRect(vx + 2, r * rowH, 2, rowH);
+      // Subtle rivet dots along plate edge
+      for (let ry = 8; ry < rowH - 4; ry += 12) {
+        nCtx.fillStyle = 'rgb(156, 156, 255)';
+        nCtx.fillRect(vx + 5, r * rowH + ry, 2, 2);
+      }
+      const grad = ctx.createLinearGradient(0, r * rowH, 0, r * rowH + rowH * 0.78);
+      grad.addColorStop(0, 'rgba(65, 58, 52, 0.18)');
       grad.addColorStop(1, 'rgba(65, 58, 52, 0.0)');
       ctx.fillStyle = grad;
-      ctx.fillRect(vx + 2, r * rowH + 2, 10, rowH * 0.75);
+      ctx.fillRect(vx + 2, r * rowH + 2, 11, rowH * 0.78);
     }
   }
-  tex.update();
-  tex.uScale = 2.0;
-  tex.vScale = 1.0;
-  return tex;
+  albedo.update();
+  normal.update();
+  albedo.uScale = normal.uScale = 2.0;
+  albedo.vScale = normal.vScale = 1.0;
+  return { albedo, normal };
 }
 
 /**
- * Generates a warm weathered 1930s teak carrier flight-deck plank texture.
+ * Generates paired Albedo + Normal Map for warm weathered 1930s teak carrier flight-deck planks.
  */
-function createTeakDeckTexture(scene) {
-  const tex = new BABYLON.DynamicTexture('cfTeakDeckTex', { width: 512, height: 512 }, scene, true);
-  const ctx = tex.getContext();
+function createTeakDeckTextures(scene) {
+  const albedo = new BABYLON.DynamicTexture('cfTeakDeckTex', { width: 512, height: 512 }, scene, true);
+  const normal = new BABYLON.DynamicTexture('cfTeakDeckNorm', { width: 512, height: 512 }, scene, true);
+  const ctx = albedo.getContext();
+  const nCtx = normal.getContext();
   ctx.fillStyle = '#b49c76';
   ctx.fillRect(0, 0, 512, 512);
+  nCtx.fillStyle = 'rgb(128, 128, 255)';
+  nCtx.fillRect(0, 0, 512, 512);
+
   const planks = 32;
   const ph = 512 / planks;
   for (let i = 0; i < planks; i++) {
     const v = ((i * 29) % 18) - 9;
-    ctx.fillStyle = `rgb(${176 + v}, ${152 + v}, ${114 + v})`;
+    ctx.fillStyle = `rgb(${178 + v}, ${154 + v}, ${116 + v})`;
     ctx.fillRect(0, i * ph, 512, ph);
-    ctx.fillStyle = 'rgba(58, 46, 32, 0.34)';
+    ctx.fillStyle = 'rgba(54, 42, 28, 0.36)';
     ctx.fillRect(0, i * ph, 512, 1.5);
+    nCtx.fillStyle = 'rgb(128, 92, 240)';
+    nCtx.fillRect(0, i * ph, 512, 1.5);
+    nCtx.fillStyle = 'rgb(128, 162, 240)';
+    nCtx.fillRect(0, i * ph + 1.5, 512, 1.5);
   }
-  tex.update();
-  tex.uScale = 5.0;
-  tex.vScale = 2.5;
-  return tex;
+  albedo.update();
+  normal.update();
+  albedo.uScale = normal.uScale = 5.0;
+  albedo.vScale = normal.vScale = 2.5;
+  return { albedo, normal };
 }
 
 function createLoftedHull(scene, name, stations, material, parent, shadowGen = null) {
@@ -175,10 +203,18 @@ function createCruiserMaterials(scene) {
 
   const hull = new B.PBRMaterial('cfCruiserHullMat', scene);
   hull.albedoColor = c3('#aeb7be'); // crisp sunlit 1930s US Navy Haze-Grey
-  hull.metallic = 0.24;
-  hull.roughness = 0.56;
-  hull.environmentIntensity = 0.78;
-  if (!isNull) hull.albedoTexture = createNavalHullPlateTexture(scene);
+  hull.metallic = 0.26;
+  hull.roughness = 0.54;
+  hull.environmentIntensity = 0.80;
+  hull.clearCoat.isEnabled = true;
+  hull.clearCoat.intensity = 0.16;
+  hull.clearCoat.roughness = 0.42;
+  if (!isNull) {
+    const ht = createNavalHullTextures(scene);
+    hull.albedoTexture = ht.albedo;
+    hull.bumpTexture = ht.normal;
+    hull.bumpTexture.level = 0.85;
+  }
 
   const hullDark = new B.PBRMaterial('cfCruiserHullDarkMat', scene);
   hullDark.albedoColor = c3('#78838c'); // shaded lower armor belt / turret faces
@@ -196,7 +232,12 @@ function createCruiserMaterials(scene) {
   deckWood.albedoColor = c3('#c8b28c'); // sunlit weathered teak carrier flight deck
   deckWood.metallic = 0.04;
   deckWood.roughness = 0.80;
-  if (!isNull) deckWood.albedoTexture = createTeakDeckTexture(scene);
+  if (!isNull) {
+    const dt = createTeakDeckTextures(scene);
+    deckWood.albedoTexture = dt.albedo;
+    deckWood.bumpTexture = dt.normal;
+    deckWood.bumpTexture.level = 0.75;
+  }
 
   const crimson = new B.PBRMaterial('cfCruiserCrimsonMat', scene);
   crimson.albedoColor = c3('#9d3226'); // naval oxide-red lower hull & flagship stripes
@@ -284,42 +325,62 @@ function buildCruiserHull(scene, parent, mats, shadowGen) {
 }
 
 /**
- * Module 2: TWO Large Sculpted Superfiring Triple-Barrel 6-inch Cruiser Turrets (A, B).
- * Sloped glacis face, chamfered armor roof, blast bags, rangefinder hoods & long 19m triple barrels.
+ * Module 2: TWO Large Animation-Ready Superfiring Triple-Barrel 6-inch Cruiser Turrets (A, B).
+ * Uses Babylon.js 8 Pivot-Before-Geometry hierarchy: yawPivot -> pitchPivot so turrets rotate & elevate live!
  */
 function buildMainBatteryTurrets(scene, parent, mats, shadowGen) {
   const B = BABYLON;
-  const hullParts = [], darkHullParts = [], barrelParts = [], brassParts = [];
-  const put = (arr, m, x, y, z, rx = 0, ry = 0, rz = 0) => { m.position.set(x, y, z); m.rotation.set(rx, ry, rz); arr.push(m); };
+  const staticBarbParts = [], staticBrassParts = [];
+  const turretHandles = [];
 
-  const turrets = [
+  const specs = [
     { id: 'A', x: -112, y: 10.6, elev: 0.11 },
     { id: 'B', x:  -84, y: 15.2, elev: 0.14 },
   ];
-  for (const t of turrets) {
+  for (const t of specs) {
     const barbH = t.y - 8.4;
-    // Heavy cylindrical armored barbette
-    put(hullParts, B.MeshBuilder.CreateCylinder(`cfBarb_${t.id}`, { diameter: 11.2, height: barbH, tessellation: 18 }, scene), t.x, 8.4 + barbH * 0.5, 0);
-    put(brassParts, B.MeshBuilder.CreateTorus(`cfBarbRing_${t.id}`, { diameter: 11.4, thickness: 0.36, tessellation: 20 }, scene), t.x, t.y + 0.1, 0);
-    // Sculpted 1930s US Navy 6"/47 triple gunhouse (sloped glacis + chamfered rear overhang + top cupola)
-    put(hullParts, B.MeshBuilder.CreateBox(`cfGunBody_${t.id}`, { width: 12.2, height: 4.0, depth: 9.8 }, scene), t.x + 1.0, t.y + 2.1, 0);
-    put(darkHullParts, B.MeshBuilder.CreateBox(`cfGunGlacis_${t.id}`, { width: 3.0, height: 3.8, depth: 9.4 }, scene), t.x - 5.4, t.y + 1.9, 0, 0, 0, 0.36);
-    put(hullParts, B.MeshBuilder.CreateBox(`cfGunRoof_${t.id}`, { width: 10.2, height: 0.7, depth: 8.6 }, scene), t.x + 0.8, t.y + 4.3, 0);
-    // Optical rangefinder hood ears protruding from turret flanks
-    put(darkHullParts, B.MeshBuilder.CreateCylinder(`cfGunRF_${t.id}`, { diameter: 0.92, height: 12.2, tessellation: 10 }, scene), t.x + 3.6, t.y + 3.1, 0, Math.PI * 0.5, 0, 0);
-    put(brassParts, B.MeshBuilder.CreateBox(`cfGunSight_${t.id}`, { width: 1.4, height: 0.7, depth: 2.2 }, scene), t.x - 1.5, t.y + 4.8, 0);
-    // Long tapered 19-meter triple barrels with canvas blast bags & recoil sleeves
+    const barb = B.MeshBuilder.CreateCylinder(`cfBarb_${t.id}`, { diameter: 11.2, height: barbH, tessellation: 18 }, scene);
+    barb.position.set(t.x, 8.4 + barbH * 0.5, 0); staticBarbParts.push(barb);
+    const ring = B.MeshBuilder.CreateTorus(`cfBarbRing_${t.id}`, { diameter: 11.4, thickness: 0.36, tessellation: 20 }, scene);
+    ring.position.set(t.x, t.y + 0.1, 0); staticBrassParts.push(ring);
+
+    // 1. Yaw pivot at turret center
+    const yawPivot = new B.TransformNode(`cfMainTurretYaw_${t.id}`, scene);
+    yawPivot.parent = parent;
+    yawPivot.position.set(t.x, t.y, 0);
+
+    // Turret gunhouse geometry (merged per-turret under yawPivot so it rotates cleanly as 1 draw call!)
+    const houseParts = [], armorParts = [], brassParts = [];
+    const putLocal = (arr, m, lx, ly, lz, rx = 0, ry = 0, rz = 0) => { m.position.set(lx, ly, lz); m.rotation.set(rx, ry, rz); arr.push(m); };
+    putLocal(houseParts, B.MeshBuilder.CreateBox(`cfGunBody_${t.id}`, { width: 12.2, height: 4.0, depth: 9.8 }, scene), 1.0, 2.1, 0);
+    putLocal(houseParts, B.MeshBuilder.CreateBox(`cfGunRoof_${t.id}`, { width: 10.2, height: 0.7, depth: 8.6 }, scene), 0.8, 4.3, 0);
+    putLocal(armorParts, B.MeshBuilder.CreateBox(`cfGunGlacis_${t.id}`, { width: 3.0, height: 3.8, depth: 9.4 }, scene), -5.4, 1.9, 0, 0, 0, 0.36);
+    putLocal(armorParts, B.MeshBuilder.CreateCylinder(`cfGunRF_${t.id}`, { diameter: 0.92, height: 12.2, tessellation: 10 }, scene), 3.6, 3.1, 0, Math.PI * 0.5, 0, 0);
+    putLocal(brassParts, B.MeshBuilder.CreateBox(`cfGunSight_${t.id}`, { width: 1.4, height: 0.7, depth: 2.2 }, scene), -1.5, 4.8, 0);
     for (const bz of [-2.4, 0.0, 2.4]) {
-      put(darkHullParts, B.MeshBuilder.CreateSphere(`cfBlastBag_${t.id}_${bz}`, { diameterX: 2.4, diameterY: 1.6, diameterZ: 1.6, segments: 8 }, scene), t.x - 6.6, t.y + 2.5, bz);
-      put(barrelParts, B.MeshBuilder.CreateCylinder(`cfSleeve_${t.id}_${bz}`, { diameter: 1.05, height: 4.8, tessellation: 10 }, scene), t.x - 8.8, t.y + 2.8, bz, 0, 0, Math.PI * 0.5 - t.elev);
-      put(barrelParts, B.MeshBuilder.CreateCylinder(`cfBarrel_${t.id}_${bz}`, { diameterTop: 0.42, diameterBottom: 0.68, height: 18.8, tessellation: 10 }, scene), t.x - 16.4, t.y + 3.7, bz, 0, 0, Math.PI * 0.5 - t.elev);
+      putLocal(armorParts, B.MeshBuilder.CreateSphere(`cfBlastBag_${t.id}_${bz}`, { diameterX: 2.4, diameterY: 1.6, diameterZ: 1.6, segments: 8 }, scene), -6.6, 2.5, bz);
     }
+    mergeKit(houseParts, `cfTurretHouse_${t.id}`, yawPivot, mats.hull, shadowGen);
+    mergeKit(armorParts, `cfTurretArmor_${t.id}`, yawPivot, mats.hullDark, shadowGen);
+    mergeKit(brassParts, `cfTurretBrass_${t.id}`, yawPivot, mats.brass, null);
+
+    // 2. Pitch pivot at trunnion axis (-6.6, 2.5, 0) for triple 19m barrels
+    const pitchPivot = new B.TransformNode(`cfMainTurretPitch_${t.id}`, scene);
+    pitchPivot.parent = yawPivot;
+    pitchPivot.position.set(-6.6, 2.5, 0);
+    pitchPivot.rotation.z = -t.elev;
+    const barrelParts = [];
+    for (const bz of [-2.4, 0.0, 2.4]) {
+      putLocal(barrelParts, B.MeshBuilder.CreateCylinder(`cfSleeve_${t.id}_${bz}`, { diameter: 1.05, height: 4.8, tessellation: 10 }, scene), -2.2, 0, bz, 0, 0, Math.PI * 0.5);
+      putLocal(barrelParts, B.MeshBuilder.CreateCylinder(`cfBarrel_${t.id}_${bz}`, { diameterTop: 0.42, diameterBottom: 0.68, height: 18.8, tessellation: 10 }, scene), -9.8, 0, bz, 0, 0, Math.PI * 0.5);
+    }
+    mergeKit(barrelParts, `cfTurretBarrels_${t.id}`, pitchPivot, mats.darkSteel, shadowGen);
+    turretHandles.push({ id: t.id, yawPivot, pitchPivot, baseElev: t.elev });
   }
 
-  mergeKit(hullParts, 'cfMainTurretsHull', parent, mats.hull, shadowGen);
-  mergeKit(darkHullParts, 'cfMainTurretsArmor', parent, mats.hullDark, shadowGen);
-  mergeKit(barrelParts, 'cfMainTurretsBarrels', parent, mats.darkSteel, shadowGen);
-  mergeKit(brassParts, 'cfMainTurretsBrass', parent, mats.brass, null);
+  mergeKit(staticBarbParts, 'cfMainBarbettesHull', parent, mats.hull, shadowGen);
+  mergeKit(staticBrassParts, 'cfMainBarbettesBrass', parent, mats.brass, null);
+  return turretHandles;
 }
 
 /**
@@ -392,6 +453,16 @@ function buildMidshipsSuperstructure(scene, parent, mats, shadowGen) {
   put(hullParts, B.MeshBuilder.CreateCylinder('cfSpottingTop', { diameterTop: 5.2, diameterBottom: 4.4, height: 2.0, tessellation: 12 }, scene), bx, 47.4, bz, 0, 0, 0, 0.85, 1.0, 1.15);
   put(darkParts, B.MeshBuilder.CreateBox('cfYardMain', { width: 0.28, height: 0.28, depth: 18.5 }, scene), bx, 53.0, bz);
   put(darkParts, B.MeshBuilder.CreateBox('cfYardUpper', { width: 0.20, height: 0.20, depth: 11.5 }, scene), bx, 56.8, bz);
+  // Sweeping naval wire rigging stays (Babylon.js CreateTube!) from foremast top to bow & bridge wings
+  const riggingSpans = [
+    [new B.Vector3(bx, 57.5, 0), new B.Vector3(-148, 12.2, 0)],
+    [new B.Vector3(bx, 53.0, -8.8), new B.Vector3(-29.5, 36.0, -16.8)],
+    [new B.Vector3(bx, 53.0,  8.8), new B.Vector3(-25.0, 22.0,  16.8)],
+  ];
+  riggingSpans.forEach(([a, b], rIdx) => {
+    const mid = B.Vector3.Lerp(a, b, 0.5); mid.y -= 1.2;
+    darkParts.push(B.MeshBuilder.CreateTube(`cfRigging_${rIdx}`, { path: [a, mid, b], radius: 0.085, tessellation: 6 }, scene));
+  });
 
   // TWO Sleek Oval 1930s Raked Cruiser Funnels (elliptical cross-section, vertical steam pipes, crimson bands, black caps!)
   for (const [fx, fz] of [[-41.0, -16.8], [-29.5, -16.8]]) {
@@ -505,9 +576,9 @@ export function buildFlightDeckCruiserModel(asteroidBase, scene, shadowGen = nul
   if (!asteroidBase?.group || !scene) return null;
   const mats = createCruiserMaterials(scene);
   buildCruiserHull(scene, asteroidBase.group, mats, shadowGen);
-  buildMainBatteryTurrets(scene, asteroidBase.group, mats, shadowGen);
+  asteroidBase.mainTurrets = buildMainBatteryTurrets(scene, asteroidBase.group, mats, shadowGen);
   buildMidshipsSuperstructure(scene, asteroidBase.group, mats, shadowGen);
   buildWideAftFlightDeck(scene, asteroidBase.group, mats, shadowGen);
   buildAntigravKeelPods(scene, asteroidBase.group, mats);
-  return { hullMat: mats.hull };
+  return { hullMat: mats.hull, mainTurrets: asteroidBase.mainTurrets };
 }
