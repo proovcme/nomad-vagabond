@@ -408,7 +408,7 @@ export const AIRCRAFT_GROUND_PROFILES = Object.freeze({
  * Compact (~4.0u long, 4.8u wingspan) relative to the ~44u AsteroidBase.
  */
 export class ExplorerAircraft {
-  constructor(scene, camera, audio, variant = 'cargo') {
+  constructor(scene, camera, audio, variant = 'cargo', { loadVisual = true } = {}) {
     this.scene = scene;
     this.camera = camera;
     this.audio = audio;
@@ -472,7 +472,7 @@ export class ExplorerAircraft {
     this._buildModel();
     this._rememberLandingGear(this.gearStruts, false);
     this._bindInputs();
-    if (!(this.scene.getEngine() instanceof BABYLON.NullEngine) && typeof BABYLON.SceneLoader !== 'undefined') {
+    if (loadVisual && !(this.scene.getEngine() instanceof BABYLON.NullEngine) && typeof BABYLON.SceneLoader !== 'undefined') {
       this.readyPromise = this._loadGlbAircraft(this.variant);
     }
   }

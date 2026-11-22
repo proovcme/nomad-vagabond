@@ -156,9 +156,15 @@ export class GraphicsManager {
 
     // Install procedural IBL environment immediately so all PBR materials reflect twilight sky & sun
     if (!this.isHeadlessOrNull) {
-      scene.environmentTexture = scene.metadata?.skyLighting
-        ? BABYLON.CubeTexture.CreateFromPrefilteredData('./assets/environments/environmentSpecular.env', scene)
-        : createTwilightEnvironmentTexture(scene, 32);
+      if (scene.metadata?.skyLighting) {
+        // A pending cube texture blocks every PBR hull. Use direct scene lighting until it is ready.
+        const reflections = BABYLON.CubeTexture.CreateFromPrefilteredData('./assets/environments/environmentSpecular.env', scene);
+        const install = () => { if (!scene.isDisposed) scene.environmentTexture = reflections; };
+        if (reflections.isReady()) install();
+        else reflections.onLoadObservable.addOnce(install);
+      } else {
+        scene.environmentTexture = createTwilightEnvironmentTexture(scene, 32);
+      }
       scene.environmentIntensity = QUALITY_PRESETS[this.quality].envIntensity;
     }
 

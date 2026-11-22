@@ -249,11 +249,11 @@ function initWorld(seedStr, { menuPreview = false, fogMission = false, levelId =
     }
   }
 
-  ship = new ExplorerAircraft(scene, camera, audio);
+  ship = new ExplorerAircraft(scene, camera, audio, 'cargo', { loadVisual: !menuPreview });
   smoke = new SmokeTrail(scene, ship);
   ship.dockOnAsteroid(asteroidBase);
 
-  player = new NavigatorPlayer(scene, camera, audio);
+  player = new NavigatorPlayer(scene, camera, audio, { loadVisual: !menuPreview && !fogMission });
   player.placeOnAsteroid(asteroidBase);
   if (worldMode==='sky' && !menuPreview) {
     world.islandConstruction=construction;
@@ -930,12 +930,12 @@ async function startRun(seedStr, { skipPrologue = false } = {}) {
     document.body.classList.add('in-prologue');
     prologue.showLoading();
   }
-  const loadResults = await Promise.allSettled([ship.readyPromise, player.readyPromise, world.landmarks?.readyPromise, world.fleet?.readyPromise, world.bakedLighting?.readyPromise, ...world.islands?.map(i=>i.readyPromise) || []]);
+  // The chase opens on the procedural aircraft and escort. Imported scenery streams in during flight.
+  const loadResults = await Promise.allSettled(demoState?.passage ? [] : [ship.readyPromise, player.readyPromise, world.landmarks?.readyPromise, world.fleet?.readyPromise, world.bakedLighting?.readyPromise, ...world.islands?.map(i=>i.readyPromise) || []]);
   for (const r of loadResults) {
     if (r.status === 'rejected') console.warn('[startRun] Asset/subsystem load warning:', r.reason);
   }
   if (generation !== runGeneration) return;
-  // Hidden and distant meshes compile lazily. Gameplay only depends on the assets above.
   // The menu's Enter/Space must never skip the opening or fire on handoff.
   ship.keys = {};
   gameState = 'playing';
@@ -946,7 +946,10 @@ async function startRun(seedStr, { skipPrologue = false } = {}) {
 function finishPrologue() {
   if (!demoState || demoState.stage !== 'intro_cutscene') return;
   demoState.stage = demoState.passage ? 'fog_search' : 'tutorial_flight';
-  if(demoState.passage) passageRadio('escape');
+  if(demoState.passage) {
+    player.loadSkeletalExplorer();
+    passageRadio('escape');
+  }
   demoState.tutorialTimer = 0;
   introSkipRequested = false;
   ship.keys = {};

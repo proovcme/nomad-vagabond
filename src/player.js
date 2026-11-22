@@ -54,7 +54,7 @@ export function attachHeroAviatorGear(scene, res) {
 }
 
 export class NavigatorPlayer {
-  constructor(scene, camera, audio) {
+  constructor(scene, camera, audio, { loadVisual = true } = {}) {
     this.scene = scene;
     this.camera = camera;
     this.audio = audio;
@@ -84,7 +84,7 @@ export class NavigatorPlayer {
     this.skeletalRoot = null;
     this.activeAnim = 'Idle';
     this._buildModel();
-    this._loadSkeletalExplorer();
+    if (loadVisual) this.loadSkeletalExplorer();
     this._bindInputs();
   }
 
@@ -357,10 +357,12 @@ export class NavigatorPlayer {
     }
   }
 
-  _loadSkeletalExplorer() {
+  loadSkeletalExplorer() {
+    if (this.readyPromise || this.scene.isDisposed) return this.readyPromise;
     const eng = this.scene.getEngine();
     if (!BABYLON.SceneLoader || (BABYLON.NullEngine && eng instanceof BABYLON.NullEngine)) return;
     const setupLoaded = (res, isNomadHero) => {
+      if (this.scene.isDisposed) return;
       const root = res.meshes[0];
       if (!root) return;
       root.parent = this.group;
@@ -399,7 +401,7 @@ export class NavigatorPlayer {
 
     this.readyPromise = BABYLON.SceneLoader.ImportMeshAsync('', './assets/character/', 'nomad_hero.glb', this.scene)
       .then((res) => setupLoaded(res, true))
-      .catch(() =>
+      .catch(() => this.scene.isDisposed ? undefined :
         BABYLON.SceneLoader.ImportMeshAsync('', './assets/benchmark/models/character/', 'explorer.glb', this.scene)
           .then((res) => setupLoaded(res, false))
           .catch((err) => {

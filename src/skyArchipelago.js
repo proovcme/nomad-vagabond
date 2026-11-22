@@ -42,6 +42,7 @@ function registerSkyShaders() {
       uniform float uTimeOfDay;
       uniform vec3 uCameraPosition;
       uniform sampler2D uSkyArtwork;
+      uniform float uArtworkReady;
       uniform float uVolumetricClouds;
 
       float hash21(vec2 p) {
@@ -129,7 +130,7 @@ function registerSkyShaders() {
           skyArt=mix((sGraded * sGraded) * 0.96,skyArt,smoothstep(0.0,.035,seamDistance));
         }
         float artWeight=smoothstep(.0,.14,artUv.y)*(1.0-smoothstep(.94,1.0,artUv.y))*smoothstep(-.20,.04,h);
-        col=mix(col,skyArt * mix(1.0, 0.08, nightMask), artWeight * mix(0.69, 0.28, nightMask));
+        col=mix(col,skyArt * mix(1.0, 0.08, nightMask), uArtworkReady * artWeight * mix(0.69, 0.28, nightMask));
 
         // Rich bright twinkling night stars (2 layered starfields: bright hero stars + dense faint star dust)
         if (nightMask > 0.05 && h > 0.01) {
@@ -2445,11 +2446,24 @@ export class SkyArchipelagoWorld {
       'archSkyShader',
       this.scene,
       { vertex: 'archSky', fragment: 'archSky' },
-      { attributes: ['position'], uniforms: ['worldViewProjection', 'uSunDir', 'uTime', 'uTimeOfDay', 'uCameraPosition','uVolumetricClouds'], samplers:['uSkyArtwork'], defines:['#define IMAGEPROCESSINGPOSTPROCESS'] }
+      { attributes: ['position'], uniforms: ['worldViewProjection', 'uSunDir', 'uTime', 'uTimeOfDay', 'uCameraPosition','uVolumetricClouds','uArtworkReady'], samplers:['uSkyArtwork'], defines:['#define IMAGEPROCESSINGPOSTPROCESS'] }
     );
     this.skyMat.setVector3('uSunDir', this.sunDir);
     this.skyMat.setVector3('uCameraPosition', this.scene.activeCamera.position);
-    if (!(this.scene.getEngine() instanceof BABYLON.NullEngine)) this.skyMat.setTexture('uSkyArtwork',new BABYLON.Texture('./assets/textures/nomad/shattered-world-sky.png',this.scene));
+    this.skyMat.setFloat('uArtworkReady',0);
+    if (!(this.scene.getEngine() instanceof BABYLON.NullEngine)) {
+      const placeholder = BABYLON.RawTexture.CreateRGBATexture(new Uint8Array([128,160,192,255]),1,1,this.scene,false,false);
+      this.skyMat.setTexture('uSkyArtwork',placeholder);
+      const artwork = new BABYLON.Texture('./assets/textures/nomad/shattered-world-sky.webp',this.scene);
+      const applyArtwork = () => {
+        if (this.scene.isDisposed) return;
+        this.skyMat.setTexture('uSkyArtwork',artwork);
+        this.skyMat.setFloat('uArtworkReady',1);
+        placeholder.dispose();
+      };
+      if (artwork.isReady()) applyArtwork();
+      else artwork.onLoadObservable.addOnce(applyArtwork);
+    }
     this.celestials=new SkyCelestials(this.scene,this.scene.activeCamera);
     this.skyMat.setFloat('uTime', 0);
     this.skyMat.setFloat('uVolumetricClouds',1);
