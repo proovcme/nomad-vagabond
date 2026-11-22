@@ -27,7 +27,17 @@ async function main(){
   }
   await page.goto(base,{waitUntil:'domcontentloaded',timeout:90000});await page.locator('dialog').waitFor({state:'attached',timeout:90000});await page.click('#atlas-menu');
   const atlas=page.frameLocator('dialog iframe');await atlas.getByRole('searchbox').fill('Tribal');
-  await atlas.getByRole('heading',{name:/Tribal/}).waitFor();await atlas.getByRole('button',{name:'Закрыть'}).click();
+  await atlas.getByRole('heading',{name:/Tribal/}).waitFor();
+  const plates=atlas.locator('article figure img');
+  assert(await plates.count()>=2);
+  for(const image of await plates.all()){
+   await image.scrollIntoViewIfNeeded();await image.evaluate(img=>img.decode());
+   assert(await image.evaluate(img=>img.naturalWidth>0 && img.closest('a')?.href===img.src));
+  }
+  await atlas.getByRole('searchbox').fill('');
+  await atlas.getByRole('button',{name:'Об эпохе',exact:true}).click();
+  await atlas.getByRole('heading',{name:'Что такое интербеллум?'}).waitFor();
+  await atlas.getByRole('button',{name:'Закрыть'}).click();
   await page.waitForFunction(()=>!document.querySelector('dialog[open]'));
   await page.click('#start-btn');await page.locator('#prologue-skip').click({timeout:90000});await page.click('#pause-hud-btn');await page.click('#atlas-pause');
   await atlas.getByRole('button',{name:'Закрыть'}).click();await page.waitForFunction(()=>!document.querySelector('dialog[open]'));

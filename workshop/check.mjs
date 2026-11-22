@@ -10,5 +10,11 @@ try{
  check(doc);
  for(const {clip} of doc.radio)if(clip&&!fs.existsSync(path.join(root,'assets/audio/fog-passage',clip+'.mp3')))throw Error('Нет записи '+clip+'.mp3');
  if(references.some(r=>!r.note||!r.article||!r.url?.startsWith('https://')||(r.image&&!fs.existsSync(path.join(root,'assets/encyclopedia',r.image)))))throw Error('Проверьте статьи и ссылки атласа');
+ for(const entry of references){
+   const plates=entry.gallery||[];
+   if(['Авиация','Корабли'].includes(entry.category)&&!entry.image&&!plates.length)throw Error('Нет иллюстрации: '+entry.title);
+   for(const plate of plates)if(!plate.caption||!plate.credit||!plate.license||!plate.source?.startsWith('https://')||
+     !fs.existsSync(path.join(root,'assets/encyclopedia',plate.file)))throw Error('Проверьте иллюстрацию: '+entry.title);
+ }
  console.log('Проверены главы, персонажи, сценарий, кадры, звук, эффекты и '+references.length+' записей атласа.');
 }catch(e){console.error(e.message);process.exitCode=1;}

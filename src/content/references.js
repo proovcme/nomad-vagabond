@@ -30,7 +30,24 @@ export const references = [
     "article": "Чертёж британского Адмиралтейства ноября 1935 года показывает корпус эсминца сразу в нескольких проекциях. Кривые поперечных сечений объясняют, как узкий нос переходит в более полный корпус. Масштаб оригинала — 1:48.",
     "note": "Сверять сечения от носа к корме и подъём полубака. В модели эсминца проверить силуэт без мачт и труб.",
     "url": "https://www.rmg.co.uk/collections/objects/rmgc-object-1175776",
-    "rights": "© Crown copyright, National Maritime Museum."
+    "rights": "© Crown copyright, National Maritime Museum.",
+    "gallery": [
+      {
+        "file": "tribal.webp",
+        "caption": "HMS Cossack типа Tribal на ходу вскоре после постройки.",
+        "credit": "Royal Navy official photographer",
+        "source": "https://commons.wikimedia.org/wiki/File:HMS_Cossack.jpg",
+        "license": "Public domain",
+        "licenseUrl": ""
+      },
+      {
+        "file": "tribal-profile.webp",
+        "caption": "Эсминец типа Tribal. Боковой вид из справочника ONI 201-I, лист 8.",
+        "credit": "U.S. Navy · Division of Naval Intelligence",
+        "source": "https://www.ibiblio.org/hyperwar/USN/ref/ONI/ONI-201/ONI-201-I/ONI-201-I.pdf#page=10",
+        "license": "Public domain · фрагмент листа"
+      }
+    ]
   },
   {
     "category": "Корабли",
@@ -40,7 +57,25 @@ export const references = [
     "article": "На чертеже ноября 1934 года показаны нижняя ангарная и верхняя палубы будущего авианосца. Из вида сбоку трудно понять, сколько места самолёт занимает под полётной палубой. План сверху даёт это сравнение в одном масштабе.",
     "note": "Проследить путь борта от стоянки к подъёмнику. По нему расставить фермы, двери и световые пятна в ангаре «Бродяги».",
     "url": "https://www.rmg.co.uk/collections/objects/rmgc-object-1145827",
-    "rights": "© Crown copyright, Admiralty Collection."
+    "rights": "© Crown copyright, Admiralty Collection.",
+    "gallery": [
+      {
+        "file": "ark.webp",
+        "caption": "HMS Ark Royal и самолёты Swordfish, около 1939 года.",
+        "credit": "United Kingdom Government",
+        "source": "https://commons.wikimedia.org/wiki/File:HMS_Ark_Royal_h85716.jpg",
+        "license": "Public domain",
+        "licenseUrl": ""
+      },
+      {
+        "file": "ark-deck.webp",
+        "caption": "Заход Blackburn Skua на посадку. Вид с палубы HMS Ark Royal.",
+        "credit": "Priest, L C (Lt), Royal Navy official photographer",
+        "source": "https://commons.wikimedia.org/wiki/File:Blackburn_Skua_landing_on_HMS_Ark_Royal.jpg",
+        "license": "Public domain",
+        "licenseUrl": ""
+      }
+    ]
   },
   {
     "category": "Корабли",
@@ -50,7 +85,32 @@ export const references = [
     "article": "Нижняя палуба лёгких крейсеров типа Edinburgh показана целиком в масштабе 1:96. За длинной непрерывной линией борта скрывается цепочка помещений и переборок. На листе стоят отметки Адмиралтейства и верфей.",
     "note": "Как переборки дробят длинный объём. Для пути от рубильника до штурвала придумать узнаваемый отсек на каждом повороте.",
     "url": "https://www.rmg.co.uk/collections/objects/rmgc-object-50676",
-    "rights": "© Crown copyright, National Maritime Museum."
+    "rights": "© Crown copyright, National Maritime Museum.",
+    "gallery": [
+      {
+        "file": "edinburgh.webp",
+        "caption": "HMS Edinburgh с воздуха, Скапа-Флоу, октябрь 1941 года.",
+        "credit": "Coote, R G G (Lt), Royal Navy official photographer",
+        "source": "https://commons.wikimedia.org/wiki/File:HMS_Edinburgh_at_Scapa_Flow,_28_October_1941_A6160.jpg",
+        "license": "Public domain",
+        "licenseUrl": ""
+      },
+      {
+        "file": "belfast.webp",
+        "caption": "HMS Belfast во время Корейской войны. Облик корабля после модернизации.",
+        "credit": "Royal Navy official photographer",
+        "source": "https://commons.wikimedia.org/wiki/File:HMS_Belfast_bombarding_Korea.jpg",
+        "license": "Public domain",
+        "licenseUrl": ""
+      },
+      {
+        "file": "belfast-profile.webp",
+        "caption": "HMS Belfast. Боковой вид из справочника ONI 201-I, лист 7.",
+        "credit": "U.S. Navy · Division of Naval Intelligence",
+        "source": "https://www.ibiblio.org/hyperwar/USN/ref/ONI/ONI-201/ONI-201-I/ONI-201-I.pdf#page=9",
+        "license": "Public domain · фрагмент листа"
+      }
+    ]
   },
   {
     "category": "Авиация",
@@ -59,7 +119,17 @@ export const references = [
     "source": "RAF Museum · 74/A/29",
     "article": "Двухместный британский биплан впервые поднялся в воздух в июле 1928 года. Дневной бомбардировщик оказался быстрее состоявших тогда на вооружении британских истребителей. Родственные машины служили разведчиками и учебными самолётами.",
     "note": "Разобрать стык капота с полотняной обшивкой, открытые кабины и ритм стоек. Проверять разведчик в профиль и с задней полусферы.",
-    "url": "https://www.rafmuseum.org.uk/research/collections/hawker-hart-ii"
+    "url": "https://www.rafmuseum.org.uk/research/collections/hawker-hart-ii",
+    "gallery": [
+      {
+        "file": "hart.webp",
+        "caption": "Hawker Hart G-ABMR на аэродроме в Ковентри, 1954 год.",
+        "credit": "RuthAS",
+        "source": "https://commons.wikimedia.org/wiki/File:Hawker_Hart_G-ABMR_CVT_19.06.54_edited-3.jpg",
+        "license": "CC BY 3.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/3.0"
+      }
+    ]
   },
   {
     "category": "Авиация",
@@ -68,7 +138,17 @@ export const references = [
     "source": "Musée de l’Air et de l’Espace",
     "article": "На этом французском самолёте Дьёдонне Кост и Морис Беллонт в 1930 году перелетели из Парижа в Нью-Йорк. Яркий фюзеляж с вопросительным знаком превращал дальнюю экспедицию в событие, узнаваемое по одному снимку.",
     "note": "Смотреть, как большая цветовая масса и один фюзеляжный знак дают самолёту индивидуальность. Для почтового борта важны обзор и дальность.",
-    "url": "https://www.museeairespace.fr/aller-plus-haut/collections/breguet-xix-tf-super-bidon-point-dinterrogation"
+    "url": "https://www.museeairespace.fr/aller-plus-haut/collections/breguet-xix-tf-super-bidon-point-dinterrogation",
+    "gallery": [
+      {
+        "file": "breguet.webp",
+        "caption": "«Point d’interrogation» в экспозиции музея Ле-Бурже.",
+        "credit": "Duch.seb",
+        "source": "https://commons.wikimedia.org/wiki/File:Breguet_19_Point_D%27interrogation_(MAE).JPG",
+        "license": "CC BY-SA 3.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0"
+      }
+    ]
   },
   {
     "category": "Авиация",
@@ -77,7 +157,32 @@ export const references = [
     "source": "Smithsonian National Air and Space Museum",
     "article": "В 1932 году Амелия Эрхарт на этой красной Vega в одиночку пересекла Атлантику. Обтекаемый фюзеляж был деревянным монококом, а свободнонесущее крыло обходилось без наружных стоек. После аварии самолёт получил новый, усиленный фюзеляж.",
     "note": "Красный деревянный монокок, цельное крыло, обтекатели колёс. Образец сочного окраса и читаемого гражданского самолёта.",
-    "url": "https://airandspace.si.edu/collection-objects/lockheed-vega-5b-amelia-earhart/nasm_A19670093000"
+    "url": "https://airandspace.si.edu/collection-objects/lockheed-vega-5b-amelia-earhart/nasm_A19670093000",
+    "gallery": [
+      {
+        "file": "vega.webp",
+        "caption": "Lockheed Vega 5B Амелии Эрхарт, около 1932 года.",
+        "credit": "U.S. Navy (Rear Admral Robert S. Quackenbush collection)",
+        "source": "https://commons.wikimedia.org/wiki/File:Lockheed_Vega_5B_of_Amelia_Earhart_c1932.jpg",
+        "license": "Public domain",
+        "licenseUrl": ""
+      },
+      {
+        "file": "vega-cockpit.webp",
+        "caption": "Кабина Lockheed Vega Амелии Эрхарт.",
+        "credit": "Smithsonian Institute",
+        "source": "https://commons.wikimedia.org/wiki/File:Lockheed_Vega_5B,_Amelia_Earhart_-_Blick_ins_Cockpit.jpg",
+        "license": "CC0",
+        "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+      },
+      {
+        "file": "vega-plan.webp",
+        "caption": "Предшественник борта Эрхарт: ранняя Vega в трёх проекциях, 1927 год.",
+        "credit": "NACA · Aircraft Circular № 61, рис. 1",
+        "source": "https://ntrs.nasa.gov/citations/19930090644",
+        "license": "Public domain"
+      }
+    ]
   },
   {
     "category": "Авиация",
@@ -86,7 +191,17 @@ export const references = [
     "source": "Science Museum Group · S.1595",
     "article": "В 1931 году британский гоночный гидросамолёт завоевал Кубок Шнейдера. Поплавки позволяли использовать водную поверхность как взлётную полосу. Позднее машина этого типа подняла мировой рекорд скорости до 407,5 мили в час.",
     "note": "Сравнить ширину поплавков, узкий корпус и блеск обтекателей. Для быстрой машины держать длинную чистую линию.",
-    "url": "https://collection.sciencemuseumgroup.org.uk/objects/co8636069/supermarine-seaplane-s-6-b-s-1595"
+    "url": "https://collection.sciencemuseumgroup.org.uk/objects/co8636069/supermarine-seaplane-s-6-b-s-1595",
+    "gallery": [
+      {
+        "file": "s6b.webp",
+        "caption": "Supermarine S.6B, борт S1595. Видны поплавки и их крепления к фюзеляжу.",
+        "credit": "Alan Wilson from Stilton, Peterborough, Cambs, UK",
+        "source": "https://commons.wikimedia.org/wiki/File:Supermarine_S.6B_%E2%80%98S1595%E2%80%99_(18503351333).jpg",
+        "license": "CC BY-SA 2.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0"
+      }
+    ]
   },
   {
     "category": "Авиация",
@@ -95,7 +210,17 @@ export const references = [
     "source": "Aeronautica Militare",
     "article": "Итальянский гоночный гидросамолёт строился вокруг длинного двигателя, занимавшего около двух пятых фюзеляжа. У его планера были стальная трубчатая конструкция в передней части и деревянная задняя часть, а топливо размещалось в поплавках.",
     "note": "Пройти взглядом вдоль вытянутого капота к кабине, затем к поплавкам. Для итальянского острова собрать собственную гоночную ливрею.",
-    "url": "https://www.aeronautica.difesa.it/2022/12/22/macchi-mc72/"
+    "url": "https://www.aeronautica.difesa.it/2022/12/22/macchi-mc72/",
+    "gallery": [
+      {
+        "file": "macchi.webp",
+        "caption": "Гоночный гидросамолёт Macchi M.C.72, первая половина 1930-х годов.",
+        "credit": "Unknown author Unknown author",
+        "source": "https://commons.wikimedia.org/wiki/File:Macchi_M.C.72.jpg",
+        "license": "Public domain",
+        "licenseUrl": ""
+      }
+    ]
   },
   {
     "category": "Техника",
@@ -216,5 +341,19 @@ export const references = [
     "article": "В книге 1939 года лётный опыт становится способом говорить о людях, одиночестве и взаимной ответственности. За маршрутом на карте проступают погода, усталость и товарищи, которых ждут на земле.",
     "note": "Для дальних перелётов записать, что пилот узнаёт о земле по одному огню внизу; в кабине оставить место тишине и бытовым деталям.",
     "url": "https://www.gallimard.fr/system/files/inline-files/Catalogue-Pleiade-2025.pdf"
+  },
+  {
+    "category": "Об эпохе",
+    "title": "Что такое интербеллум?",
+    "date": "1918–1939 · Европа",
+    "source": "Дом европейской истории · «Европа в руинах»",
+    "url": "https://historia.europa.eu/en/exhibitions-events/permanent-exhibition/europe-ruins",
+    "article": "Интербеллум означает «между войнами». В истории Европы так называют годы между окончанием Первой мировой войны в 1918 году и началом Второй мировой в 1939-м.",
+    "paragraphs": [
+      "Люди возвращались с фронта в города, где изменились границы, деньги и сама привычная жизнь. Одни связывали надежды с демократией и международным сотрудничеством. Другие пережили безработицу Великой депрессии, приход диктатур и новые войны. В Испании гражданская война шла уже в 1936–1939 годах.",
+      "За эти два десятилетия изменилось и представление о расстоянии. Письмо можно было отправить самолётом, а голос с борта услышать на земле по радио. Рядом с бипланами летали обтекаемые монопланы, гоночные гидросамолёты ставили рекорды, на кораблях появились целые палубы для авиации. Эти машины и их экипажи встречаются дальше в атласе.",
+      "Летающие острова и небесный крейсер «Бродяги» — фантастика. От межвоенной Европы у игры другой, вполне осязаемый слой: звук винта над облаками, тесная радиорубка и мастерская, где один и тот же самолёт чинят снова и снова."
+    ],
+    "note": "При работе над островом выбрать место и десятилетие: порт 1920-х и аэродром конца 1930-х дают разную технику и разный ритм жизни."
   }
 ];
