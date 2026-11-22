@@ -284,7 +284,7 @@ function buildCruiserHull(scene, parent, mats, shadowGen) {
 }
 
 /**
- * Module 2: Three LARGE Sculpted Superfiring Triple-Barrel 6-inch Cruiser Turrets (A, B, C).
+ * Module 2: TWO Large Sculpted Superfiring Triple-Barrel 6-inch Cruiser Turrets (A, B).
  * Sloped glacis face, chamfered armor roof, blast bags, rangefinder hoods & long 19m triple barrels.
  */
 function buildMainBatteryTurrets(scene, parent, mats, shadowGen) {
@@ -293,9 +293,8 @@ function buildMainBatteryTurrets(scene, parent, mats, shadowGen) {
   const put = (arr, m, x, y, z, rx = 0, ry = 0, rz = 0) => { m.position.set(x, y, z); m.rotation.set(rx, ry, rz); arr.push(m); };
 
   const turrets = [
-    { id: 'A', x: -116, y: 10.6, elev: 0.10 },
-    { id: 'B', x:  -92, y: 14.8, elev: 0.13 },
-    { id: 'C', x:  -68, y: 19.0, elev: 0.15 },
+    { id: 'A', x: -112, y: 10.6, elev: 0.11 },
+    { id: 'B', x:  -84, y: 15.2, elev: 0.14 },
   ];
   for (const t of turrets) {
     const barbH = t.y - 8.4;
@@ -336,21 +335,33 @@ function buildMidshipsSuperstructure(scene, parent, mats, shadowGen) {
     arr.push(m);
   };
 
-  // Streamlined armored hangar deckhouse (x = -54..+2) with sloped cruiser tumblehome sides
+  // Sculpted Stepped 1930s Cruiser Waist (NO giant 18m rectangular shipping-container box!)
+  // Lower hull freeboard continues smoothly from the bow forecastle (y = 2.6..10.6), then steps INWARD
+  // with an open waist promenade, angled cruiser stanchions, lifeboats & curved deckhouse galleries!
   for (const side of [-1, 1]) {
-    put(hullParts, B.MeshBuilder.CreateBox(`cfHangarSide_${side}`, { width: 56.0, height: 18.0, depth: 4.6 }, scene), -26.0, 11.8, side * 17.6, side * -0.10);
-    put(brassParts, B.MeshBuilder.CreateBox(`cfHangarStrake_${side}`, { width: 58.0, height: 0.42, depth: 0.5 }, scene), -26.0, 20.6, side * 19.6);
-    for (let px = -48; px <= -4; px += 6.0) {
-      put(glowParts, B.MeshBuilder.CreateCylinder(`cfCitPortA_${side}_${px}`, { diameter: 0.85, height: 0.25, tessellation: 8 }, scene), px, 15.8, side * 19.8, Math.PI * 0.5);
-      put(glowParts, B.MeshBuilder.CreateCylinder(`cfCitPortB_${side}_${px}`, { diameter: 0.78, height: 0.25, tessellation: 8 }, scene), px, 9.6, side * 20.2, Math.PI * 0.5);
+    // Lower waist hull strake matching forecastle height (only 8m tall instead of 18m!)
+    put(hullParts, B.MeshBuilder.CreateBox(`cfWaistLower_${side}`, { width: 58.0, height: 8.2, depth: 3.6 }, scene), -27.0, 6.8, side * 18.2, side * -0.08);
+    // Open waist promenade deck + brass safety railing at y = 11.0 (breaks up the side silhouette!)
+    put(deckParts, B.MeshBuilder.CreateBox(`cfWaistWalk_${side}`, { width: 54.0, height: 0.45, depth: 4.8 }, scene), -26.0, 11.0, side * 16.4);
+    put(brassParts, B.MeshBuilder.CreateBox(`cfWaistRail_${side}`, { width: 54.0, height: 0.22, depth: 0.16 }, scene), -26.0, 12.1, side * 18.8);
+    // Recessed, stepped upper shelter-deck coaming & angled naval support pillars (airy 1930s cruiser architecture!)
+    for (let px = -50; px <= 0; px += 8.2) {
+      put(darkHullParts, B.MeshBuilder.CreateCylinder(`cfWaistStanchion_${side}_${px}`, { diameterTop: 0.65, diameterBottom: 0.95, height: 9.8, tessellation: 8 }, scene), px, 16.0, side * 17.6, side * 0.10);
+    }
+    // Curved/stepped armored bridge-wing gallery mid-waist (breaks the straight horizontal box line!)
+    put(hullParts, B.MeshBuilder.CreateCylinder(`cfWaistSponson_${side}`, { diameter: 9.5, height: 3.6, tessellation: 12 }, scene), -38.0, 13.4, side * 16.8);
+    put(brassParts, B.MeshBuilder.CreateTorus(`cfWaistSponsonRim_${side}`, { diameter: 9.7, thickness: 0.22, tessellation: 16 }, scene), -38.0, 15.2, side * 16.8);
+    // Lower hull portholes along the sleek waist freeboard
+    for (let px = -50; px <= -4; px += 6.0) {
+      put(glowParts, B.MeshBuilder.CreateCylinder(`cfCitPortB_${side}_${px}`, { diameter: 0.80, height: 0.25, tessellation: 8 }, scene), px, 8.2, side * 20.1, Math.PI * 0.5);
     }
   }
-  // Curved/beveled forward superstructure glacis rising cleanly behind Turret C
-  put(hullParts, B.MeshBuilder.CreateCylinder('cfForwardGlacis', { diameterTop: 34.0, diameterBottom: 36.0, height: 12.2, tessellation: 8 }, scene), -54.0, 14.8, 0, 0, Math.PI / 8, 0, 0.42, 1.0, 1.0);
-  // Upper cruiser shipyard/weapon deck (y = 20.88)
-  put(deckParts, B.MeshBuilder.CreateBox('cfUpperDeckMain', { width: 58.0, height: 1.0, depth: 39.0 }, scene), -25.0, 20.88, 0);
-  put(hullDarkPartsSafe(darkHullParts), B.MeshBuilder.CreateBox('cfUpperRailL', { width: 58.2, height: 0.9, depth: 0.45 }, scene), -25.0, 21.7, -19.5);
-  put(darkHullParts, B.MeshBuilder.CreateBox('cfUpperRailR', { width: 58.2, height: 0.9, depth: 0.45 }, scene), -25.0, 21.7,  19.5);
+  // Curved stepped forecastle break rising smoothly toward the bridge (x = -62..-50)
+  put(hullParts, B.MeshBuilder.CreateCylinder('cfForwardGlacis', { diameterTop: 26.0, diameterBottom: 32.0, height: 10.6, tessellation: 10 }, scene), -55.0, 14.4, 0, 0, Math.PI / 10, 0, 0.58, 1.0, 1.0);
+  // Sleeker beveled upper cruiser deckhouse roof (y = 20.88, narrower depth=34 so bridge & funnels dominate!)
+  put(deckParts, B.MeshBuilder.CreateBox('cfUpperDeckMain', { width: 54.0, height: 0.9, depth: 34.0 }, scene), -25.0, 20.88, 0);
+  put(darkHullParts, B.MeshBuilder.CreateBox('cfUpperRailL', { width: 54.2, height: 0.7, depth: 0.35 }, scene), -25.0, 21.6, -17.0);
+  put(darkHullParts, B.MeshBuilder.CreateBox('cfUpperRailR', { width: 54.2, height: 0.7, depth: 0.35 }, scene), -25.0, 21.6,  17.0);
 
   // Sculpted 1930s US Navy Cruiser Conning Tower & Wrap-Around Compass Bridge (curved octagonal tiers, zero boxes!)
   const bx = -54.0, bz = 0.0;

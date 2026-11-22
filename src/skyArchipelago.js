@@ -13,6 +13,7 @@ import { buildFlak88Turret } from './flak88.js?v=mission1';
 import { buildSculptedRadar, buildSculptedSamLauncher } from './props/dieselpunkStructures.js?v=mission1';
 import { decorateVagabondCarrier, buildAncientWindmillLandmark, buildSkyLighthouseLandmark, buildAetherMonolithLandmark, populateSatelliteIslandDiorama } from './props/nomadLandmarks.js?v=mission1';
 import { buildFlightDeckCruiserModel } from './props/flightDeckCruiser.js?v=mission1';
+import { applyDoverChalkCliffs, buildDoverCliffVillage, buildContinentalSkyCity, buildAlpineCastleDiorama, buildGothicRuinsDiorama, buildEuropeHorizonArchipelago } from './props/europeIslands.js?v=mission1';
 import { AssetManager } from './engine/assetManager.js?v=mission1';
 import { getLevel } from './levels/levelRegistry.js?v=mission1';
 import { buildBiomeIsland } from './islands/biomeIslands.js?v=mission1';
@@ -1393,17 +1394,22 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   // 5. «Бродяга» — Authentic 1931 Flight-Deck Cruiser (CF) lofted warship model!
   const hullKit = buildFlightDeckCruiserModel(asteroidBase, scene, shadowGen);
 
-  // Scenic satellite islands in the background vista behind the 227m cruiser (+Z side, framing the cruiser in the menu!)
-  buildSatelliteIsland(scene, {
-    id: 'vag_vista_nw', seed: 'VAG-SAT-1', radiusX: 24, radiusZ: 20, depth: 30, scaleY: 1.38,
-    style: 'forest', parent: asteroidBase.group, pos: [-195.0, 52.0, 175.0], rot: [0.06, 0.6, 0.08],
-    trees: [{ file: 'pine_hero.glb', x: -4, z: 2, s: 1.2, r: 0.4 }, { file: 'fir_medium.glb', x: 5, z: -3, s: 1.0, r: 1.5 }, { file: 'coastal_alder.glb', x: -1, z: -6, s: 1.05, r: 2.3 }], shadowGen,
+  // Scenic European islands in the background vista behind the 234m cruiser (White Cliffs of Dover + Continental Sky-City!)
+  const vistaDover = buildSatelliteIsland(scene, {
+    id: 'vag_vista_nw', seed: 'VAG-SAT-1', radiusX: 26, radiusZ: 22, depth: 32, scaleY: 1.38,
+    style: 'forest', parent: asteroidBase.group, pos: [-195.0, 52.0, 175.0], rot: [0.04, 0.6, 0.04],
+    trees: [{ file: 'pine_hero.glb', x: -12, z: 6, s: 1.15, r: 0.4 }, { file: 'fir_medium.glb', x: 10, z: -8, s: 1.0, r: 1.5 }, { file: 'coastal_alder.glb', x: -8, z: -10, s: 1.05, r: 2.3 }], shadowGen,
   });
-  buildSatelliteIsland(scene, {
-    id: 'vag_vista_ne', seed: 'VAG-SAT-2', radiusX: 21, radiusZ: 17, depth: 26, scaleY: 1.32,
-    style: 'military', parent: asteroidBase.group, pos: [65.0, 36.0, 195.0], rot: [-0.06, 1.8, 0.06],
-    trees: [{ file: 'fir_medium.glb', x: -3, z: 2, s: 1.15, r: 1.2 }, { file: 'pine_hero.glb', x: 4, z: -2, s: 1.1, r: 2.1 }], shadowGen,
+  applyDoverChalkCliffs(vistaDover, scene);
+  buildDoverCliffVillage(scene, vistaDover.node, vistaDover.island, 26, 22);
+
+  const vistaParis = buildSatelliteIsland(scene, {
+    id: 'vag_vista_ne', seed: 'VAG-SAT-2', radiusX: 24, radiusZ: 20, depth: 28, scaleY: 1.32,
+    style: 'forest', parent: asteroidBase.group, pos: [65.0, 38.0, 195.0], rot: [-0.04, 1.8, 0.04],
+    trees: [{ file: 'fir_medium.glb', x: -11, z: 8, s: 1.1, r: 1.2 }, { file: 'pine_hero.glb', x: 11, z: -8, s: 1.05, r: 2.1 }], shadowGen,
   });
+  applyDoverChalkCliffs(vistaParis, scene);
+  buildContinentalSkyCity(scene, vistaParis.node, vistaParis.island, 24, 20);
 
   const vagRustTex = createRustedMetalTexture(scene, [158, 120, 62]);
   const steelMat = new BABYLON.PBRMaterial('vagSteelScaleMat', scene);
@@ -1747,10 +1753,13 @@ export class ForestIsland {
     wreckMount.rotation.set(0.36, 0.95, -0.42);
     instantiateGLBInto(this.scene, './assets/aircraft/', 'scrapyard_attacker.glb', wreckMount, new BABYLON.Vector3(0, 0, 0), 1.45, 0, shadowGen);
 
-    // Iconic Project Nomads Ancient Windmill Tower + Stone Archway on the sunlit ridge (visible from 1.5 km!)
+    // Iconic European Rural Windmill + Alpine Schloss Castle overlooking the Forest Island waterfall!
     const wmX = 22, wmZ = -18;
     const wmY = this.getTopHeightLocal(wmX, wmZ);
     this.windmillLandmark = buildAncientWindmillLandmark(this.scene, this.group, new BABYLON.Vector3(wmX, wmY - 0.4, wmZ), shadowGen);
+    const castleX = -10, castleZ = 18;
+    const castleY = this.getTopHeightLocal(castleX, castleZ);
+    this.alpineCastle = buildAlpineCastleDiorama(this.scene, this.group, new BABYLON.Vector3(castleX, castleY - 0.3, castleZ), shadowGen);
   }
 
   async _loadForestVegetation(shadowGen) {
@@ -2556,85 +2565,8 @@ export class SkyArchipelagoWorld {
    * ringing the 360° horizon at 680..1080m — ALL merged into 1 SINGLE DRAW CALL (0.0 ms FPS cost!).
    */
   _buildHorizonSilhouetteIslands() {
-    const B = BABYLON;
-    const parts = [];
-    const specs = [
-      // Mid-far ring (820–980m): sculpted craggy silhouettes
-      [0.35,  860, 18, 'cathedral', 1.35],
-      [1.15,  940, 32, 'arch',      1.40],
-      [2.05,  820, 10, 'mesa',      1.25],
-      [2.85,  980, 26, 'cathedral', 1.50],
-      [3.65,  880, 14, 'arch',      1.35],
-      [4.35,  960, 28, 'mesa',      1.45],
-      [5.15,  840, 22, 'cathedral', 1.30],
-      [5.85,  920, 12, 'arch',      1.38],
-      // Outer ultra-far low-LOD horizon ring (1280–1620m): distant Interbellum Sky-Citadels & mesas for vast world depth!
-      [0.72, 1380, 46, 'citadel',   1.85],
-      [1.62, 1490, 24, 'mesa',      1.95],
-      [2.48, 1560, 52, 'cathedral', 2.05],
-      [3.25, 1340, 38, 'citadel',   1.75],
-      [4.75, 1520, 28, 'arch',      1.95],
-      [5.55, 1440, 42, 'mesa',      1.85],
-    ];
-    const addBlock = (name, opts, px, py, pz, ry = 0, rz = 0) => {
-      const m = B.MeshBuilder.CreateCylinder(name, { subdivisions: 3, ...opts }, this.scene);
-      sculptCraggyRock(m, 77 + parts.length * 13.7, 0.36);
-      m.position.set(px, py, pz);
-      m.rotation.set(0, ry, rz);
-      m.computeWorldMatrix(true);
-      parts.push(m);
-    };
-    specs.forEach(([ang, dist, y, kind, s], idx) => {
-      const cx = Math.cos(ang) * dist;
-      const cz = Math.sin(ang) * dist;
-      const faceAng = ang + Math.PI * 0.5;
-      const ux = Math.cos(faceAng), uz = Math.sin(faceAng);
-      if (kind === 'citadel') {
-        // Low-LOD distant floating Interbellum Sky-Citadel (broad terraced plateau + central dome + twin mooring spires)
-        addBlock(`hCitBase_${idx}`, { diameterTop: 94 * s, diameterBottom: 62 * s, height: 32 * s, tessellation: 7 }, cx, y, cz, ang);
-        addBlock(`hCitRoot_${idx}`, { diameterTop: 64 * s, diameterBottom: 7 * s, height: 88 * s, tessellation: 6 }, cx, y - 56 * s, cz, ang);
-        addBlock(`hCitDome_${idx}`, { diameterTop: 10 * s, diameterBottom: 38 * s, height: 42 * s, tessellation: 7 }, cx, y + 34 * s, cz, ang);
-        addBlock(`hCitSpireL_${idx}`, { diameterTop: 3 * s, diameterBottom: 11 * s, height: 58 * s, tessellation: 5 }, cx - ux * 32 * s, y + 36 * s, cz - uz * 32 * s, ang);
-        addBlock(`hCitSpireR_${idx}`, { diameterTop: 3 * s, diameterBottom: 10 * s, height: 48 * s, tessellation: 5 }, cx + ux * 30 * s, y + 31 * s, cz + uz * 30 * s, ang);
-      } else if (kind === 'arch') {
-        // Twin monumental pillars + high rock bridge arch + hanging roots
-        addBlock(`hArchL_${idx}`, { diameterTop: 22 * s, diameterBottom: 34 * s, height: 88 * s, tessellation: 7 }, cx - ux * 28 * s, y, cz - uz * 28 * s, ang);
-        addBlock(`hArchR_${idx}`, { diameterTop: 20 * s, diameterBottom: 30 * s, height: 76 * s, tessellation: 7 }, cx + ux * 28 * s, y - 4 * s, cz + uz * 28 * s, ang + 0.5);
-        addBlock(`hArchBridge_${idx}`, { diameterTop: 18 * s, diameterBottom: 18 * s, height: 68 * s, tessellation: 6 }, cx, y + 26 * s, cz, ang, Math.PI * 0.5);
-        addBlock(`hArchRootL_${idx}`, { diameterTop: 32 * s, diameterBottom: 4 * s, height: 62 * s, tessellation: 6 }, cx - ux * 28 * s, y - 72 * s, cz - uz * 28 * s, ang);
-        addBlock(`hArchRootR_${idx}`, { diameterTop: 28 * s, diameterBottom: 4 * s, height: 54 * s, tessellation: 6 }, cx + ux * 28 * s, y - 66 * s, cz + uz * 28 * s, ang);
-      } else if (kind === 'cathedral') {
-        // Stepped vertical basalt organ-pipe cathedral cluster
-        addBlock(`hCathC_${idx}`, { diameterTop: 14 * s, diameterBottom: 36 * s, height: 112 * s, tessellation: 7 }, cx, y + 10 * s, cz, ang);
-        addBlock(`hCathL_${idx}`, { diameterTop: 12 * s, diameterBottom: 28 * s, height: 78 * s, tessellation: 6 }, cx - ux * 22 * s, y - 6 * s, cz - uz * 22 * s, ang + 0.7);
-        addBlock(`hCathR_${idx}`, { diameterTop: 11 * s, diameterBottom: 26 * s, height: 68 * s, tessellation: 6 }, cx + ux * 20 * s, y - 10 * s, cz + uz * 20 * s, ang - 0.6);
-        addBlock(`hCathRoot_${idx}`, { diameterTop: 46 * s, diameterBottom: 5 * s, height: 74 * s, tessellation: 7 }, cx, y - 74 * s, cz, ang);
-      } else {
-        // Broad terraced flat-top floating mesa plateau
-        addBlock(`hMesaTop_${idx}`, { diameterTop: 72 * s, diameterBottom: 54 * s, height: 34 * s, tessellation: 8 }, cx, y + 6 * s, cz, ang);
-        addBlock(`hMesaSpire_${idx}`, { diameterTop: 16 * s, diameterBottom: 28 * s, height: 42 * s, tessellation: 6 }, cx - ux * 16 * s, y + 36 * s, cz - uz * 16 * s, ang);
-        addBlock(`hMesaRoot_${idx}`, { diameterTop: 52 * s, diameterBottom: 6 * s, height: 78 * s, tessellation: 7 }, cx, y - 48 * s, cz, ang);
-      }
-    });
-    const merged = B.Mesh.MergeMeshes(parts, true, true, undefined, false, false);
-    if (merged) {
-      merged.name = 'horizonSilhouetteArchipelago';
-      const hMat = new B.PBRMaterial('horizonSilhouetteRockMat', this.scene);
-      hMat.albedoColor = c3('#8c8276');
-      hMat.metallic = 0.0;
-      hMat.roughness = 0.94;
-      hMat.environmentIntensity = 0.45;
-      if (!(this.scene.getEngine() instanceof B.NullEngine)) {
-        const tex = new B.Texture('./assets/benchmark/textures/aerial_rocks_02/Diffuse.jpg', this.scene);
-        tex.uScale = tex.vScale = 4;
-        hMat.albedoTexture = tex;
-      }
-      merged.material = hMat;
-      merged.isPickable = false;
-      merged.checkCollisions = false;
-      merged.receiveShadows = false;
-      merged.freezeWorldMatrix();
-    }
+    // Replaces dark geometric spikes with sunlit distant low-LOD Fragments of Interbellum Europe (Dover chalk cliffs, Parisian spire cities, Alpine castles & stone viaducts)!
+    buildEuropeHorizonArchipelago(this.scene, sculptCraggyRock);
   }
 
   _buildShatteredWorldField(seedValue = 101) {
@@ -2673,7 +2605,17 @@ export class SkyArchipelagoWorld {
         trees: satTrees,
         shadowGen: null,
       });
-      populateSatelliteIslandDiorama(this.scene, builtSat.node, builtSat.island, sat.diorama, sat.rx, sat.rz);
+      // Populate each satellite island as a recognizable Fragment of Interbellum Europe!
+      if (sat.diorama === 'watchtower') {
+        applyDoverChalkCliffs(builtSat, this.scene);
+        buildDoverCliffVillage(this.scene, builtSat.node, builtSat.island, sat.rx, sat.rz);
+      } else if (sat.diorama === 'villa') {
+        buildContinentalSkyCity(this.scene, builtSat.node, builtSat.island, sat.rx, sat.rz);
+      } else if (sat.diorama === 'aqueduct') {
+        buildGothicRuinsDiorama(this.scene, builtSat.node, builtSat.island);
+      } else {
+        populateSatelliteIslandDiorama(this.scene, builtSat.node, builtSat.island, sat.diorama, sat.rx, sat.rz);
+      }
       this.satelliteNodes ||= new Map();
       this.satelliteNodes.set(sat.id, builtSat);
       this.floatingOrbiters ||= [];
