@@ -1,27 +1,45 @@
 # Бродяга
 
-Browser prototype of a free interpretation of Project Nomads: floating islands, propeller aircraft, a cave hangar and a mobile island base. Babylon.js 7.32, local ES modules and local GLBs; no build step.
+Браузерная игра по мотивам Project Nomads на Babylon.js 8.56.2. Летающие острова, винтовая авиация межвоенной Европы и авианесущий крейсер «Бродяга».
 
-## Run
+[Играть](https://locia.work/nomad/) · [Открыть атлас](https://locia.work/nomad/src/content/atlas.html) · [Мастерская игры](#мастерская-игры) · [Как пополнить атлас](#атлас-интербеллума)
 
-```sh
-python3 scripts/dev_server.py
-```
+## Запуск игры
 
-Open http://127.0.0.1:5188/ . The development server disables stale module caching.
+Из корня проекта запустите `python3 scripts/dev_server.py` и откройте [локальную игру](http://127.0.0.1:5188/). Для запуска достаточно Python 3 и настольного браузера с WebGL. Движок, модели и изображения поставляются в репозитории.
 
-## Mission 01 — Свой дом в небе
+В меню два режима.
 
-Damaged cargo aircraft → learn throttle/course/altitude → land at the cave hangar → emergency power → upper deck by lift or stairs → generator → air defense → fighter interception (one scout then two escorts) → return → radar → island helm → reach the safe sector and brake.
+- **Туманный фарватер.** Вы начинаете в воздухе на грузовом самолёте. Уходите от эсминца через туманный архипелаг, следуйте радиоориентирам и отыщите крейсер на камнях. Сядьте на палубу, подайте аварийное питание, запустите подъёмные машины и дайте залп по преследователю. Для посадки и действий у механизмов нажимайте **E**, когда появится подсказка.
+- **Ангар · свободный вылет.** В ангаре стоят грузовой самолёт, истребитель, штурмовик и бомбардировщик. Подойдите к выбранной машине и нажмите **E**. У каждого борта своя управляемость и работа. Полный список клавиш доступен в меню «Управление» и по **F1**.
 
-Lessons advance from actions, resources, construction and actual kills. Navigation uses the compass and radio, without world-space rings.
+## Мастерская игры
 
-- Aircraft: W/S throttle/brake, A/D yaw, arrows up/down pitch, Q/R roll, Shift boost. Space/left mouse guns, F/right mouse secondary weapon. E landing assistance near the runway; G exit when parked.
-- Deck: WASD walk, drag left mouse or use arrows to look. E interact. B construction after emergency power. E at the lift travels between decks; the side staircase is also walkable.
-- Island helm: E at console, W thrust, A/D course, S brake, Space/C altitude, G return to the deck.
-- Esc pause, M chart, F1 controls.
+Запуск из корня проекта: `npm run workshop`. Адрес: <http://127.0.0.1:5191/workshop/>. Для предпросмотра нужны WebGL и современный настольный браузер. Сервер слушает только локальную машину.
 
-Construction has three sockets and one of each type in the first mission: generator30 scrap/4 power; turret35 scrap/2 power; radar25 scrap/1 power. Starting80 pays for generator+turret; each destroyed enemy yields20 scrap. Generator repairs island integrity, turret assists but cannot finish a target for the player, radar unlocks the safe route.
+- **Модели и материалы.** Начните с катера, моноплана или острова. Редактируйте детали, размеры, сечения и покрытие. Сохраняйте исходники как `.nomad.json` в `workshop/projects/`. Экспорт GLB включает текстуры. Игровые GLB лежат в `assets/`, идентификаторы загрузчика — в `src/engine/assetManager.js`.
+- **Сценарий, сюжет, персонажи и радио.** В первой миссии точки заданы относительно корпуса крейсера. У точки можно выбрать реплику. Для новой озвучки положите MP3 в `assets/audio/fog-passage/`. Радио с изменённым текстом остаётся с субтитрами до синхронизации записи.
+- **Ролики и эффекты.** Предпросмотр использует ту же функцию камеры и те же эффекты взрывов, что и игра. Можно переставить планы, поменять якорь, координаты, длительность и поле зрения, просмотреть по времени и записать видео WebM. Модели в окне превиза показываются в постановочной сцене. Кнопка «В игру» открывает игровой свет, окружение и полёт.
+- **Сохранение.** «Записать в проект» обновляет `src/content/passage.js` после проверки связей и наличия записей. Игра читает этот файл при следующем открытии. Конфликт двух редакторов предлагает сохранить отдельный черновик. Новые главы в разделе «Сюжет» — рабочие записи; самостоятельные игровые механики реализуются в коде уровня.
+- **Проверки.** `npm run workshop:check` проверяет связи, аудиофайлы, допустимые параметры сцен и заполнение атласа. Эта проверка входит в сборку игры. Инструменты разработки в публичную игровую сборку не копируются.
+
+Исходники [мастерской](workshop/), [пример катера](workshop/projects/harbor-launch.nomad.json) и его [игровая модель](assets/workshop/harbor-launch.glb) доступны в репозитории. Для изменения точек маршрута, реплик и планов ролика откройте [сценарий первой миссии](src/content/passage.js).
+
+Экспортёр GLB мастерской — официальный `babylonjs-serializers` 8.56.2, Apache-2.0 (см. `vendor/BABYLON-LICENSE.txt`).
+
+Для воспроизводимой сборки отдельной модели установите зависимости проекта (`npm install` и `npx playwright install chromium`). Команда `npm run asset:build -- workshop/projects/harbor-launch.nomad.json harbor-launch` создаёт GLB, исходник и PNG вида из мастерской и повторно открывает GLB загрузчиком Babylon. Модель доступна уровням как `workshop/harbor-launch` через обычный `AssetManager`. Для нового изделия используйте собственный ID; повторная сборка обновляет файлы этого ID.
+
+Браузерная проверка открытой мастерской: `npm run workshop:smoke`. Она записывает WebM, проверяет анимации персонажа, сборку модели и возврат из атласа в игру.
+
+## Атлас интербеллума
+
+Книга открывается из главного меню и из паузы. Раздел «Об эпохе» объясняет, что такое интербеллум. В разделах «Авиация» и «Корабли» можно рассмотреть историческую технику и открыть иллюстрацию в полном размере. Например, в карточке Tribal рядом собраны фотография HMS Cossack и опознавательный профиль класса. Для художника и сценариста «Архив эпохи» в мастерской показывает также рабочие заметки. [Читать атлас](https://locia.work/nomad/src/content/atlas.html)
+
+Чтобы добавить карточку:
+
+1. Добавьте статью в [каталог](src/content/references.js) по образцу соседней записи. Укажите категорию, название, дату, текст, рабочую заметку, источник, ссылку и сведения о правах.
+2. Поместите изображения в [папку иллюстраций](assets/encyclopedia/). Для серии фото и чертежей заполните `gallery`. У каждой иллюстрации есть имя файла, подпись, автор или архив, ссылка на источник и условия использования. Карточка Tribal показывает, как отдельно указать источник статьи и происхождение каждого изображения.
+3. Выполните `npm run workshop:check`. Откройте карточку в [локальном атласе](http://127.0.0.1:5188/src/content/atlas.html) и проверьте подписи и полноразмерные изображения.
 
 ## World generation
 
@@ -70,20 +88,3 @@ Pre-release artifact gate: `node scripts/validate_artifacts.mjs`. Packaging runs
 Engine and glTF loader are self-hosted, pinned to Babylon.js8.56.2; provenance and checksums: `vendor/babylon-version.json`. No engine CDN request. Native procedural mesh indices use Babylon clockwise front faces with outward physical normals. The generated terrain/top and cave shell now follow the same convention as the engine’s built-in meshes.
 
 `node scripts/bake_static_lighting.mjs` traces24 cosine-weighted visibility rays and5 sun-disc rays at sampled vertices. Large walls/decks are subdivided at3m spacing without changing their shape. The offline cache covers27 static terrain/rock/architecture meshes of the shipped seed. PBR reads independent vertex irradiance and visibility attributes; repeated albedo UVs do not carry baked lighting. Moving carrier sunlight and aircraft remain dynamically lit. New procedural seeds compute missing vertex bakes in7ms work slices while loading. The cache is checked against all static occluder geometry before release. This is bounded diffuse occlusion, one-bounce colour transfer and static sun visibility, not full-scene path-traced GI; foliage, moving aircraft and newly constructed objects still rely on live lights/shadows.
-
-### Мастерская игры
-
-Запуск из корня проекта: `npm run workshop`. Адрес: <http://127.0.0.1:5191/workshop/>. Для предпросмотра нужны WebGL и современный настольный браузер. Сервер слушает только локальную машину.
-
-- **Модели и материалы.** Начните с катера, моноплана или острова. Редактируйте детали, размеры, сечения и покрытие. Сохраняйте исходники как `.nomad.json` в `workshop/projects/`. Экспорт GLB включает текстуры. Игровые GLB лежат в `assets/`, идентификаторы загрузчика — в `src/engine/assetManager.js`.
-- **Сценарий, сюжет, персонажи и радио.** В первой миссии точки заданы относительно корпуса крейсера. У точки можно выбрать реплику. Для новой озвучки положите MP3 в `assets/audio/fog-passage/`. Радио с изменённым текстом остаётся с субтитрами до синхронизации записи.
-- **Ролики и эффекты.** Предпросмотр использует ту же функцию камеры и те же эффекты взрывов, что и игра. Можно переставить планы, поменять якорь, координаты, длительность и поле зрения, просмотреть по времени и записать видео WebM. Модели в окне превиза показываются в постановочной сцене. Кнопка «В игру» открывает игровой свет, окружение и полёт.
-- **Сохранение.** «Записать в проект» обновляет `src/content/passage.js` после проверки связей и наличия записей. Игра читает этот файл при следующем открытии. Конфликт двух редакторов предлагает сохранить отдельный черновик. Новые главы в разделе «Сюжет» — рабочие записи; самостоятельные игровые механики реализуются в коде уровня.
-- **Атлас интербеллума.** Каталог и тексты находятся в `src/content/references.js`. Игрок открывает книгу из меню и паузы. В мастерской у каждой записи есть отдельная заметка для художника или сценариста. Фото ZR-3 и радиотелетайпа — Library of Congress, National Photo Company Collection, LC-DIG-ppmsca-40794 и LC-USZ62-42074, «No known restrictions on publication». В авиационных и корабельных карточках фотографии и схемы лежат локально; подписи указывают источник и права каждого изображения. Чертежи ONI и NACA подписаны отдельно от музейных планов, описанных в статьях.
-- **Проверки.** `npm run workshop:check` проверяет связи, аудиофайлы, допустимые параметры сцен и заполнение атласа. Эта проверка входит в сборку игры. Инструменты разработки в публичную игровую сборку не копируются.
-
-Экспортёр GLB мастерской — официальный `babylonjs-serializers` 8.56.2, Apache-2.0 (см. `vendor/BABYLON-LICENSE.txt`).
-
-Для воспроизводимой сборки отдельной модели установите зависимости проекта (`npm install` и `npx playwright install chromium`). Команда `npm run asset:build -- workshop/projects/harbor-launch.nomad.json harbor-launch` создаёт GLB, исходник и PNG вида из мастерской и повторно открывает GLB загрузчиком Babylon. Модель доступна уровням как `workshop/harbor-launch` через обычный `AssetManager`. Для нового изделия используйте собственный ID; повторная сборка обновляет файлы этого ID.
-
-Браузерная проверка открытой мастерской: `npm run workshop:smoke`. Она записывает WebM, проверяет анимации персонажа, сборку модели и возврат из атласа в игру.
