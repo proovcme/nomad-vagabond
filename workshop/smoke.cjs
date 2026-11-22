@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const {chromium}=require('playwright');
 async function main(){
  const base=process.argv[2]||'http://127.0.0.1:5191/';
- const browser=await chromium.launch();
+ const browser=await chromium.launch({args:process.platform==='darwin'?['--use-gl=angle','--use-angle=metal']:[]});
  try{
   const page=await browser.newPage(),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
@@ -25,7 +25,7 @@ async function main(){
    assert.equal(await page.locator('#parts button').count(),count+1);
    await page.click('#undo');assert.equal(await page.locator('#parts button').count(),count);
   }
-  await page.goto(base);await page.click('#atlas-menu');
+  await page.goto(base,{waitUntil:'domcontentloaded',timeout:90000});await page.click('#atlas-menu');
   const atlas=page.frameLocator('dialog iframe');await atlas.getByRole('searchbox').fill('Tribal');
   await atlas.getByRole('heading',{name:/Tribal/}).waitFor();await atlas.getByRole('button',{name:'Закрыть'}).click();
   await page.waitForFunction(()=>!document.querySelector('dialog[open]'));
