@@ -101,6 +101,10 @@
   - Реализованы `nFactory` (12 команд: `setbuildcounter`, `setbuilding`, `setproductcount`, `setproductname`, `getproduct`, `destroyproduct`, `isworking`, `setfastbuild`), `nGarage` (9 команд: `setapproachpos`, `setvisualizegarage`, `setappearposname`, `setremoveposname`, `setoutputvehicle`), `nAirship3` (18 команд) и `nBomber` (`setrelpos`).
   - Добиты оставшиеся команды `nContainer`/`nMaennel`: `setstate`, `setfilter`, `setcharge`, `setareaofeffect`, `gettargetsymbolicname`.
   - **Покрытие реальным C++ на полном прогоне Миссии 1 выросло до `99.73%` (22 095 / 22 154, осталось всего 59 одиночных 1× заглушек).**
+- **Модуль 15 (`native/core/nnetwork.hpp`, `neconomy.hpp`, `main.mm`):**
+  - Полностью реализован сетевой стек `nnetwork.dll` на BSD/POSIX сокетах macOS (`nSocket2`, `nNetwork2`, `nCommServer`, `nNetNode` — все 51 `AddCmd`, неблокирующие UDP-сокеты).
+  - Зарегистрированы 21 Tcl-команда `nShaderNode`.
+  - **Покрытие реальным C++ на полном прогоне Миссии 1 достигло `99.77%` (22 103 / 22 154, осталось всего 51 одиночная 1× заглушка).**
 
 ---
 
@@ -108,5 +112,5 @@
 - [x] Ядро Nebula Device 1 + `NPK0`/`NVX1`/`NTX1`/`NOB0`/`NAX0` + `Tcl.framework`
 - [x] Полный дизассемблер и C++-лифтинг всех 11 DLL (454 класса, 8 314 методов)
 - [x] Рендер-конвейер 1-в-1 (`ndirect3d8` 226 шейдеров, 4× MSAA, `nFogNode`, `weather_normal.n`, `nIpol`, GPU-биллборды `nCloudRender`/`nLeafRender`, `nMeshSway`)
-- [x] Кампания, катсцены, физика героя, коллизии, боёвка, полёт самолётов/дирижаблей/островов, заводы/гаражи, радиальное меню, экономика, аудио-сервер, слоты сохранений (`99.73%` покрытия C++)
-- [ ] **Модуль 15 (следующий):** Сетевой стек `nnetwork.dll` (4 класса, 23 `AddCmd`: `nSocket2`, `nCommServer`, `nNetwork2`, `nNetNode` на POSIX/BSD сокетах macOS) + `nShaderNode` Tcl-команды (цель: **>99.85%**)
+- [x] Кампания, катсцены, физика героя, коллизии, боёвка, полёт самолётов/дирижаблей/островов, заводы/гаражи, радиальное меню, экономика, аудио-сервер, слоты сохранений, сетевой стек `nnetwork.dll` (`99.77%` покрытия C++)
+- [ ] **Модуль 16 (следующий):** Финальная добивка оставшихся 51 одиночной команды (`nSearchHandler`, `nSceneGraph2`, `nOctree`, `nInputServer`, `nGfxServer`) до **`100.00%`** покрытия на Миссии 1 + прогон всех 30 глав кампании!

@@ -283,6 +283,33 @@ inline void registerEconomyAndLightingModule9(nKernelServer& ks) {
         c.outArgs.push_back(nArg::fromString(s));
     });
 
+    // 1d. nShaderNode Tcl-side commands (verified from re/src/nnebula/nshadernode.hpp)
+    if (auto* clSh = ks.findClass("nshadernode")) {
+        auto noop = [](nRoot*, nCmd&) {};
+        auto retT = [](nRoot*, nCmd& c) { c.outArgs.push_back(nArg::fromBool(true)); };
+        clSh->addCmdProto("v_setrenderpri_i", "SRPR", noop);
+        clSh->addCmdProto("v_setnumstages_i", "SNST", noop);
+        clSh->addCmdProto("b_setcolorop_is", "SPOP", retT);
+        clSh->addCmdProto("b_setalphaop_is", "SAOP", retT);
+        clSh->addCmdProto("v_begintunit_i", "BGTU", noop);
+        clSh->addCmdProto("v_endtunit_v", "EDTU", noop);
+        clSh->addCmdProto("v_setaddress_ss", "SADR", noop);
+        clSh->addCmdProto("v_setminmagfilter_ss", "SMMF", noop);
+        clSh->addCmdProto("v_settexcoordsrc_s", "STCS", noop);
+        clSh->addCmdProto("v_setdiffuse_ffff", "SDIF", noop);
+        clSh->addCmdProto("v_setemissive_ffff", "SEMV", noop);
+        clSh->addCmdProto("v_setambient_ffff", "SAMB", noop);
+        clSh->addCmdProto("v_setlightenable_b", "SLEN", noop);
+        clSh->addCmdProto("v_setalphaenable_b", "SAEN", noop);
+        clSh->addCmdProto("v_setzwriteenable_b", "SZEN", noop);
+        clSh->addCmdProto("v_setfogenable_b", "SFEN", noop);
+        clSh->addCmdProto("v_setalphablend_ss", "SABL", noop);
+        clSh->addCmdProto("v_setzfunc_s", "SZFC", noop);
+        clSh->addCmdProto("v_setcullmode_s", "SCMD", noop);
+        clSh->addCmdProto("v_setalphatestenable_b", "SATE", noop);
+        clSh->addCmdProto("v_setalpharef_f", "SARF", noop);
+    }
+
     // 2. nSammler (from nnomads/nsammler.asm)
     auto* clSam = ks.registerClass("nsammler", "ncontainer", []() { return std::make_unique<nSammler>(); });
     clSam->addCmdProto("v_setmaxcontainer_f", "SMXC", [](nRoot* o, nCmd& c) {

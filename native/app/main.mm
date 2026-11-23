@@ -29,6 +29,7 @@
 #include "../core/ngui.hpp"
 #include "../core/nisland.hpp"
 #include "../core/nkernel.hpp"
+#include "../core/nnetwork.hpp"
 #include "../core/nparticles.hpp"
 #include "../core/nplayer.hpp"
 #include "../core/nproduction.hpp"
@@ -1689,6 +1690,7 @@ int main(int argc, const char** argv) {
         nebula::registerFlightModule10(rt.ks);
         nebula::registerAudioModule12(rt.ks);
         nebula::registerProductionModule14(rt.ks);
+        nebula::registerNetworkModule15(rt.ks);
 
         rt.guiHooks.onPlaySound = rt.worldHooks.onPlaySound;
         rt.guiHooks.onShowTextMessage = rt.worldHooks.onShowSubtitle;
