@@ -1,4 +1,5 @@
 import { FogPassage } from './levels/fogPassage.js';
+import { DoverConvoyMission } from './levels/doverConvoy.js';
 import { RADIO_CUES, CALLSIGNS } from './levels/passageRadio.js';
 import { BakedLighting } from './bakedLighting.js?v=mission1';
 import { HangarFleet } from './hangarFleet.js?v=mission1';
@@ -264,7 +265,11 @@ function initWorld(seedStr, { menuPreview = false, fogMission = false, levelId =
     world.bakedLighting=new BakedLighting(scene);
     world.fleet=new HangarFleet(scene,asteroidBase,world.shadowGenerator);
     world.jobs=new AircraftJobs(scene,world,asteroidBase,{onReward:amount=>construction.addSalvage(amount),onToast:msg=>ui.showToast(msg,4500),onExplosion:(pos,scale)=>spawnDemoExplosion(pos,scale)});
-    ship.onProjectileImpact=event=>{const targetHit=world.jobs?.onProjectileImpact(event);if(!targetHit&&event.position&&['bomb','rocket'].includes(event.kind))spawnDemoExplosion(event.position,event.kind==='bomb'?1.5:.7);};
+    ship.onProjectileImpact=event=>{
+      const doverHit = event.position && demoState?.doverMission?.onPlayerHit?.(event.position, event.kind === 'bomb' ? 140 : event.kind === 'rocket' ? 85 : 22);
+      const targetHit = doverHit || world.jobs?.onProjectileImpact(event);
+      if(!targetHit&&event.position&&['bomb','rocket'].includes(event.kind))spawnDemoExplosion(event.position,event.kind==='bomb'?1.5:.7);
+    };
   }
   scene.blockMaterialDirtyMechanism = false;
 
@@ -915,7 +920,7 @@ if (shotMode && urlParams.get('hud') === '0') {
   }
 }
 
-async function startRun(seedStr, { skipPrologue = false } = {}) {
+async function startRun(seedStr, { skipPrologue = false, fastStream = false } = {}) {
   const generation = ++runGeneration;
   audio.init();
   initWorld(seedStr,{fogMission:!skipPrologue,levelId:skipPrologue?'hangar':'prologue'});
@@ -929,9 +934,11 @@ async function startRun(seedStr, { skipPrologue = false } = {}) {
   if (prologue && !skipPrologue) {
     document.body.classList.add('in-prologue');
     prologue.showLoading();
+  } else {
+    prologue?.hide?.();
   }
-  // The chase opens on the procedural aircraft and escort. Imported scenery streams in during flight.
-  const loadResults = await Promise.allSettled(demoState?.passage ? [] : [ship.readyPromise, player.readyPromise, world.landmarks?.readyPromise, world.fleet?.readyPromise, world.bakedLighting?.readyPromise, ...world.islands?.map(i=>i.readyPromise) || []]);
+  // Stream distant assets in background for Fog Passage and Dover Convoy fast opening.
+  const loadResults = await Promise.allSettled((demoState?.passage || fastStream) ? [] : [ship.readyPromise, player.readyPromise, world.landmarks?.readyPromise, world.fleet?.readyPromise, world.bakedLighting?.readyPromise, ...world.islands?.map(i=>i.readyPromise) || []]);
   for (const r of loadResults) {
     if (r.status === 'rejected') console.warn('[startRun] Asset/subsystem load warning:', r.reason);
   }
@@ -1211,6 +1218,46 @@ async function startFreeFlight(seed){
   ui.showRadio('dispatcher','Эскадрилья готова: грузовой, истребитель, штурмовик и бомбардировщик. Подойди к машине и нажми E. Для каждого борта — своё задание.',7500);
 }
 document.getElementById('hangar-start-btn').addEventListener('click',()=>startFreeFlight(seedInput.value));
+async function startDoverConvoy(seed) {
+  hideCombatOverlays();
+  const generation = runGeneration + 1;
+  await startRun(seed, { skipPrologue: true, fastStream: true });
+  if (generation !== runGeneration) return;
+  demoState.powerOn = true;
+  demoState.stage = 'dover_convoy';
+  if (prologue) {
+    prologue.active = false;
+    prologue.done = true;
+    prologue.hide?.();
+  }
+  document.body.classList.remove('in-prologue');
+  construction.stage = null;
+  construction.addSalvage(80);
+  demoState.doverMission = new DoverConvoyMission(scene, world, asteroidBase, {
+    ui,
+    audio,
+    explode: (pos, scale) => spawnDemoExplosion(pos, scale),
+    construction,
+  });
+  asteroidBase.missionBatteryControlled = true;
+  // Launch player immediately on the Interbellum attacker airborne off Vagabond's beam!
+  ship.setVariant?.('attacker');
+  player.boardShip();
+  ship.undockFromAsteroid({ force: true });
+  ship.hull = ship.maxHull;
+  ship.fuel = 100;
+  ship.throttle = 0.72;
+  const vPos = asteroidBase.group.position;
+  const startPos = vPos.add(new BABYLON.Vector3(65, 36, -42));
+  ship.group.position.copyFrom(startPos);
+  const fwd = demoState.doverMission.battleship.position.subtract(startPos).normalize();
+  ship.group.rotationQuaternion = aircraftHeading(fwd);
+  ship.velocity.copyFrom(fwd.scale(48));
+  controlMode = 'aircraft';
+  ui.setMode('aircraft');
+  ui.showHUD(true);
+}
+document.getElementById('mission-dover-btn')?.addEventListener('click', () => startDoverConvoy(seedInput.value));
 document.getElementById('menu-settings-btn').addEventListener('click', () => openDeviceModal('settings', 'menu'));
 document.getElementById('menu-controls-btn').addEventListener('click', () => openDeviceModal('controls', 'menu'));
 
@@ -2495,6 +2542,7 @@ function getQuestState() {
       free_flight: controlMode === 'asteroid'
         ? ['Крейсер «Бродяга»', 'Задайте курс кораблю. G — вернуться в ангар.']
         : ['Ангар эскадрильи', 'E у самолёта — выбрать борт и задание. E у штурвала в ангаре — вести крейсер.'],
+      dover_convoy: ['Глава 2 · Перехват у Дувра', demoState.doverMission?.getObjectiveText?.() || 'Уничтожить линкор «Колосс» и эскорт Tribal.'],
       fog_search: ['Уйти от эсминца · '+(demoState.passage?.fix.name||''), demoState.passage?.fix.hint+' W/S — тяга, A/D — курс, стрелки — высота.'],
       fog_start: ['Запустить «Бродягу»','Подойдите к штурвалу в ангаре и нажмите E.'],
       fog_lift: ['Подъём с острова','Машины набирают обороты.'],
@@ -3667,7 +3715,12 @@ engine.runRenderLoop(() => {
         }
       }
 
-      // Update Heavy Aerial Sky-Torpedoes (anti-Dreadnought / anti-Fortress-Island)
+      demoState.doverMission?.update?.(dt, ship, camera, (dmg) => {
+        ship.hull = Math.max(0, ship.hull - dmg);
+        ship.recoilShake = Math.max(ship.recoilShake || 0, 0.85);
+        if (ship.hull <= 0) checkWinLose();
+      });
+      // Update Heavy Aerial Sky-Torpedoes (anti-Dreadnought / anti-Fortress-Island / Dover Colossus)
       demoState.torpedoCd = Math.max(0, (demoState.torpedoCd || 0) - dt);
       demoState.skyTorpedoes ||= [];
       for (let i = demoState.skyTorpedoes.length - 1; i >= 0; i--) {
@@ -3717,6 +3770,11 @@ engine.runRenderLoop(() => {
           }
         }
         tp.mesh.position.addInPlace(tp.vel.scale(dt));
+        if (!hit && demoState.doverMission?.onPlayerHit?.(tp.mesh.position, 280)) {
+          hit = true;
+          spawnDemoExplosion(tp.mesh.position.clone(), 2.8);
+          audio?.playExplosion?.(1.1);
+        }
         tp.mesh.lookAt(tp.mesh.position.add(curDir));
         tp.mesh.rotate(BABYLON.Axis.X, Math.PI * 0.5, BABYLON.Space.LOCAL);
         if (hit || tp.life <= 0) {

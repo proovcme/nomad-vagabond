@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 320">
+  <rect width="800" height="320" fill="#efe6d1"/>
+  <g stroke="#c8bc9e" stroke-width="1" opacity="0.65">
+    <line x1="0" y1="80" x2="800" y2="80"/><line x1="0" y1="160" x2="800" y2="160"/>
+    <line x1="0" y1="240" x2="800" y2="240"/><line x1="200" y1="0" x2="200" y2="320"/>
+    <line x1="400" y1="0" x2="400" y2="320"/><line x1="600" y1="0" x2="600" y2="320"/>
+  </g>
+  <rect x="14" y="14" width="772" height="292" fill="none" stroke="#6f6249" stroke-width="2"/>
+  <text x="34" y="46" font-family="Georgia, serif" font-size="18" font-weight="bold" fill="#2c261c" letter-spacing="2">HMS NELSON (1927) · ОПОЗНАВАТЕЛЬНЫЙ ПРОФИЛЬ</text>
+  <text x="34" y="66" font-family="Courier New, monospace" font-size="12" fill="#5e523d">ДЛИНА 216 М · 3×3 406-ММ ГК В НОСУ · ПРОТОТИП ЛИНКОРА «КОЛОСС»</text>
+  <!-- Waterline -->
+  <line x1="60" y1="244" x2="740" y2="244" stroke="#475563" stroke-width="2" stroke-dasharray="8 4"/>
+  <!-- Ship silhouette (bow left -> stern right) -->
+  <g fill="#262c32" stroke="#181c20" stroke-width="1.5">
+    <!-- Hull -->
+    <polygon points="86,216 706,220 714,244 102,244"/>
+    <!-- Bow triple turrets A, B, X -->
+    <rect x="172" y="202" width="38" height="14"/><line x1="172" y1="207" x2="128" y2="203" stroke="#181c20" stroke-width="3.5"/>
+    <rect x="236" y="186" width="40" height="30"/><line x1="236" y1="194" x2="188" y2="189" stroke="#181c20" stroke-width="3.5"/>
+    <rect x="304" y="198" width="38" height="18"/><line x1="304" y1="204" x2="262" y2="201" stroke="#181c20" stroke-width="3.5"/>
+    <!-- Towering Queen Anne's Mansion citadel bridge -->
+    <polygon points="384,218 394,142 468,142 482,218"/>
+    <rect x="404" y="114" width="52" height="28"/>
+    <rect x="418" y="96" width="26" height="18"/>
+    <!-- Fire-control director & mast -->
+    <line x1="431" y1="96" x2="431" y2="68" stroke="#181c20" stroke-width="2.5"/>
+    <line x1="414" y1="80" x2="448" y2="80" stroke="#181c20" stroke-width="2"/>
+    <!-- Single raked aft funnel -->
+    <polygon points="526,218 536,136 564,136 558,218"/>
+    <rect x="535" y="152" width="29" height="10" fill="#9e3428" stroke="none"/>
+    <!-- Aft mast & ensign -->
+    <line x1="598" y1="218" x2="606" y2="108" stroke="#181c20" stroke-width="2.5"/>
+    <line x1="588" y1="132" x2="622" y2="132" stroke="#181c20" stroke-width="1.8"/>
+    <polygon points="606,112 630,116 606,122" fill="#9e3428" stroke="none"/>
+  </g>
+  <!-- Labels -->
+  <g font-family="Courier New, monospace" font-size="11" fill="#4f4534" text-anchor="middle">
+    <text x="190" y="274">БАШНЯ A</text>
+    <text x="256" y="274">БАШНЯ B</text>
+    <text x="322" y="274">БАШНЯ X</text>
+    <text x="434" y="274">ЦИТАДЕЛЬ</text>
+    <text x="548" y="274">ТРУБА</text>
+  </g>
+</svg>

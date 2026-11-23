@@ -12,8 +12,12 @@ export class FogPassage {
     this.restY=origin.y;
     this.liftTime=0;
     scene.fogMode=B.Scene.FOGMODE_EXP2;
-    scene.fogColor=B.Color3.FromHexString('#b9c3c5');
-    scene.fogDensity=.00235;
+    scene.fogColor=B.Color3.FromHexString('#d6cfc0');
+    scene.fogDensity=.00095;
+    // Hide ultra-far horizon silhouettes inside Fog Passage so they never appear as flat grey paper cutouts against the sky
+    for (const m of scene.meshes) {
+      if (/^horizonEurope/i.test(m.name)) m.setEnabled(false);
+    }
     const banksInFog=[];
     const shelf=(name,x,y,z,sx,sy,sz,yaw,industrial=false)=>{
       const source=(industrial?world.industrialIsland:world.forestIsland).generated;

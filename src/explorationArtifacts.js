@@ -118,7 +118,7 @@ export class ExplorationArtifacts {
     document.body.appendChild(this.overlay);
 
     this.counterEl = document.createElement('div');
-    this.counterEl.style.cssText = 'position:fixed;top:14px;left:50%;transform:translateX(-50%);padding:4px 12px;background:rgba(20,28,24,0.72);border:1px solid rgba(226,196,120,0.45);color:#f3dca0;font:600 12px/1.3 "Georgia",serif;letter-spacing:0.06em;border-radius:3px;pointer-events:none;z-index:23;display:none;';
+    this.counterEl.style.cssText = 'position:fixed;top:92px;left:50%;transform:translateX(-50%);padding:3px 10px;background:rgba(20,28,24,0.72);border:1px solid rgba(226,196,120,0.42);color:#f3dca0;font:600 11px/1.25 "Courier New",monospace;letter-spacing:0.08em;border-radius:3px;pointer-events:none;z-index:23;display:none;';
     document.body.appendChild(this.counterEl);
     this._updateCounter();
   }
