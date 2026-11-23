@@ -590,6 +590,22 @@ inline void registerWorldSystem(nKernelServer& ks, WorldHooks* whooks) {
                 e->visible = (v.find("invis") == std::string::npos);
             }
         });
+        cl->addCmdProto("v_setstate_s", "STST", [](nRoot* o, nCmd& c) {
+            if (auto* e = dynamic_cast<nEntity*>(o); e && !c.inArgs.empty()) e->state = c.inArgs[0].sVal;
+        });
+        cl->addCmdProto("v_setfilter_s", "SFLT", [](nRoot* o, nCmd& c) {
+            if (auto* e = dynamic_cast<nEntity*>(o); e && !c.inArgs.empty()) e->stubProps["filter"] = c.inArgs;
+        });
+        cl->addCmdProto("v_setcharge_f", "SCHG", [](nRoot* o, nCmd& c) {
+            if (auto* e = dynamic_cast<nEntity*>(o); e && !c.inArgs.empty()) e->charges = static_cast<int>(c.inArgs[0].fVal);
+        });
+        cl->addCmdProto("v_setareaofeffect_f", "SAOE", [](nRoot* o, nCmd& c) {
+            if (auto* e = dynamic_cast<nEntity*>(o); e && !c.inArgs.empty()) e->triggerRadius = c.inArgs[0].fVal;
+        });
+        cl->addCmdProto("s_gettargetsymbolicname_v", "GTSN", [](nRoot* o, nCmd& c) {
+            auto* e = dynamic_cast<nEntity*>(o);
+            c.outArgs.push_back(nArg::fromString(e ? e->taskTarget : ""));
+        });
     };
     regEnt("ncontainer", "nstatenode");
     regEnt("nmaennel", "nvehicle");

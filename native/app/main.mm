@@ -31,6 +31,7 @@
 #include "../core/nkernel.hpp"
 #include "../core/nparticles.hpp"
 #include "../core/nplayer.hpp"
+#include "../core/nproduction.hpp"
 #include "../core/nstory.hpp"
 #include "../core/ntclserver.hpp"
 #include "../core/nworld.hpp"
@@ -1687,6 +1688,7 @@ int main(int argc, const char** argv) {
         nebula::registerEconomyAndLightingModule9(rt.ks);
         nebula::registerFlightModule10(rt.ks);
         nebula::registerAudioModule12(rt.ks);
+        nebula::registerProductionModule14(rt.ks);
 
         rt.guiHooks.onPlaySound = rt.worldHooks.onPlaySound;
         rt.guiHooks.onShowTextMessage = rt.worldHooks.onShowSubtitle;
