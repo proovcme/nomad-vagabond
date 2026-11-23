@@ -138,10 +138,10 @@ fragment float4 mesh_fs(MeshVertOut in [[stage_in]],
         float3 N = normalize(in.worldNorm);
         float3 L = normalize(u.lightDir.xyz);
         float ndl = max(dot(N, L), 0.0);
-        // Soft sky-hemisphere + opposite-sun fill light (matches weather_normal.n licht1 + licht2)
-        float fill = max(dot(N, -L), 0.0) * 0.22;
+        // Soft atmospheric fill light derived from the chapter's REAL weather_normal/weather_intro colors (never hardcoded cold blue!)
+        float fill = max(dot(N, -L), 0.0) * 0.24;
         float hemi = N.y * 0.5 + 0.5;
-        float3 skyAmb = max(u.ambColor.rgb, float3(0.32, 0.36, 0.44)) * mix(0.82, 1.28, hemi);
+        float3 skyAmb = (u.ambColor.rgb + u.fogColor.rgb * 0.30) * mix(0.80, 1.20, hemi);
         float3 sun = u.sunColor.rgb * ndl + u.fogColor.rgb * fill;
         float3 dyn = float3(0.0);
         if (u.dynLightCol.w > 0.001 && u.dynLightPos.w > 0.1) {
@@ -156,8 +156,8 @@ fragment float4 mesh_fs(MeshVertOut in [[stage_in]],
         // D3DRS_LIGHTING = FALSE (clouds, particles, flares, sky): never multiply by zero!
         float3 unlitTint = max(diffCol, emCol);
         if (u.windParams.w > 0.5) {
-            // Sunlit fluffy clouds (wolke10): blend cloud texture with daylight sky/sun brightness
-            float3 cloudLight = clamp(u.sunColor.rgb * 0.65 + u.fogColor.rgb * 0.55 + float3(0.20), float3(0.45), float3(1.25));
+            // Sunlit clouds (wolke10): match the exact warm/golden or chapter weather palette
+            float3 cloudLight = clamp(u.sunColor.rgb * 0.55 + u.fogColor.rgb * 0.65 + u.ambColor.rgb * 0.25, float3(0.25), float3(1.25));
             lit = baseCol.rgb * cloudLight;
         } else {
             lit = baseCol.rgb * unlitTint;
@@ -762,8 +762,13 @@ static void playWav(const std::string& rawPath, bool loop) {
     _instances.clear();
     _collision.clear();
     size_t loadedCount = 0;
+    std::string activeWeatherProto;
     for (auto* ent : rw->entities) {
         if (!ent) continue;
+        std::string lowP = nebula::NpkArchive::toLower(ent->protoName);
+        if (lowP.rfind("weather_", 0) == 0) {
+            if (activeWeatherProto.empty() || activeWeatherProto == "weather_normal") activeWeatherProto = lowP;
+        }
         GpuPrototype* gp = [self getOrLoadPrototype:ent->protoName];
         if (!gp || gp->subMeshes.empty()) continue;
 
@@ -774,6 +779,18 @@ static void playWav(const std::string& rawPath, bool loop) {
             _collision.addMesh(gp->collMesh, M);
         }
         loadedCount++;
+    }
+    if (!activeWeatherProto.empty()) {
+        if (auto* fs = dynamic_cast<nebula::nFileServer*>(gRuntime->ks.lookup("/sys/servers/file2"))) {
+            std::vector<uint8_t> wRaw;
+            if (fs->readFile("data.n/" + activeWeatherProto + ".n/_main.n", wRaw)) {
+                nebula::WeatherCurves wc;
+                if (nebula::parseWeatherCurves(wRaw, wc)) {
+                    _weather = std::move(wc);
+                    std::cout << "[nWeather] Activated chapter weather: " << activeWeatherProto << "\n";
+                }
+            }
+        }
     }
 
     // Read chosen hero from Tcl ($character_proto) & spawn ONLY on initial mission load (not mid-mission loadencounter!)
@@ -1352,7 +1369,7 @@ static void playWav(const std::string& rawPath, bool loop) {
                 float tod = static_cast<float>(rw->timeOfDay);
                 float sc[4], ac[4], fc[4], fr[4];
                 if (_weather.sunColor.sample(tod, sc)) sunCol = simd_make_float4(sc[0], sc[1], sc[2], 1.0f);
-                if (_weather.ambColor.sample(tod, ac)) ambCol = simd_make_float4(std::max(0.22f, ac[0]), std::max(0.24f, ac[1]), std::max(0.28f, ac[2]), 1.0f);
+                if (_weather.ambColor.sample(tod, ac)) ambCol = simd_make_float4(ac[0], ac[1], ac[2], 1.0f);
                 if (_weather.fogColor.sample(tod, fc)) {
                     float fEnd = 6500.0f;
                     if (_weather.fogRange.sample(tod, fr) && fr[1] > 500.0f) fEnd = fr[1] * 2.0f;
@@ -1363,9 +1380,11 @@ static void playWav(const std::string& rawPath, bool loop) {
         }
     }
 
-    // Update dynamic instance transforms once per frame
+    // Update dynamic instance transforms once per frame (and keep skybox/sky centered on camera)
     for (auto& inst : _instances) {
-        if (inst.entity && inst.entity->visible && inst.entity->isDynamicTransform()) {
+        if (inst.protoKey == "sky" || inst.protoKey.rfind("skybox", 0) == 0) {
+            inst.worldMat = mat4FromNebula(nebula::Mat4::translate(_camPos.x, _camPos.y, _camPos.z));
+        } else if (inst.entity && inst.entity->visible && inst.entity->isDynamicTransform()) {
             inst.worldMat = mat4FromNebula(inst.entity->computeWorldMatrix(t));
         }
     }
