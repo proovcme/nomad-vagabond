@@ -187,6 +187,32 @@ inline void registerGameplayModule3(nKernelServer& ks, nArtefactBelt* playerBelt
             b->scale[0] = c.inArgs[0].fVal; b->scale[1] = c.inArgs[1].fVal; b->scale[2] = c.inArgs[2].fVal;
         }
     });
+    clBar->addCmdProto("v_setleftpos_fff", "STLP", [](nRoot* o, nCmd& c) {
+        if (auto* b = dynamic_cast<nGuiBar*>(o); b && c.inArgs.size() >= 3) {
+            b->leftPos[0] = c.inArgs[0].fVal; b->leftPos[1] = c.inArgs[1].fVal; b->leftPos[2] = c.inArgs[2].fVal;
+        }
+    });
+    clBar->addCmdProto("v_setmiddlepos_fff", "STMP", [](nRoot* o, nCmd& c) {
+        if (auto* b = dynamic_cast<nGuiBar*>(o); b && c.inArgs.size() >= 3) {
+            b->midPos[0] = c.inArgs[0].fVal; b->midPos[1] = c.inArgs[1].fVal; b->midPos[2] = c.inArgs[2].fVal;
+        }
+    });
+    clBar->addCmdProto("v_setmiddleoffset_fff", "STMO", [](nRoot* o, nCmd& c) {
+        if (auto* b = dynamic_cast<nGuiBar*>(o); b && c.inArgs.size() >= 3) {
+            b->midOff[0] = c.inArgs[0].fVal; b->midOff[1] = c.inArgs[1].fVal; b->midOff[2] = c.inArgs[2].fVal;
+        }
+    });
+    clBar->addCmdProto("v_setrightpos_fff", "STRP", [](nRoot* o, nCmd& c) {
+        if (auto* b = dynamic_cast<nGuiBar*>(o); b && c.inArgs.size() >= 3) {
+            b->rightPos[0] = c.inArgs[0].fVal; b->rightPos[1] = c.inArgs[1].fVal; b->rightPos[2] = c.inArgs[2].fVal;
+        }
+    });
+    clBar->addCmdProto("v_setextension_f", "STEX", [](nRoot* o, nCmd& c) {
+        if (auto* b = dynamic_cast<nGuiBar*>(o); b && !c.inArgs.empty()) b->extension = c.inArgs[0].fVal;
+    });
+    clBar->addCmdProto("f_getextension_v", "GTEX", [](nRoot* o, nCmd& c) {
+        auto* b = dynamic_cast<nGuiBar*>(o); c.outArgs.push_back(nArg::fromFloat(b ? b->extension : 0.0f));
+    });
 
     // 2. nHouse
     auto* clHouse = ks.registerClass("nhouse", "ncontainer", []() { return std::make_unique<nHouse>(); });

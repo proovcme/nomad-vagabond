@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "../core/nanim.hpp"
+#include "../core/naudio.hpp"
 #include "../core/ncollide.hpp"
 #include "../core/ncombat.hpp"
 #include "../core/neconomy.hpp"
@@ -1660,6 +1661,7 @@ int main(int argc, const char** argv) {
         nebula::registerIslandAndSaveModule5(rt.ks);
         nebula::registerEconomyAndLightingModule9(rt.ks);
         nebula::registerFlightModule10(rt.ks);
+        nebula::registerAudioModule12(rt.ks);
 
         rt.guiHooks.onPlaySound = rt.worldHooks.onPlaySound;
         rt.guiHooks.onShowTextMessage = rt.worldHooks.onShowSubtitle;

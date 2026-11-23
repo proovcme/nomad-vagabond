@@ -584,6 +584,12 @@ inline void registerWorldSystem(nKernelServer& ks, WorldHooks* whooks) {
         cl->addCmdProto("v_setaction_s", "SACT", [](nRoot* o, nCmd& c) {
             if (auto* e = dynamic_cast<nEntity*>(o); e && !c.inArgs.empty()) e->taskName = c.inArgs[0].sVal;
         });
+        cl->addCmdProto("v_setvisualization_s", "SVIZ", [](nRoot* o, nCmd& c) {
+            if (auto* e = dynamic_cast<nEntity*>(o); e && !c.inArgs.empty()) {
+                const std::string& v = c.inArgs[0].sVal;
+                e->visible = (v.find("invis") == std::string::npos);
+            }
+        });
     };
     regEnt("ncontainer", "nstatenode");
     regEnt("nmaennel", "nvehicle");
@@ -741,6 +747,21 @@ inline void registerWorldSystem(nKernelServer& ks, WorldHooks* whooks) {
     if (auto* clSG = ks.findClass("nscenegraph2")) {
         clSG->addCmdProto("v_setmiplod_if", "SMPL", [](nRoot* o, nCmd& c) {
             if (o && c.inArgs.size() >= 2) o->stubProps["miplod"] = c.inArgs;
+        });
+    }
+    if (auto* clTex = ks.findClass("ntexarraynode")) {
+        clTex->addCmdProto("v_settexture_iss", "STXT", [](nRoot* o, nCmd& c) {
+            if (o && c.inArgs.size() >= 2) o->stubProps["texture"] = c.inArgs;
+        });
+    }
+    if (auto* clMesh = ks.findClass("nmeshnode")) {
+        clMesh->addCmdProto("v_setfilename_s", "SFLN", [](nRoot* o, nCmd& c) {
+            if (o && !c.inArgs.empty()) o->stubProps["filename"] = c.inArgs;
+        });
+    }
+    if (auto* clLnk = ks.findClass("nlinknode")) {
+        clLnk->addCmdProto("v_settarget_s", "STGT", [](nRoot* o, nCmd& c) {
+            if (o && !c.inArgs.empty()) o->stubProps["target"] = c.inArgs;
         });
     }
 }
