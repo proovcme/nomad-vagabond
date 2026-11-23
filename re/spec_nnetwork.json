@@ -1,0 +1,812 @@
+{
+  "dll": "nnetwork.dll",
+  "image_base": "0x10000000",
+  "class_count": 4,
+  "total_script_cmds": 23,
+  "classes": {
+    "nnetnode": {
+      "name": "nNetNode",
+      "nebula_name": "nnetnode",
+      "superclass": "nroot",
+      "sizeof": 80,
+      "init_rva": "0x1000",
+      "new_rva": "0x107e",
+      "initcmds_rva": "0x19f3",
+      "script_cmds": [
+        {
+          "proto": "v_markshadow_b",
+          "fourcc": "M_SH",
+          "handler_rva": "0x1a34"
+        },
+        {
+          "proto": "b_isshadow_v",
+          "fourcc": "I_SH",
+          "handler_rva": "0x1a55"
+        }
+      ],
+      "cpp_exports": [
+        {
+          "mangled": "??0nNetNode@@QAE@ABV0@@Z",
+          "demangled": "nNetNode(const nNetNode&)",
+          "rva": "0x18af"
+        },
+        {
+          "mangled": "??0nNetNode@@QAE@XZ",
+          "demangled": "nNetNode()",
+          "rva": "0x196f"
+        },
+        {
+          "mangled": "??1nNetNode@@UAE@XZ",
+          "demangled": "virtual ~nNetNode()",
+          "rva": "0x1989"
+        },
+        {
+          "mangled": "??4nNetNode@@QAEAAV0@ABV0@@Z",
+          "demangled": "nNetNode& operator=(const nNetNode&)",
+          "rva": "0x18e4"
+        },
+        {
+          "mangled": "??_7nNetNode@@6B@",
+          "demangled": "vtable for nNetNode",
+          "rva": "0xd3ec"
+        },
+        {
+          "mangled": "?GetNetName@nNetNode@@QAEFXZ",
+          "demangled": "short GetNetName()",
+          "rva": "0x189c"
+        },
+        {
+          "mangled": "?IsNetValid@nNetNode@@QBE_NXZ",
+          "demangled": "bool IsNetValid() const",
+          "rva": "0x18ab"
+        },
+        {
+          "mangled": "?IsShadow@nNetNode@@QAE_NXZ",
+          "demangled": "bool IsShadow()",
+          "rva": "0x188c"
+        },
+        {
+          "mangled": "?MarkShadow@nNetNode@@QAEX_N@Z",
+          "demangled": "void MarkShadow(bool)",
+          "rva": "0x1882"
+        },
+        {
+          "mangled": "?MarkShadowAll@nNetNode@@UAEX_N@Z",
+          "demangled": "virtual void MarkShadowAll(bool)",
+          "rva": "0x1994"
+        },
+        {
+          "mangled": "?SaveCmds@nNetNode@@UAE_NPAVnFileServer@@@Z",
+          "demangled": "virtual bool SaveCmds(nFileServer*)",
+          "rva": "0x1a7e"
+        },
+        {
+          "mangled": "?SetNetName@nNetNode@@QAEXF@Z",
+          "demangled": "void SetNetName(short)",
+          "rva": "0x1890"
+        },
+        {
+          "mangled": "?SetNetValid@nNetNode@@QAEX_N@Z",
+          "demangled": "void SetNetValid(bool)",
+          "rva": "0x18a1"
+        },
+        {
+          "mangled": "?ks@nNetNode@@2PAVnKernelServer@@A",
+          "demangled": "static nKernelServer* nNetNode::ks",
+          "rva": "0x162b4"
+        },
+        {
+          "mangled": "?local_cl@nNetNode@@2PAVnClass@@A",
+          "demangled": "static nClass* nNetNode::local_cl",
+          "rva": "0x162b0"
+        }
+      ]
+    },
+    "nnetwork2": {
+      "name": "nNetwork2",
+      "nebula_name": "nnetwork2",
+      "superclass": "nroot",
+      "sizeof": null,
+      "init_rva": "0x1b5d",
+      "new_rva": "0x1de4",
+      "initcmds_rva": null,
+      "script_cmds": [],
+      "cpp_exports": [
+        {
+          "mangled": "??0nNetwork2@@QAE@ABV0@@Z",
+          "demangled": "nNetwork2(const nNetwork2&)",
+          "rva": "0x1fd5"
+        },
+        {
+          "mangled": "??0nNetwork2@@QAE@XZ",
+          "demangled": "nNetwork2()",
+          "rva": "0x237c"
+        },
+        {
+          "mangled": "??1nNetwork2@@UAE@XZ",
+          "demangled": "virtual ~nNetwork2()",
+          "rva": "0x24b5"
+        },
+        {
+          "mangled": "??4nNetwork2@@QAEAAV0@ABV0@@Z",
+          "demangled": "nNetwork2& operator=(const nNetwork2&)",
+          "rva": "0x216e"
+        },
+        {
+          "mangled": "??_7nNetwork2@@6B@",
+          "demangled": "vtable for nNetwork2",
+          "rva": "0xd74c"
+        },
+        {
+          "mangled": "?AddMachine@nNetwork2@@UAE_NFKFK_N@Z",
+          "demangled": "virtual bool AddMachine(short, unsigned long, short, unsigned long, bool)",
+          "rva": "0x2780"
+        },
+        {
+          "mangled": "?AddToBuffer@nNetwork2@@UAE_NPBDFF@Z",
+          "demangled": "virtual bool AddToBuffer(const char*, short, short)",
+          "rva": "0x3082"
+        },
+        {
+          "mangled": "?AskLatency@nNetwork2@@UAEXXZ",
+          "demangled": "virtual void AskLatency()",
+          "rva": "0x31ea"
+        },
+        {
+          "mangled": "?CalcSendReceiveStatistics@nNetwork2@@UAEXFJ@Z",
+          "demangled": "virtual void CalcSendReceiveStatistics(short, long)",
+          "rva": "0x339c"
+        },
+        {
+          "mangled": "?CheckRemoteStart@nNetwork2@@UAE_NAA_N@Z",
+          "demangled": "virtual bool CheckRemoteStart(bool&)",
+          "rva": "0x25a4"
+        },
+        {
+          "mangled": "?DebugReceive@nNetwork2@@UAE_NPAD0AAF@Z",
+          "demangled": "virtual bool DebugReceive(char*, nNetwork2, short&)",
+          "rva": "0x2a40"
+        },
+        {
+          "mangled": "?Dispatch@nNetwork2@@UAE_NPAVnCmd@@@Z",
+          "demangled": "virtual bool Dispatch(nCmd*)",
+          "rva": "0x35f1"
+        },
+        {
+          "mangled": "?FindLocalMachineNode@nNetwork2@@UAEPAVnMachineNode2@@XZ",
+          "demangled": "virtual nMachineNode2* FindLocalMachineNode()",
+          "rva": "0x2900"
+        },
+        {
+          "mangled": "?FindMachineNode@nNetwork2@@UAEPAVnMachineNode2@@F@Z",
+          "demangled": "virtual nMachineNode2* FindMachineNode(short)",
+          "rva": "0x28b7"
+        },
+        {
+          "mangled": "?FlushBuffer@nNetwork2@@UAE_NXZ",
+          "demangled": "virtual bool FlushBuffer()",
+          "rva": "0x2fe9"
+        },
+        {
+          "mangled": "?GetBufferUser@nNetwork2@@QAEFXZ",
+          "demangled": "short GetBufferUser()",
+          "rva": "0x1fa7"
+        },
+        {
+          "mangled": "?GetDropMsg@nNetwork2@@QAEHXZ",
+          "demangled": "int GetDropMsg()",
+          "rva": "0x35af"
+        },
+        {
+          "mangled": "?GetGUID@nNetwork2@@UAEXPAE@Z",
+          "demangled": "virtual void GetGUID(unsigned char*)",
+          "rva": "0x258f"
+        },
+        {
+          "mangled": "?GetHostID@nNetwork2@@QAEFXZ",
+          "demangled": "short GetHostID()",
+          "rva": "0x1f68"
+        },
+        {
+          "mangled": "?GetLatencyInfo@nNetwork2@@UAE_NFPAN000@Z",
+          "demangled": "virtual bool GetLatencyInfo(short, double*, nNetwork2, nNetwork2, nNetwork2)",
+          "rva": "0x3271"
+        },
+        {
+          "mangled": "?GetMachineList@nNetwork2@@QAEPAVnList@@XZ",
+          "demangled": "nList* GetMachineList()",
+          "rva": "0x1f83"
+        },
+        {
+          "mangled": "?GetMaxMachineID@nNetwork2@@UAEFXZ",
+          "demangled": "virtual short GetMaxMachineID()",
+          "rva": "0x2871"
+        },
+        {
+          "mangled": "?GetMaxNumMachines@nNetwork2@@QAEFXZ",
+          "demangled": "short GetMaxNumMachines()",
+          "rva": "0x1f93"
+        },
+        {
+          "mangled": "?GetMaxPathNumber@nNetwork2@@UAEFPAD@Z",
+          "demangled": "virtual short GetMaxPathNumber(char*)",
+          "rva": "0x25b0"
+        },
+        {
+          "mangled": "?GetNumMachines@nNetwork2@@UAEFXZ",
+          "demangled": "virtual short GetNumMachines()",
+          "rva": "0x2942"
+        },
+        {
+          "mangled": "?GetSendDelay@nNetwork2@@UAENXZ",
+          "demangled": "virtual double GetSendDelay()",
+          "rva": "0x1f26"
+        },
+        {
+          "mangled": "?GetSendReceiveStatistics@nNetwork2@@UAEPAUn_sendreceiveinfo@@XZ",
+          "demangled": "virtual n_sendreceiveinfo* GetSendReceiveStatistics()",
+          "rva": "0x3523"
+        },
+        {
+          "mangled": "?GetSessionName@nNetwork2@@QAEPADXZ",
+          "demangled": "char* GetSessionName()",
+          "rva": "0x1f43"
+        },
+        {
+          "mangled": "?HandleProtocolMessage@nNetwork2@@UAEXPADHF@Z",
+          "demangled": "virtual void HandleProtocolMessage(char*, int, short)",
+          "rva": "0x2ee4"
+        },
+        {
+          "mangled": "?InitSendReceiveStatistics@nNetwork2@@UAEXXZ",
+          "demangled": "virtual void InitSendReceiveStatistics()",
+          "rva": "0x353c"
+        },
+        {
+          "mangled": "?InsertSystemMessage@nNetwork2@@UAE_NFFFPAD@Z",
+          "demangled": "virtual bool InsertSystemMessage(short, short, short, char*)",
+          "rva": "0x2e12"
+        },
+        {
+          "mangled": "?IsBufferEmpty@nNetwork2@@UAE_NXZ",
+          "demangled": "virtual bool IsBufferEmpty()",
+          "rva": "0x357f"
+        },
+        {
+          "mangled": "?IsConnected@nNetwork2@@UAE_NF@Z",
+          "demangled": "virtual bool IsConnected(short)",
+          "rva": "0x297c"
+        },
+        {
+          "mangled": "?IsHost@nNetwork2@@QAE_NXZ",
+          "demangled": "bool IsHost()",
+          "rva": "0x1f47"
+        },
+        {
+          "mangled": "?IsJoined@nNetwork2@@QAE_NXZ",
+          "demangled": "bool IsJoined()",
+          "rva": "0x1f4e"
+        },
+        {
+          "mangled": "?IsLAN@nNetwork2@@UBE_NXZ",
+          "demangled": "virtual bool IsLAN() const",
+          "rva": "0x2673"
+        },
+        {
+          "mangled": "?IsLocked@nNetwork2@@QAE_NXZ",
+          "demangled": "bool IsLocked()",
+          "rva": "0x1f55"
+        },
+        {
+          "mangled": "?LockSession@nNetwork2@@UAE_N_N@Z",
+          "demangled": "virtual bool LockSession(bool)",
+          "rva": "0x26ce"
+        },
+        {
+          "mangled": "?ObtainMachineData@nNetwork2@@QAEXXZ",
+          "demangled": "void ObtainMachineData()",
+          "rva": "0x1f6d"
+        },
+        {
+          "mangled": "?ObtainProtocolList@nNetwork2@@QAEPAVnList@@XZ",
+          "demangled": "nList* ObtainProtocolList()",
+          "rva": "0x1faf"
+        },
+        {
+          "mangled": "?PrepareMessage@nNetwork2@@UAEXFPAX@Z",
+          "demangled": "virtual void PrepareMessage(short, void*)",
+          "rva": "0x358f"
+        },
+        {
+          "mangled": "?Receive@nNetwork2@@UAE_NAAFAAPAD00@Z",
+          "demangled": "virtual bool Receive(short&, char*&, nNetwork2, nNetwork2)",
+          "rva": "0x2d36"
+        },
+        {
+          "mangled": "?ReleaseMachineData@nNetwork2@@QAEXXZ",
+          "demangled": "void ReleaseMachineData()",
+          "rva": "0x1f79"
+        },
+        {
+          "mangled": "?ReleaseProtocolList@nNetwork2@@QAEXXZ",
+          "demangled": "void ReleaseProtocolList()",
+          "rva": "0x1fc8"
+        },
+        {
+          "mangled": "?RemoveMachine@nNetwork2@@UAE_NF@Z",
+          "demangled": "virtual bool RemoveMachine(short)",
+          "rva": "0x2824"
+        },
+        {
+          "mangled": "?Send@nNetwork2@@UAE_NPAXFF_N@Z",
+          "demangled": "virtual bool Send(void*, short, short, bool)",
+          "rva": "0x2c66"
+        },
+        {
+          "mangled": "?SetBufferUser@nNetwork2@@QAEXF@Z",
+          "demangled": "void SetBufferUser(short)",
+          "rva": "0x1f98"
+        },
+        {
+          "mangled": "?SetDropMsg@nNetwork2@@QAEXH@Z",
+          "demangled": "void SetDropMsg(int)",
+          "rva": "0x35a2"
+        },
+        {
+          "mangled": "?SetGUID@nNetwork2@@UAE_NPAE@Z",
+          "demangled": "virtual bool SetGUID(unsigned char*)",
+          "rva": "0x2556"
+        },
+        {
+          "mangled": "?SetHost@nNetwork2@@UAEX_N@Z",
+          "demangled": "virtual void SetHost(bool)",
+          "rva": "0x26dd"
+        },
+        {
+          "mangled": "?SetHostID@nNetwork2@@QAEXF@Z",
+          "demangled": "void SetHostID(short)",
+          "rva": "0x1f5c"
+        },
+        {
+          "mangled": "?SetLAN@nNetwork2@@UAEX_N@Z",
+          "demangled": "virtual void SetLAN(bool)",
+          "rva": "0x2666"
+        },
+        {
+          "mangled": "?SetMaxNumMachines@nNetwork2@@QAEXF@Z",
+          "demangled": "void SetMaxNumMachines(short)",
+          "rva": "0x1f87"
+        },
+        {
+          "mangled": "?SetSendDelay@nNetwork2@@UAEXN@Z",
+          "demangled": "virtual void SetSendDelay(double)",
+          "rva": "0x1f19"
+        },
+        {
+          "mangled": "?SetSessionName@nNetwork2@@QAEXPBD@Z",
+          "demangled": "void SetSessionName(const char*)",
+          "rva": "0x1f2d"
+        },
+        {
+          "mangled": "?SimulateSendBug@nNetwork2@@UAE_NXZ",
+          "demangled": "virtual bool SimulateSendBug()",
+          "rva": "0x35b6"
+        },
+        {
+          "mangled": "?Trigger@nNetwork2@@UAEXXZ",
+          "demangled": "virtual void Trigger()",
+          "rva": "0x260c"
+        },
+        {
+          "mangled": "?ks@nNetwork2@@2PAVnKernelServer@@A",
+          "demangled": "static nKernelServer* nNetwork2::ks",
+          "rva": "0x162bc"
+        },
+        {
+          "mangled": "?local_cl@nNetwork2@@2PAVnClass@@A",
+          "demangled": "static nClass* nNetwork2::local_cl",
+          "rva": "0x162b8"
+        }
+      ]
+    },
+    "nsocket2": {
+      "name": "nsocket2",
+      "nebula_name": "nsocket2",
+      "superclass": "nnetwork2",
+      "sizeof": 336,
+      "init_rva": "0x458f",
+      "new_rva": "0x4658",
+      "initcmds_rva": null,
+      "script_cmds": [],
+      "cpp_exports": []
+    },
+    "ncommserver": {
+      "name": "nCommServer",
+      "nebula_name": "ncommserver",
+      "superclass": "nroot",
+      "sizeof": 304,
+      "init_rva": "0xba19",
+      "new_rva": "0xba56",
+      "initcmds_rva": "0xba76",
+      "script_cmds": [
+        {
+          "proto": "v_opensession_si",
+          "fourcc": "CSOS",
+          "handler_rva": "0xbc59"
+        },
+        {
+          "proto": "i_asksessions_bsi",
+          "fourcc": "CSAS",
+          "handler_rva": "0xbca7"
+        },
+        {
+          "proto": "v_joinsession_i",
+          "fourcc": "CSJS",
+          "handler_rva": "0xbd28"
+        },
+        {
+          "proto": "v_closesession_v",
+          "fourcc": "CSCS",
+          "handler_rva": "0xbd4c"
+        },
+        {
+          "proto": "v_setregulartransmission_b",
+          "fourcc": "RGTR",
+          "handler_rva": "0xbd55"
+        },
+        {
+          "proto": "v_setdrthreshold_f",
+          "fourcc": "SDRT",
+          "handler_rva": "0xbd7b"
+        },
+        {
+          "proto": "f_getdrthreshold_v",
+          "fourcc": "GDRT",
+          "handler_rva": "0xbda2"
+        },
+        {
+          "proto": "v_showstats_v",
+          "fourcc": "SHST",
+          "handler_rva": "0xbdcd"
+        },
+        {
+          "proto": "v_hidestats_v",
+          "fourcc": "HDST",
+          "handler_rva": "0xbdd6"
+        },
+        {
+          "proto": "v_togglestats_v",
+          "fourcc": "TGST",
+          "handler_rva": "0xbddf"
+        },
+        {
+          "proto": "v_resetstats_v",
+          "fourcc": "RSST",
+          "handler_rva": "0xbde8"
+        },
+        {
+          "proto": "v_printentities_v",
+          "fourcc": "PREN",
+          "handler_rva": "0xbdf1"
+        },
+        {
+          "proto": "v_printghosts_v",
+          "fourcc": "PRGH",
+          "handler_rva": "0xbdfa"
+        },
+        {
+          "proto": "v_settransmissiontime_f",
+          "fourcc": "STTT",
+          "handler_rva": "0xbe03"
+        },
+        {
+          "proto": "f_gettransmissiontime_v",
+          "fourcc": "GTTT",
+          "handler_rva": "0xbe2b"
+        },
+        {
+          "proto": "v_setprediction_s",
+          "fourcc": "STPR",
+          "handler_rva": "0xbe56"
+        },
+        {
+          "proto": "s_getprediction_v",
+          "fourcc": "GTPR",
+          "handler_rva": "0xbe79"
+        },
+        {
+          "proto": "v_setsmoothing_s",
+          "fourcc": "STSM",
+          "handler_rva": "0xbea3"
+        },
+        {
+          "proto": "s_getsmoothing_v",
+          "fourcc": "GTSM",
+          "handler_rva": "0xbec6"
+        },
+        {
+          "proto": "i_getclientid_v",
+          "fourcc": "GCID",
+          "handler_rva": "0xbef0"
+        },
+        {
+          "proto": "b_ishost_v",
+          "fourcc": "ISHO",
+          "handler_rva": "0xbf20"
+        }
+      ],
+      "cpp_exports": [
+        {
+          "mangled": "??0nCommServer@@QAE@ABV0@@Z",
+          "demangled": "nCommServer(const nCommServer&)",
+          "rva": "0xb126"
+        },
+        {
+          "mangled": "??0nCommServer@@QAE@XZ",
+          "demangled": "nCommServer()",
+          "rva": "0x9032"
+        },
+        {
+          "mangled": "??1nCommServer@@UAE@XZ",
+          "demangled": "virtual ~nCommServer()",
+          "rva": "0x922b"
+        },
+        {
+          "mangled": "??4nCommServer@@QAEAAV0@ABV0@@Z",
+          "demangled": "nCommServer& operator=(const nCommServer&)",
+          "rva": "0xb2c1"
+        },
+        {
+          "mangled": "??_7nCommServer@@6B@",
+          "demangled": "vtable for nCommServer",
+          "rva": "0xed7c"
+        },
+        {
+          "mangled": "?AskSessions@nCommServer@@UAEF_NPBDH@Z",
+          "demangled": "virtual short AskSessions(bool, const char*, int)",
+          "rva": "0x954f"
+        },
+        {
+          "mangled": "?CheckConnection@nCommServer@@IAEXXZ",
+          "demangled": "void CheckConnection()",
+          "rva": "0xaee4"
+        },
+        {
+          "mangled": "?CloseSession@nCommServer@@UAEXXZ",
+          "demangled": "virtual void CloseSession()",
+          "rva": "0x9788"
+        },
+        {
+          "mangled": "?ConnectionLost@nCommServer@@UAE_NXZ",
+          "demangled": "virtual bool ConnectionLost()",
+          "rva": "0xaf65"
+        },
+        {
+          "mangled": "?CreateEntity@nCommServer@@UAEPAVnPDU@@W4PDUType@2@@Z",
+          "demangled": "virtual nPDU* CreateEntity(nPDU*::PDUType)",
+          "rva": "0x9c7d"
+        },
+        {
+          "mangled": "?CreateTargetMachine@nCommServer@@IAEXF@Z",
+          "demangled": "void CreateTargetMachine(short)",
+          "rva": "0x9992"
+        },
+        {
+          "mangled": "?DeadReckon@nCommServer@@IAE_NPAVnEntityStatePDU@@M_N@Z",
+          "demangled": "bool DeadReckon(nEntityStatePDU*, float, bool)",
+          "rva": "0xa1d4"
+        },
+        {
+          "mangled": "?Disconnected@nCommServer@@UBE_NXZ",
+          "demangled": "virtual bool Disconnected() const",
+          "rva": "0x998b"
+        },
+        {
+          "mangled": "?FindTargetMachine@nCommServer@@IAEPAVnTargetMachineNode@1@F@Z",
+          "demangled": "N1::nTargetMachineNode* FindTargetMachine(short)",
+          "rva": "0x9afe"
+        },
+        {
+          "mangled": "?FlushDataToNetwork@nCommServer@@IAEXXZ",
+          "demangled": "void FlushDataToNetwork()",
+          "rva": "0x9b49"
+        },
+        {
+          "mangled": "?GetClientID@nCommServer@@QBEFXZ",
+          "demangled": "short GetClientID() const",
+          "rva": "0xb4b7"
+        },
+        {
+          "mangled": "?GetDRThreshold@nCommServer@@QBEMXZ",
+          "demangled": "float GetDRThreshold() const",
+          "rva": "0xa769"
+        },
+        {
+          "mangled": "?GetEntities@nCommServer@@UBEABVnList@@XZ",
+          "demangled": "virtual const nList& GetEntities() const",
+          "rva": "0x9cc2"
+        },
+        {
+          "mangled": "?GetFreeID@nCommServer@@IAEKXZ",
+          "demangled": "unsigned long GetFreeID()",
+          "rva": "0x9b2a"
+        },
+        {
+          "mangled": "?GetPrediction@nCommServer@@QBEPBDXZ",
+          "demangled": "const char* GetPrediction() const",
+          "rva": "0xa804"
+        },
+        {
+          "mangled": "?GetSmoothing@nCommServer@@QBEPBDXZ",
+          "demangled": "const char* GetSmoothing() const",
+          "rva": "0xa8b3"
+        },
+        {
+          "mangled": "?GetTransmissionTime@nCommServer@@QBENXZ",
+          "demangled": "double GetTransmissionTime() const",
+          "rva": "0xa762"
+        },
+        {
+          "mangled": "?HideStats@nCommServer@@QAEXXZ",
+          "demangled": "void HideStats()",
+          "rva": "0xad1e"
+        },
+        {
+          "mangled": "?IsConnected@nCommServer@@QBE_NXZ",
+          "demangled": "bool IsConnected() const",
+          "rva": "0xb4bf"
+        },
+        {
+          "mangled": "?IsHost@nCommServer@@QBE_NXZ",
+          "demangled": "bool IsHost() const",
+          "rva": "0xaecb"
+        },
+        {
+          "mangled": "?JoinSession@nCommServer@@UAE_NF@Z",
+          "demangled": "virtual bool JoinSession(short)",
+          "rva": "0x966e"
+        },
+        {
+          "mangled": "?LockSession@nCommServer@@UAEX_N@Z",
+          "demangled": "virtual void LockSession(bool)",
+          "rva": "0x9966"
+        },
+        {
+          "mangled": "?OpenSession@nCommServer@@UAE_NPBDH@Z",
+          "demangled": "virtual bool OpenSession(const char*, int)",
+          "rva": "0x93fa"
+        },
+        {
+          "mangled": "?PredictPath@nCommServer@@IAE_NPAVnEntityStatePDU@@M_N@Z",
+          "demangled": "bool PredictPath(nEntityStatePDU*, float, bool)",
+          "rva": "0xa217"
+        },
+        {
+          "mangled": "?PrintEntities@nCommServer@@QAEXXZ",
+          "demangled": "void PrintEntities()",
+          "rva": "0xad95"
+        },
+        {
+          "mangled": "?PrintGhosts@nCommServer@@QAEXXZ",
+          "demangled": "void PrintGhosts()",
+          "rva": "0xae30"
+        },
+        {
+          "mangled": "?ReceiveData@nCommServer@@IAEXXZ",
+          "demangled": "void ReceiveData()",
+          "rva": "0x9ccd"
+        },
+        {
+          "mangled": "?RemoveTargetMachine@nCommServer@@IAEXF@Z",
+          "demangled": "void RemoveTargetMachine(short)",
+          "rva": "0x9a6c"
+        },
+        {
+          "mangled": "?ResetStats@nCommServer@@QAEXXZ",
+          "demangled": "void ResetStats()",
+          "rva": "0xad61"
+        },
+        {
+          "mangled": "?SendData@nCommServer@@IAEXXZ",
+          "demangled": "void SendData()",
+          "rva": "0x9eb2"
+        },
+        {
+          "mangled": "?SessionFull@nCommServer@@UAE_NXZ",
+          "demangled": "virtual bool SessionFull()",
+          "rva": "0x98e6"
+        },
+        {
+          "mangled": "?SessionLocked@nCommServer@@UAE_NXZ",
+          "demangled": "virtual bool SessionLocked()",
+          "rva": "0x997c"
+        },
+        {
+          "mangled": "?SessionStarted@nCommServer@@UAE_NXZ",
+          "demangled": "virtual bool SessionStarted()",
+          "rva": "0x98e6"
+        },
+        {
+          "mangled": "?SetConnected@nCommServer@@IAEX_N@Z",
+          "demangled": "void SetConnected(bool)",
+          "rva": "0xb4c6"
+        },
+        {
+          "mangled": "?SetDRThreshold@nCommServer@@QAEXM@Z",
+          "demangled": "void SetDRThreshold(float)",
+          "rva": "0x35a2"
+        },
+        {
+          "mangled": "?SetPrediction@nCommServer@@QAEXPBD@Z",
+          "demangled": "void SetPrediction(const char*)",
+          "rva": "0xa770"
+        },
+        {
+          "mangled": "?SetRegularTransmission@nCommServer@@QAEX_N@Z",
+          "demangled": "void SetRegularTransmission(bool)",
+          "rva": "0xa748"
+        },
+        {
+          "mangled": "?SetSmoothing@nCommServer@@QAEXPBD@Z",
+          "demangled": "void SetSmoothing(const char*)",
+          "rva": "0xa81f"
+        },
+        {
+          "mangled": "?SetTransmissionTime@nCommServer@@QAEXN@Z",
+          "demangled": "void SetTransmissionTime(double)",
+          "rva": "0xa755"
+        },
+        {
+          "mangled": "?ShowStats@nCommServer@@QAEXXZ",
+          "demangled": "void ShowStats()",
+          "rva": "0xad09"
+        },
+        {
+          "mangled": "?SmoothPath@nCommServer@@IAEXPAVnEntityStatePDU@@@Z",
+          "demangled": "void SmoothPath(nEntityStatePDU*)",
+          "rva": "0xa3dc"
+        },
+        {
+          "mangled": "?ToggleStats@nCommServer@@QAEXXZ",
+          "demangled": "void ToggleStats()",
+          "rva": "0xad2d"
+        },
+        {
+          "mangled": "?Trigger@nCommServer@@QAEXXZ",
+          "demangled": "void Trigger()",
+          "rva": "0x934f"
+        },
+        {
+          "mangled": "?UpdateLocalPDUs@nCommServer@@IAEXXZ",
+          "demangled": "void UpdateLocalPDUs()",
+          "rva": "0xa5df"
+        },
+        {
+          "mangled": "?UpdateRemotePDUs@nCommServer@@IAEXXZ",
+          "demangled": "void UpdateRemotePDUs()",
+          "rva": "0xa6e1"
+        },
+        {
+          "mangled": "?UpdateStatistics@nCommServer@@IAEXXZ",
+          "demangled": "void UpdateStatistics()",
+          "rva": "0xa8ce"
+        },
+        {
+          "mangled": "?VoteNextHost@nCommServer@@UAEFXZ",
+          "demangled": "virtual short VoteNextHost()",
+          "rva": "0xaed2"
+        },
+        {
+          "mangled": "?ks@nCommServer@@2PAVnKernelServer@@A",
+          "demangled": "static nKernelServer* nCommServer::ks",
+          "rva": "0x162d8"
+        },
+        {
+          "mangled": "?local_cl@nCommServer@@2PAVnClass@@A",
+          "demangled": "static nClass* nCommServer::local_cl",
+          "rva": "0x162d4"
+        }
+      ]
+    }
+  }
+}

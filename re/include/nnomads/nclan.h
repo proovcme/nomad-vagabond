@@ -1,0 +1,48 @@
+#pragma once
+// Auto-generated from nnomads.dll (Project Nomads, Oct 2002)
+// Nebula class: nclan | Superclass: nstatenode | sizeof: 5408 bytes
+// RVA: n_init=0x11092 n_new=0x11110 n_initcmds=0x119bb
+
+class nclan : public nStateNode {
+public:
+
+    // Nebula Script Commands (38)
+    // [CVCL] o_createvehicle_s  (handler 0x11d14)
+    // [CSVC] o_createandselvehicle_s  (handler 0x11d58)
+    // [CVWN] o_createvehiclewithname_ss  (handler 0x11da8)
+    // [CSVN] o_createandselvehiclewithname_ss  (handler 0x11df6)
+    // [RVCL] v_releasevehicle_o  (handler 0x11e50)
+    // [MOTC] o_moveobjecttoclan_oi  (handler 0x11e77)
+    // [GNNM] i_getnetname_v  (handler 0x1213a)
+    // [SRLN] v_setrealname_s  (handler 0x11ef9)
+    // [GRLN] s_getrealname_v  (handler 0x11f20)
+    // [SCCO] v_setclancolor_fff  (handler 0x11f4d)
+    // [GCCO] fff_getclancolor_v  (handler 0x11fa4)
+    // [GMAN] o_getmaennel_v  (handler 0x12012)
+    // [SBMX] v_setbasemaximum_f  (handler 0x12040)
+    // [GBMX] f_getbasemaximum_v  (handler 0x12065)
+    // [GCMX] f_getcurrentmaximum_v  (handler 0x1208f)
+    // [SCEN] v_setcurrentenergy_f  (handler 0x120bd)
+    // [GCEN] f_getcurrentenergy_v  (handler 0x120e2)
+    // [HASE] b_hasenergy_v  (handler 0x1210c)
+    // [SAUS] v_setasuser_b  (handler 0x12167)
+    // [GISU] b_isuser_v  (handler 0x1218e)
+    // [SENV] v_setenvironment_b  (handler 0x121bc)
+    // [IENV] b_isenvironment_v  (handler 0x121e0)
+    // [IMPC] v_importclan_o  (handler 0x1220c)
+    // [SCLP] v_setposition_fff  (handler 0x12248)
+    // [GCLP] fff_getposition_v  (handler 0x122a3)
+    // [SCLO] v_setorientation_fff  (handler 0x1231b)
+    // [GCLO] fff_getorientation_v  (handler 0x123a6)
+    // [GPLI] o_getplayerisland_v  (handler 0x1244c)
+    // [SNTE] v_setnoticeenergy_b  (handler 0x1247a)
+    // [GNTE] b_getnoticeenergy_v  (handler 0x124a1)
+    // [SFCT] v_setfaction_i  (handler 0x124cf)
+    // [GFCT] i_getfaction_v  (handler 0x124fa)
+    // [SZRD] v_setzoneradius_f  (handler 0x12526)
+    // [GZRD] f_getzoneradius_v  (handler 0x12551)
+    // [SZHT] v_setzoneheight_f  (handler 0x1257f)
+    // [GZHT] f_getzoneheight_v  (handler 0x125aa)
+    // [SDZN] v_setdangerzone_f  (handler 0x125d8)
+    // [GDZN] f_getdangerzone_v  (handler 0x12603)
+};

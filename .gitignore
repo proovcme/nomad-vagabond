@@ -1,0 +1,12 @@
+.DS_Store
+*.dSYM/
+*.app/
+*.iso
+*.npk
+*.dll
+*.exe
+native/Nomads
+native/NomadsViewer
+native/nomads_core
+re/disasm/
+extracted/

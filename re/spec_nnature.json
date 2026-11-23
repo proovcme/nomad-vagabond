@@ -1,0 +1,873 @@
+{
+  "dll": "nnature.dll",
+  "image_base": "0x10000000",
+  "class_count": 7,
+  "total_script_cmds": 69,
+  "classes": {
+    "nleafrender": {
+      "name": "nleafrender",
+      "nebula_name": "nleafrender",
+      "superclass": "nanimnode",
+      "sizeof": 372,
+      "init_rva": "0x1048",
+      "new_rva": "0x1199",
+      "initcmds_rva": "0x52e8",
+      "script_cmds": [
+        {
+          "proto": "v_setsize_f",
+          "fourcc": "SSIZ",
+          "handler_rva": "0x53ac"
+        },
+        {
+          "proto": "f_getsize_v",
+          "fourcc": "GSIZ",
+          "handler_rva": "0x68d1"
+        },
+        {
+          "proto": "v_setwindstrength_f",
+          "fourcc": "SWST",
+          "handler_rva": "0x68fb"
+        },
+        {
+          "proto": "f_getwindstrength_v",
+          "fourcc": "GWST",
+          "handler_rva": "0x53f6"
+        },
+        {
+          "proto": "v_setwinddir_f",
+          "fourcc": "SWDR",
+          "handler_rva": "0x53d1"
+        },
+        {
+          "proto": "f_getwinddir_v",
+          "fourcc": "GWDR",
+          "handler_rva": "0xd6ee"
+        }
+      ],
+      "cpp_exports": []
+    },
+    "ngrassrender": {
+      "name": "ngrassrender",
+      "nebula_name": "ngrassrender",
+      "superclass": "nanimnode",
+      "sizeof": 376,
+      "init_rva": "0x574f",
+      "new_rva": "0x5975",
+      "initcmds_rva": "0x680c",
+      "script_cmds": [
+        {
+          "proto": "v_setmeshnode_s",
+          "fourcc": "SMSH",
+          "handler_rva": "0x6920"
+        },
+        {
+          "proto": "s_getmeshnode_v",
+          "fourcc": "GMSH",
+          "handler_rva": "0x53f6"
+        },
+        {
+          "proto": "v_setwindstrength_f",
+          "fourcc": "SWST",
+          "handler_rva": "0x53d1"
+        },
+        {
+          "proto": "f_getwindstrength_v",
+          "fourcc": "GWST",
+          "handler_rva": "0xd6ee"
+        },
+        {
+          "proto": "v_setwinddir_f",
+          "fourcc": "SWDR",
+          "handler_rva": "0x53ac"
+        },
+        {
+          "proto": "f_getwinddir_v",
+          "fourcc": "GWDR",
+          "handler_rva": "0x68d1"
+        },
+        {
+          "proto": "v_setsize_f",
+          "fourcc": "SSZE",
+          "handler_rva": "0x68fb"
+        },
+        {
+          "proto": "f_getsize_v",
+          "fourcc": "GSZE",
+          "handler_rva": "0x694a"
+        }
+      ],
+      "cpp_exports": []
+    },
+    "nmeshsway": {
+      "name": "nmeshsway",
+      "nebula_name": "nmeshsway",
+      "superclass": "nanimnode",
+      "sizeof": 288,
+      "init_rva": "0x6a76",
+      "new_rva": "0x6ab3",
+      "initcmds_rva": "0x76f3",
+      "script_cmds": [
+        {
+          "proto": "v_setreadonly_b",
+          "fourcc": "SRDO",
+          "handler_rva": "0x77e4"
+        },
+        {
+          "proto": "b_getreadonly_v",
+          "fourcc": "GRDO",
+          "handler_rva": "0x7808"
+        },
+        {
+          "proto": "v_setmeshnode_s",
+          "fourcc": "SMND",
+          "handler_rva": "0x7834"
+        },
+        {
+          "proto": "s_getmeshnode_v",
+          "fourcc": "GMND",
+          "handler_rva": "0x785e"
+        },
+        {
+          "proto": "v_setwinddir_f",
+          "fourcc": "SWDD",
+          "handler_rva": "0x7887"
+        },
+        {
+          "proto": "f_getwinddir_v",
+          "fourcc": "GWDD",
+          "handler_rva": "0x78b8"
+        },
+        {
+          "proto": "v_setwindstrength_f",
+          "fourcc": "SWDS",
+          "handler_rva": "0x78ee"
+        },
+        {
+          "proto": "f_getwindstrength_v",
+          "fourcc": "GWDS",
+          "handler_rva": "0x7913"
+        },
+        {
+          "proto": "v_setflex_f",
+          "fourcc": "SFLX",
+          "handler_rva": "0x793d"
+        },
+        {
+          "proto": "f_getflex_v",
+          "fourcc": "GFLX",
+          "handler_rva": "0x7962"
+        }
+      ],
+      "cpp_exports": []
+    },
+    "ncloudrender": {
+      "name": "ncloudrender",
+      "nebula_name": "ncloudrender",
+      "superclass": "nanimnode",
+      "sizeof": 1440,
+      "init_rva": "0x7ad7",
+      "new_rva": "0x7b14",
+      "initcmds_rva": "0x91c9",
+      "script_cmds": [
+        {
+          "proto": "v_setmeshnode_s",
+          "fourcc": "SMSN",
+          "handler_rva": "0x9312"
+        },
+        {
+          "proto": "s_getmeshnode_v",
+          "fourcc": "GMSN",
+          "handler_rva": "0x933c"
+        },
+        {
+          "proto": "v_setdiffuse_ffff",
+          "fourcc": "SDIF",
+          "handler_rva": "0x9365"
+        },
+        {
+          "proto": "ffff_getdiffuse_v",
+          "fourcc": "GDIF",
+          "handler_rva": "0x93c8"
+        },
+        {
+          "proto": "v_setambient_ffff",
+          "fourcc": "SAMB",
+          "handler_rva": "0x9459"
+        },
+        {
+          "proto": "ffff_getambient_v",
+          "fourcc": "GAMB",
+          "handler_rva": "0x94bc"
+        },
+        {
+          "proto": "v_setemissive_ffff",
+          "fourcc": "SEMM",
+          "handler_rva": "0x954d"
+        },
+        {
+          "proto": "ffff_getemissive_v",
+          "fourcc": "GEMM",
+          "handler_rva": "0x95b0"
+        },
+        {
+          "proto": "v_setabsorb_ffff",
+          "fourcc": "SABS",
+          "handler_rva": "0x9641"
+        },
+        {
+          "proto": "ffff_getabsorb_v",
+          "fourcc": "GABS",
+          "handler_rva": "0x96a4"
+        },
+        {
+          "proto": "v_setradius_f",
+          "fourcc": "SRAD",
+          "handler_rva": "0x9735"
+        },
+        {
+          "proto": "f_getradius_v",
+          "fourcc": "GRAD",
+          "handler_rva": "0x975a"
+        },
+        {
+          "proto": "v_setalpha_f",
+          "fourcc": "SALP",
+          "handler_rva": "0x9784"
+        },
+        {
+          "proto": "f_getalpha_v",
+          "fourcc": "GALP",
+          "handler_rva": "0x97a9"
+        }
+      ],
+      "cpp_exports": []
+    },
+    "ngroundplane": {
+      "name": "ngroundplane",
+      "nebula_name": "ngroundplane",
+      "superclass": "nvisnode",
+      "sizeof": 204,
+      "init_rva": "0x9af4",
+      "new_rva": "0x9b27",
+      "initcmds_rva": null,
+      "script_cmds": [],
+      "cpp_exports": []
+    },
+    "nclouds": {
+      "name": "nClouds",
+      "nebula_name": "nclouds",
+      "superclass": "nvisnode",
+      "sizeof": 340,
+      "init_rva": "0xa5ff",
+      "new_rva": "0xa67d",
+      "initcmds_rva": "0xcaf2",
+      "script_cmds": [
+        {
+          "proto": "v_beginclouds_if",
+          "fourcc": "BCDS",
+          "handler_rva": "0xcba1"
+        },
+        {
+          "proto": "v_endclouds_v",
+          "fourcc": "ECDS",
+          "handler_rva": "0xcbe8"
+        },
+        {
+          "proto": "v_setlayernearfadedist_f",
+          "fourcc": "SLNF",
+          "handler_rva": "0xcbf1"
+        },
+        {
+          "proto": "i_getlayerdensity_v",
+          "fourcc": "GLDN",
+          "handler_rva": "0xcc1d"
+        },
+        {
+          "proto": "f_getlayerspacing_v",
+          "fourcc": "GLSP",
+          "handler_rva": "0xcc49"
+        },
+        {
+          "proto": "f_getlayerextent_v",
+          "fourcc": "GLXT",
+          "handler_rva": "0xcc73"
+        },
+        {
+          "proto": "f_getlayernearfadedist_v",
+          "fourcc": "GLNF",
+          "handler_rva": "0xcc9d"
+        }
+      ],
+      "cpp_exports": [
+        {
+          "mangled": "??0nClouds@@QAE@ABV0@@Z",
+          "demangled": "nClouds(const nClouds&)",
+          "rva": "0xacd3"
+        },
+        {
+          "mangled": "??0nClouds@@QAE@XZ",
+          "demangled": "nClouds()",
+          "rva": "0xb180"
+        },
+        {
+          "mangled": "??1nClouds@@UAE@XZ",
+          "demangled": "virtual ~nClouds()",
+          "rva": "0xb28c"
+        },
+        {
+          "mangled": "??4nClouds@@QAEAAV0@ABV0@@Z",
+          "demangled": "nClouds& operator=(const nClouds&)",
+          "rva": "0xaddf"
+        },
+        {
+          "mangled": "??_7nClouds@@6B@",
+          "demangled": "vtable for nClouds",
+          "rva": "0xffb8"
+        },
+        {
+          "mangled": "?Attach@nClouds@@UAE_NPAVnSceneGraph2@@@Z",
+          "demangled": "virtual bool Attach(nSceneGraph2*)",
+          "rva": "0xb5b2"
+        },
+        {
+          "mangled": "?BeginClouds@nClouds@@UAEXABHABM@Z",
+          "demangled": "virtual void BeginClouds(const int&, const float&)",
+          "rva": "0xb30c"
+        },
+        {
+          "mangled": "?CalcCoord@nClouds@@MAEXAAHABVnCloudDescData@@@Z",
+          "demangled": "virtual void CalcCoord(int&, const nCloudDescData&)",
+          "rva": "0xbaf9"
+        },
+        {
+          "mangled": "?CalcFoggingColor@nClouds@@MAEXABVvector3@@ABVnCloudDescData@@@Z",
+          "demangled": "virtual void CalcFoggingColor(const vector3&, const nCloudDescData&)",
+          "rva": "0xc722"
+        },
+        {
+          "mangled": "?CalcNormals@nClouds@@MAEXXZ",
+          "demangled": "virtual void CalcNormals()",
+          "rva": "0xc1e1"
+        },
+        {
+          "mangled": "?CalcRGBA@nClouds@@MAEXAAHABVnCloudDescData@@ABVvector3@@@Z",
+          "demangled": "virtual void CalcRGBA(int&, const nCloudDescData&, const vector3&)",
+          "rva": "0xbe81"
+        },
+        {
+          "mangled": "?CalcUVCoords@nClouds@@MAEXXZ",
+          "demangled": "virtual void CalcUVCoords()",
+          "rva": "0xc481"
+        },
+        {
+          "mangled": "?CalcViewerDir@nClouds@@MAE?AVvector3@@XZ",
+          "demangled": "virtual vector3 CalcViewerDir()",
+          "rva": "0xc842"
+        },
+        {
+          "mangled": "?CalcViewerPos@nClouds@@MAE?AVvector3@@XZ",
+          "demangled": "virtual vector3 CalcViewerPos()",
+          "rva": "0xc7f1"
+        },
+        {
+          "mangled": "?Compute@nClouds@@UAEXPAVnSceneGraph2@@@Z",
+          "demangled": "virtual void Compute(nSceneGraph2*)",
+          "rva": "0xb5f9"
+        },
+        {
+          "mangled": "?EndClouds@nClouds@@UAEXXZ",
+          "demangled": "virtual void EndClouds()",
+          "rva": "0xb430"
+        },
+        {
+          "mangled": "?GetCloudAltAt@nClouds@@QBEMABH0@Z",
+          "demangled": "float GetCloudAltAt(const int&, nClouds) const",
+          "rva": "0xb006"
+        },
+        {
+          "mangled": "?GetCloudAt@nClouds@@QBE?AVnCloudDescData@@ABH0@Z",
+          "demangled": "nCloudDescData GetCloudAt(const int&, nClouds) const",
+          "rva": "0xaf7b"
+        },
+        {
+          "mangled": "?GetCloudFogClrAt@nClouds@@QBE?AVvector4@@ABH0@Z",
+          "demangled": "vector4 GetCloudFogClrAt(const int&, nClouds) const",
+          "rva": "0xb028"
+        },
+        {
+          "mangled": "?GetCloudFogModAt@nClouds@@QBEMABH0@Z",
+          "demangled": "float GetCloudFogModAt(const int&, nClouds) const",
+          "rva": "0xb064"
+        },
+        {
+          "mangled": "?GetCloudGridPosAt@nClouds@@QBE?AVvector2@@ABH0@Z",
+          "demangled": "vector2 GetCloudGridPosAt(const int&, nClouds) const",
+          "rva": "0xafa9"
+        },
+        {
+          "mangled": "?GetCloudOffsetAt@nClouds@@QBE?AVvector3@@ABH0@Z",
+          "demangled": "vector3 GetCloudOffsetAt(const int&, nClouds) const",
+          "rva": "0xb128"
+        },
+        {
+          "mangled": "?GetCloudOffsetModAt@nClouds@@QBE?AVvector3@@ABH0@Z",
+          "demangled": "vector3 GetCloudOffsetModAt(const int&, nClouds) const",
+          "rva": "0xb0f2"
+        },
+        {
+          "mangled": "?GetCloudOpacityModAt@nClouds@@QBEMABH0@Z",
+          "demangled": "float GetCloudOpacityModAt(const int&, nClouds) const",
+          "rva": "0xb15e"
+        },
+        {
+          "mangled": "?GetCloudQuadOffsetAt@nClouds@@QBE?AVvector3@@ABH0@Z",
+          "demangled": "vector3 GetCloudQuadOffsetAt(const int&, nClouds) const",
+          "rva": "0xb0bc"
+        },
+        {
+          "mangled": "?GetCloudSizeAt@nClouds@@QBE?AVvector3@@ABH0@Z",
+          "demangled": "vector3 GetCloudSizeAt(const int&, nClouds) const",
+          "rva": "0xb086"
+        },
+        {
+          "mangled": "?GetCloudWorldPosAt@nClouds@@QAE?AVvector3@@ABH0@Z",
+          "demangled": "vector3 GetCloudWorldPosAt(const int&, nClouds)",
+          "rva": "0xafd9"
+        },
+        {
+          "mangled": "?GetGridOrigin@nClouds@@QBE?AVvector2@@XZ",
+          "demangled": "vector2 GetGridOrigin() const",
+          "rva": "0xaf60"
+        },
+        {
+          "mangled": "?GetLayerDensity@nClouds@@QBEHXZ",
+          "demangled": "int GetLayerDensity() const",
+          "rva": "0xaf44"
+        },
+        {
+          "mangled": "?GetLayerExtent@nClouds@@QBEMXZ",
+          "demangled": "float GetLayerExtent() const",
+          "rva": "0xaf52"
+        },
+        {
+          "mangled": "?GetLayerNearFadeDist@nClouds@@QBEMXZ",
+          "demangled": "float GetLayerNearFadeDist() const",
+          "rva": "0xaf59"
+        },
+        {
+          "mangled": "?GetLayerSpacing@nClouds@@QBEMXZ",
+          "demangled": "float GetLayerSpacing() const",
+          "rva": "0xaf4b"
+        },
+        {
+          "mangled": "?InitVBuffer@nClouds@@MAEXXZ",
+          "demangled": "virtual void InitVBuffer()",
+          "rva": "0xb675"
+        },
+        {
+          "mangled": "?SaveCmds@nClouds@@UAE_NPAVnFileServer@@@Z",
+          "demangled": "virtual bool SaveCmds(nFileServer*)",
+          "rva": "0xccc7"
+        },
+        {
+          "mangled": "?SetCloudAltAt@nClouds@@QAEXABH0ABM@Z",
+          "demangled": "void SetCloudAltAt(const int&, nClouds, const float&)",
+          "rva": "0xb489"
+        },
+        {
+          "mangled": "?SetCloudAt@nClouds@@QAEXABH0ABVnCloudDescData@@@Z",
+          "demangled": "void SetCloudAt(const int&, nClouds, const nCloudDescData&)",
+          "rva": "0xb45f"
+        },
+        {
+          "mangled": "?SetCloudFogClrAt@nClouds@@QAEXABH0ABVvector4@@@Z",
+          "demangled": "void SetCloudFogClrAt(const int&, nClouds, const vector4&)",
+          "rva": "0xb4b1"
+        },
+        {
+          "mangled": "?SetCloudFogModAt@nClouds@@QAEXABH0ABM@Z",
+          "demangled": "void SetCloudFogModAt(const int&, nClouds, const float&)",
+          "rva": "0xb4df"
+        },
+        {
+          "mangled": "?SetCloudOffsetAt@nClouds@@QAEXABH0ABVvector3@@@Z",
+          "demangled": "void SetCloudOffsetAt(const int&, nClouds, const vector3&)",
+          "rva": "0xb530"
+        },
+        {
+          "mangled": "?SetCloudOpacityModAt@nClouds@@QAEXABH0ABM@Z",
+          "demangled": "void SetCloudOpacityModAt(const int&, nClouds, const float&)",
+          "rva": "0xb58a"
+        },
+        {
+          "mangled": "?SetCloudQuadOffsetAt@nClouds@@QAEXABH0ABVvector3@@@Z",
+          "demangled": "void SetCloudQuadOffsetAt(const int&, nClouds, const vector3&)",
+          "rva": "0xb55d"
+        },
+        {
+          "mangled": "?SetCloudSizeAt@nClouds@@QAEXABH0ABVvector3@@@Z",
+          "demangled": "void SetCloudSizeAt(const int&, nClouds, const vector3&)",
+          "rva": "0xb507"
+        },
+        {
+          "mangled": "?SetGridOrigin@nClouds@@QAEXABVvector2@@@Z",
+          "demangled": "void SetGridOrigin(const vector2&)",
+          "rva": "0xb447"
+        },
+        {
+          "mangled": "?SetLayerNearFadeDist@nClouds@@QAEXABM@Z",
+          "demangled": "void SetLayerNearFadeDist(const float&)",
+          "rva": "0xb438"
+        },
+        {
+          "mangled": "?UpdateFade@nClouds@@UAEXABVvector3@@@Z",
+          "demangled": "virtual void UpdateFade(const vector3&)",
+          "rva": "0xc9be"
+        },
+        {
+          "mangled": "?UpdateGrid@nClouds@@UAEXABVvector3@@@Z",
+          "demangled": "virtual void UpdateGrid(const vector3&)",
+          "rva": "0xc893"
+        },
+        {
+          "mangled": "?UpdateVBuffer@nClouds@@MAEXXZ",
+          "demangled": "virtual void UpdateVBuffer()",
+          "rva": "0xb850"
+        },
+        {
+          "mangled": "?ViewerInCloud@nClouds@@MAE_NABVvector3@@ABVnCloudDescData@@@Z",
+          "demangled": "virtual bool ViewerInCloud(const vector3&, const nCloudDescData&)",
+          "rva": "0xc6c3"
+        },
+        {
+          "mangled": "?ks@nClouds@@2PAVnKernelServer@@A",
+          "demangled": "static nKernelServer* nClouds::ks",
+          "rva": "0x1ae2c"
+        },
+        {
+          "mangled": "?local_cl@nClouds@@2PAVnClass@@A",
+          "demangled": "static nClass* nClouds::local_cl",
+          "rva": "0x1ae28"
+        }
+      ]
+    },
+    "nclouddesc": {
+      "name": "nCloudDesc",
+      "nebula_name": "nclouddesc",
+      "superclass": "nvisnode",
+      "sizeof": 288,
+      "init_rva": "0xcd96",
+      "new_rva": "0xcdd3",
+      "initcmds_rva": "0xcf46",
+      "script_cmds": [
+        {
+          "proto": "v_setaltitude_f",
+          "fourcc": "SLAL",
+          "handler_rva": "0xd16b"
+        },
+        {
+          "proto": "v_setfoggingcolor_ffff",
+          "fourcc": "SFCL",
+          "handler_rva": "0xd197"
+        },
+        {
+          "proto": "v_setfoggingmod_f",
+          "fourcc": "SFMO",
+          "handler_rva": "0xd200"
+        },
+        {
+          "proto": "v_setsize_fff",
+          "fourcc": "SCSI",
+          "handler_rva": "0xd22c"
+        },
+        {
+          "proto": "v_setsizex_f",
+          "fourcc": "SCSX",
+          "handler_rva": "0xd281"
+        },
+        {
+          "proto": "v_setsizey_f",
+          "fourcc": "SCSY",
+          "handler_rva": "0xd2c3"
+        },
+        {
+          "proto": "v_setsizez_f",
+          "fourcc": "SCSZ",
+          "handler_rva": "0xd308"
+        },
+        {
+          "proto": "v_setquadoffset_fff",
+          "fourcc": "SCQU",
+          "handler_rva": "0xd49a"
+        },
+        {
+          "proto": "v_setoffsetmod_fff",
+          "fourcc": "SCOM",
+          "handler_rva": "0xd34d"
+        },
+        {
+          "proto": "v_setoffsetmodx_f",
+          "fourcc": "SCOX",
+          "handler_rva": "0xd3a2"
+        },
+        {
+          "proto": "v_setoffsetmody_f",
+          "fourcc": "SCOY",
+          "handler_rva": "0xd3e4"
+        },
+        {
+          "proto": "v_setoffsetmodz_f",
+          "fourcc": "SCOZ",
+          "handler_rva": "0xd429"
+        },
+        {
+          "proto": "v_setoffsetspeed_f",
+          "fourcc": "SCOS",
+          "handler_rva": "0xd46e"
+        },
+        {
+          "proto": "v_setopacitymod_f",
+          "fourcc": "SCOP",
+          "handler_rva": "0xd4ef"
+        },
+        {
+          "proto": "v_setwind_ff",
+          "fourcc": "SWND",
+          "handler_rva": "0xd51b"
+        },
+        {
+          "proto": "f_getaltitude_v",
+          "fourcc": "GLAL",
+          "handler_rva": "0xd558"
+        },
+        {
+          "proto": "ffff_getfoggingcolor_v",
+          "fourcc": "GFCL",
+          "handler_rva": "0xd582"
+        },
+        {
+          "proto": "f_getfoggingmod_v",
+          "fourcc": "GFMO",
+          "handler_rva": "0x68d1"
+        },
+        {
+          "proto": "fff_getsize_v",
+          "fourcc": "GCSI",
+          "handler_rva": "0xd60a"
+        },
+        {
+          "proto": "fff_getquadoffset_v",
+          "fourcc": "GCQU",
+          "handler_rva": "0xd718"
+        },
+        {
+          "proto": "fff_getoffsetmod_v",
+          "fourcc": "GCOM",
+          "handler_rva": "0xd67c"
+        },
+        {
+          "proto": "f_getoffsetspeed_v",
+          "fourcc": "GCOS",
+          "handler_rva": "0xd6ee"
+        },
+        {
+          "proto": "f_getopacitymod_v",
+          "fourcc": "GCOP",
+          "handler_rva": "0xd78a"
+        },
+        {
+          "proto": "ff_getwind_v",
+          "fourcc": "GWND",
+          "handler_rva": "0xd7b4"
+        }
+      ],
+      "cpp_exports": [
+        {
+          "mangled": "??0nCloudDesc@@QAE@ABV0@@Z",
+          "demangled": "nCloudDesc(const nCloudDesc&)",
+          "rva": "0xaabf"
+        },
+        {
+          "mangled": "??0nCloudDesc@@QAE@XZ",
+          "demangled": "nCloudDesc()",
+          "rva": "0xcdf3"
+        },
+        {
+          "mangled": "??1nCloudDesc@@UAE@XZ",
+          "demangled": "virtual ~nCloudDesc()",
+          "rva": "0xce10"
+        },
+        {
+          "mangled": "??4nCloudDesc@@QAEAAV0@ABV0@@Z",
+          "demangled": "nCloudDesc& operator=(const nCloudDesc&)",
+          "rva": "0xaaec"
+        },
+        {
+          "mangled": "??_7nCloudDesc@@6B@",
+          "demangled": "vtable for nCloudDesc",
+          "rva": "0xff64"
+        },
+        {
+          "mangled": "?GetAltitude@nCloudDesc@@QBEMXZ",
+          "demangled": "float GetAltitude() const",
+          "rva": "0xabea"
+        },
+        {
+          "mangled": "?GetData@nCloudDesc@@QBE?AVnCloudDescData@@XZ",
+          "demangled": "nCloudDescData GetData() const",
+          "rva": "0xab76"
+        },
+        {
+          "mangled": "?GetFadeMod@nCloudDesc@@QBEMXZ",
+          "demangled": "float GetFadeMod() const",
+          "rva": "0xacb1"
+        },
+        {
+          "mangled": "?GetFoggingColor@nCloudDesc@@QBE?AVvector4@@XZ",
+          "demangled": "vector4 GetFoggingColor() const",
+          "rva": "0xabf1"
+        },
+        {
+          "mangled": "?GetFoggingMod@nCloudDesc@@QBEMXZ",
+          "demangled": "float GetFoggingMod() const",
+          "rva": "0xac18"
+        },
+        {
+          "mangled": "?GetGridPosition@nCloudDesc@@QBE?AVvector2@@XZ",
+          "demangled": "vector2 GetGridPosition() const",
+          "rva": "0xab8d"
+        },
+        {
+          "mangled": "?GetOffset@nCloudDesc@@QBE?AVvector3@@XZ",
+          "demangled": "vector3 GetOffset() const",
+          "rva": "0xac40"
+        },
+        {
+          "mangled": "?GetOffsetMod@nCloudDesc@@QBE?AVvector3@@XZ",
+          "demangled": "vector3 GetOffsetMod() const",
+          "rva": "0xac61"
+        },
+        {
+          "mangled": "?GetOffsetSpeed@nCloudDesc@@QBEMXZ",
+          "demangled": "float GetOffsetSpeed() const",
+          "rva": "0xac82"
+        },
+        {
+          "mangled": "?GetOpacityMod@nCloudDesc@@QBEMXZ",
+          "demangled": "float GetOpacityMod() const",
+          "rva": "0xacaa"
+        },
+        {
+          "mangled": "?GetQuadOffset@nCloudDesc@@QBE?AVvector3@@XZ",
+          "demangled": "vector3 GetQuadOffset() const",
+          "rva": "0xac89"
+        },
+        {
+          "mangled": "?GetSize@nCloudDesc@@QBE?AVvector3@@XZ",
+          "demangled": "vector3 GetSize() const",
+          "rva": "0xac1f"
+        },
+        {
+          "mangled": "?GetWind@nCloudDesc@@QBE?AVvector2@@XZ",
+          "demangled": "vector2 GetWind() const",
+          "rva": "0xacb8"
+        },
+        {
+          "mangled": "?GetWorldBBox@nCloudDesc@@QBE?AVbbox3@@XZ",
+          "demangled": "bbox3 GetWorldBBox() const",
+          "rva": "0xabd4"
+        },
+        {
+          "mangled": "?GetWorldCG@nCloudDesc@@QBE?AVvector3@@XZ",
+          "demangled": "vector3 GetWorldCG() const",
+          "rva": "0xabbe"
+        },
+        {
+          "mangled": "?GetWorldPosition@nCloudDesc@@QBE?AVvector3@@XZ",
+          "demangled": "vector3 GetWorldPosition() const",
+          "rva": "0xaba8"
+        },
+        {
+          "mangled": "?Initialize@nCloudDesc@@UAEXXZ",
+          "demangled": "virtual void Initialize()",
+          "rva": "0xce2d"
+        },
+        {
+          "mangled": "?SaveCmds@nCloudDesc@@UAE_NPAVnFileServer@@@Z",
+          "demangled": "virtual bool SaveCmds(nFileServer*)",
+          "rva": "0xd804"
+        },
+        {
+          "mangled": "?SetAltitude@nCloudDesc@@QAEXABM@Z",
+          "demangled": "void SetAltitude(const float&)",
+          "rva": "0xce80"
+        },
+        {
+          "mangled": "?SetFadeMod@nCloudDesc@@QAEXABM@Z",
+          "demangled": "void SetFadeMod(const float&)",
+          "rva": "0xcf1f"
+        },
+        {
+          "mangled": "?SetFoggingColor@nCloudDesc@@QAEXABVvector4@@@Z",
+          "demangled": "void SetFoggingColor(const vector4&)",
+          "rva": "0xce8f"
+        },
+        {
+          "mangled": "?SetFoggingMod@nCloudDesc@@QAEXABM@Z",
+          "demangled": "void SetFoggingMod(const float&)",
+          "rva": "0xcea4"
+        },
+        {
+          "mangled": "?SetGridPosition@nCloudDesc@@QAEXABVvector2@@@Z",
+          "demangled": "void SetGridPosition(const vector2&)",
+          "rva": "0xce68"
+        },
+        {
+          "mangled": "?SetOffset@nCloudDesc@@QAEXABVvector3@@@Z",
+          "demangled": "void SetOffset(const vector3&)",
+          "rva": "0xcec5"
+        },
+        {
+          "mangled": "?SetOffsetMod@nCloudDesc@@QAEXABVvector3@@@Z",
+          "demangled": "void SetOffsetMod(const vector3&)",
+          "rva": "0xced9"
+        },
+        {
+          "mangled": "?SetOffsetSpeed@nCloudDesc@@QAEXABM@Z",
+          "demangled": "void SetOffsetSpeed(const float&)",
+          "rva": "0xceed"
+        },
+        {
+          "mangled": "?SetOpacityMod@nCloudDesc@@QAEXABM@Z",
+          "demangled": "void SetOpacityMod(const float&)",
+          "rva": "0xcf10"
+        },
+        {
+          "mangled": "?SetQuadOffset@nCloudDesc@@QAEXABVvector3@@@Z",
+          "demangled": "void SetQuadOffset(const vector3&)",
+          "rva": "0xcefc"
+        },
+        {
+          "mangled": "?SetSize@nCloudDesc@@QAEXABVvector3@@@Z",
+          "demangled": "void SetSize(const vector3&)",
+          "rva": "0xceb3"
+        },
+        {
+          "mangled": "?SetWind@nCloudDesc@@QAEXABVvector2@@@Z",
+          "demangled": "void SetWind(const vector2&)",
+          "rva": "0xcf2e"
+        },
+        {
+          "mangled": "?ks@nCloudDesc@@2PAVnKernelServer@@A",
+          "demangled": "static nKernelServer* nCloudDesc::ks",
+          "rva": "0x1ae34"
+        },
+        {
+          "mangled": "?local_cl@nCloudDesc@@2PAVnClass@@A",
+          "demangled": "static nClass* nCloudDesc::local_cl",
+          "rva": "0x1ae30"
+        }
+      ]
+    }
+  }
+}
