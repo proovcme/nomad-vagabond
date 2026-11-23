@@ -116,12 +116,15 @@
     - `nArtefactTransformer` (`setdownanim`/`isdownanim`, `setstackbase`/`getstackbase`, `setsuccessfx`/`getsuccessfx`) и `nArtefactStorage` (`setcapacity`/`getcapacity`, `insertartefact`, `setstackbase`, `setloadmode`, `emptystorage`).
     - `nSquadronWatchTarget` (`setforgettargetdistance`/`angle` + `shouldForgetTarget()`), `nWatchTarget`, `nSilo`, `nFireWeapon`, `nFireMachineGun`, `nFlakMoving`, `nBuildFlak`.
   - Пройден модульный тест (турель `rx=19.47° / ry=-45°`, перехват ракеты на `3.35 м`, хранилище `2/2`, `0` заглушек) и пересобран нативный `Project Nomads.app`.
+- **Модуль 18 (`native/core/nparticles.hpp`, `main.mm`):**
+  - Полностью портирована иерархия **`nparticle.dll`**: `nParticleServer`, `nPEmitter` (все 14 `AddCmd`: `settimes`/`gettimes`, `setlifetime`, `setfreq`, `setspeed`, `setaccel`, `setinnercone`/`setoutercone`), `nPServEmitter`, `nPointEmitter`, `nMeshEmitter`, `nStaticMeshEmitter` (`setmeshnode`/`getmeshnode`), `nPRender` (все 12 `AddCmd`: `setstretch`, `setspin`, `setspinaccel`, `setemitter`, `beginkeys`/`setkey`/`endkeys`/`getnumkeys` + линейная интерполяция `sampleKey()`), `nSpriteRender`, `nTrailRender`.
+  - В Metal-шейдер `mesh_vs` / `mesh_fs` добавлено **динамическое точечное освещение** (`dynLightPos`, `dynLightCol`), автоматически подсвечивающее корабли и острова от активных взрывов и выстрелов в реальном времени.
+  - Пройден модульный тест (`emit freq=40 cone=45°`, `spr keys=3`, интерполяция `qtrSize=2.0 / midSize=3.0`, `0` заглушек) и пересобран `Project Nomads.app`.
 
 ---
 
-## Текущий статус и следующие подсистемы
-- [x] Ядро Nebula Device 1 + `NPK0`/`NVX1`/`NTX1`/`NOB0`/`NAX0` + `Tcl.framework`
-- [x] Полный дизассемблер и C++-лифтинг всех 11 DLL (454 класса, 8 314 методов)
-- [x] Рендер-конвейер 1-в-1 (`ndirect3d8` 226 шейдеров, 4× MSAA, `nFogNode`, `weather_normal.n`, `nIpol`, GPU-биллборды `nCloudRender`/`nLeafRender`, `nMeshSway`)
-- [x] Кампания, катсцены, физика героя, коллизии, боёвка, турели `nFlak`, самонаводящиеся ракеты `nMissileEngine2/3`, алтарь/склад артефактов, полёт самолётов/дирижаблей/островов, заводы/гаражи, радиальное меню, экономика, аудио-сервер, слоты сохранений, сетевой стек `nnetwork.dll`, системные серверы — **`100.00%` (0 заглушек) на Миссии 1 + `30/30` глав кампании (`4 005` сущностей)**
-- [ ] **Модуль 18 (следующий):** Портирование оставшихся классов частиц и эффектов из `nparticle.dll` (`nPServEmitter`, `nPointEmitter`, `nAreaEmitter`, `nMeshEmitter`, `nStaticMeshEmitter`, `nSprayRender`) и динамического света/теней (`nShadowCaster`, `nLightNode` динамическое освещение взрывов и выстрелов в Metal-шейдере)!
+## Текущий статус и оставшиеся модули (финальная дорожная карта)
+- [x] **Модули 1–18 завершены:** Ядро `nkernel`, `NPK0`/`NVX1`/`NTX1`/`NOB0`/`NAX0`, `Tcl.framework`, рендер Metal (`ndirect3d8` 226 шейдеров, 4× MSAA, туман, 24ч погода, `nIpol`, GPU-биллборды, `nMeshSway`, динамический свет), физика героя, коллизии, кампания (`30/30` частей, `4 005` сущностей, `100.00%` / `0` заглушек на Миссии 1), боёвка, турели `nFlak`, ракеты `nMissileEngine2/3`, полёт самолётов/дирижаблей/островов, заводы/гаражи, экономика, аудио `ndsound`, сеть `nnetwork.dll`, частицы `nparticle.dll`.
+- [ ] **Модуль 19 (`ncollide.dll` / `nopcode.dll`):** Точная треугольная/BVH-коллизия (`nCollideServer`, `nCollideShape`, `nOpcodeShape` по реальным `.nvx` мешам островов и зданий вместо AABB-аппроксимации).
+- [ ] **Модуль 20 (`ndinput8.dll` + полная локализация/шрифты + геймпад/мышь):** Нативный `nDI8Server` / `nInputServer` маппинг всех привязок `scripts/input.tcl`, курсоры/прицел и полировка HUD/меню настроек.
+- [ ] **Модуль 21 (Финальный релизный полиш — сквозной прогон кампании):** Сквозной прогон и визуальная верификация глав 0–7, исправление краевых случаев сохранений/загрузок и финальная сборка автономного `.app` / `.dmg` для Apple Silicon.

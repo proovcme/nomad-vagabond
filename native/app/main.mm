@@ -62,6 +62,8 @@ struct MeshUniforms {
     float4   camRight;    // xyz=camera right, w=time*2.2
     float4   camUp;       // xyz=camera up
     float4   windParams;  // x=windDirX, y=windDirZ, z=swayAmp, w=isBillboard
+    float4   dynLightPos; // xyz=world pos of explosion/muzzle light, w=radius
+    float4   dynLightCol; // rgb=dynamic point light color, w=intensity
 };
 
 struct MeshVertIn {
@@ -73,6 +75,7 @@ struct MeshVertIn {
 struct MeshVertOut {
     float4 pos [[position]];
     float3 worldNorm;
+    float3 worldPos;
     float2 uv;
     float  viewDist;
 };
@@ -91,6 +94,7 @@ vertex MeshVertOut mesh_vs(MeshVertIn in [[stage_in]],
         float r = in.norm.z;
         float3 wpos = center + u.camRight.xyz * (in.norm.x * r) + u.camUp.xyz * (in.norm.y * r);
         out.pos = u.vp * float4(wpos, 1.0);
+        out.worldPos = wpos;
         out.worldNorm = float3(0.0, 1.0, 0.0);
     } else {
         float3 lpos = in.pos;
@@ -101,6 +105,7 @@ vertex MeshVertOut mesh_vs(MeshVertIn in [[stage_in]],
             lpos.z += u.windParams.y * sway;
         }
         out.pos = u.mvp * float4(lpos, 1.0);
+        out.worldPos = (u.model * float4(lpos, 1.0)).xyz;
         out.worldNorm = normalize((u.model * float4(in.norm, 0.0)).xyz);
     }
     out.uv = in.uv;
@@ -130,7 +135,15 @@ fragment float4 mesh_fs(MeshVertOut in [[stage_in]],
         float hemi = N.y * 0.5 + 0.5;
         float3 ambient = u.ambColor.rgb * mix(0.75, 1.25, hemi);
         float3 sun = u.sunColor.rgb * ndl;
-        lit = baseCol.rgb * (u.matDiffuse.rgb * (ambient + sun) + u.matEmissive.rgb);
+        float3 dyn = float3(0.0);
+        if (u.dynLightCol.w > 0.001 && u.dynLightPos.w > 0.1) {
+            float3 toL = u.dynLightPos.xyz - in.worldPos;
+            float dist = length(toL);
+            float att = clamp(1.0 - dist / u.dynLightPos.w, 0.0, 1.0);
+            float ndlDyn = max(dot(N, toL / max(dist, 0.001)), 0.25);
+            dyn = u.dynLightCol.rgb * (att * att * u.dynLightCol.w * ndlDyn);
+        }
+        lit = baseCol.rgb * (u.matDiffuse.rgb * (ambient + sun + dyn) + u.matEmissive.rgb);
     } else {
         lit = baseCol.rgb * max(u.matDiffuse.rgb, u.matEmissive.rgb);
     }
@@ -279,6 +292,8 @@ struct MeshUniformsCPU {
     simd_float4   camRight    = simd_make_float4(1.0f, 0.0f, 0.0f, 0.0f);
     simd_float4   camUp       = simd_make_float4(0.0f, 1.0f, 0.0f, 0.0f);
     simd_float4   windParams  = simd_make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+    simd_float4   dynLightPos = simd_make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+    simd_float4   dynLightCol = simd_make_float4(1.0f, 0.65f, 0.25f, 0.0f);
 };
 
 struct GuiVert { float x, y, u, v; };
@@ -1342,6 +1357,20 @@ static void playWav(const std::string& rawPath, bool loop) {
 
     // Pass 1: Opaque & Alpha-Tested geometry (zWriteEnable && !additive && !isCloud)
     // Pass 2: Transparent, Additive Glows & Clouds (no depth write)
+    simd_float4 dynLPos = simd_make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+    simd_float4 dynLCol = simd_make_float4(1.0f, 0.62f, 0.22f, 0.0f);
+    if (gRuntime) {
+        if (!gRuntime->combat.explosions.empty()) {
+            const auto& ex = gRuntime->combat.explosions.back();
+            float fade = std::max(0.0f, 1.0f - ex.age / std::max(0.05f, ex.maxAge));
+            dynLPos = simd_make_float4(ex.px, ex.py, ex.pz, std::max(80.0f, ex.maxRadius * 5.0f));
+            dynLCol = simd_make_float4(1.0f, 0.58f, 0.18f, 2.8f * fade);
+        } else if (!gRuntime->combat.projectiles.empty()) {
+            const auto& pr = gRuntime->combat.projectiles.back();
+            dynLPos = simd_make_float4(pr.px, pr.py, pr.pz, 65.0f);
+            dynLCol = simd_make_float4(1.0f, 0.85f, 0.35f, 1.4f);
+        }
+    }
     for (int pass = 0; pass < 2; ++pass) {
         for (auto& inst : _instances) {
             if (inst.entity && !inst.entity->visible) continue;
@@ -1370,7 +1399,8 @@ static void playWav(const std::string& rawPath, bool loop) {
                     simd_make_float4(sm.shader.diffuse[0], sm.shader.diffuse[1], sm.shader.diffuse[2], sm.shader.lightEnable ? 1.0f : 0.0f),
                     simd_make_float4(sm.shader.emissive[0], sm.shader.emissive[1], sm.shader.emissive[2], 1.0f),
                     sunCol, ambCol, fogCol, camRightVec, camUpVec,
-                    simd_make_float4(windX, windZ, sm.isSway ? (windStr * 0.25f) : 0.0f, sm.isBillboard ? 1.0f : 0.0f)
+                    simd_make_float4(windX, windZ, sm.isSway ? (windStr * 0.25f) : 0.0f, sm.isBillboard ? 1.0f : 0.0f),
+                    dynLPos, dynLCol
                 };
                 [enc setVertexBuffer:sm.vb offset:0 atIndex:0];
                 [enc setVertexBytes:&u length:sizeof(u) atIndex:1];
@@ -1708,6 +1738,7 @@ int main(int argc, const char** argv) {
         nebula::registerGuiAndWorld(rt.ks, &rt.guiHooks);
         nebula::registerSystemModule16(rt.ks);
         nebula::registerTacticalModule17(rt.ks);
+        nebula::registerParticleModule18(rt.ks);
         rt.ks.resolveSuperClasses();
 
         // 3. Create core servers & mount data.npk
