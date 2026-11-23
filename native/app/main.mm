@@ -961,6 +961,14 @@ static void playWav(const std::string& rawPath, bool loop) {
             _pitch = -0.2f;
         }
         [self updateTitle];
+    } else if (_houseMenu.open && (kc == 123 || kc == 124 || kc == 125 || kc == 126)) {
+        int n = static_cast<int>(_houseMenu.items.size());
+        if (n > 0) {
+            int delta = (kc == 124 || kc == 125) ? 1 : -1;
+            _houseMenu.selectedIndex = (_houseMenu.selectedIndex + delta + n) % n;
+            playWav("book:feedback/use_ok.wav", false);
+            [self updateTitle];
+        }
     } else if ([ch isEqualToString:@"e"] && _playerActive && gRuntime) {
         // nHouseMenu (verified from nhousemenu.asm): open/cycle/confirm radial building menu
         auto* rw = dynamic_cast<nebula::nRealWorld*>(gRuntime->ks.lookup("/world"));
@@ -1501,6 +1509,23 @@ static void playWav(const std::string& rawPath, bool loop) {
                 simd_float4 tint = (s < filled) ? simd_make_float4(1.3f, 1.05f, 0.4f, 0.95f)
                                                 : simd_make_float4(0.75f, 0.80f, 0.88f, 0.65f);
                 [self drawQuad:enc rect:{sx, sx + 0.065f, -0.84f, -0.95f} tex:_hudSlot tint:tint];
+            }
+        }
+
+        // Center: Radial Building Wheel (nHouseMenu, opened with E near any building)
+        if (_houseMenu.open && _hudSlot && !_houseMenu.items.empty()) {
+            int n = static_cast<int>(_houseMenu.items.size());
+            float radX = 0.22f, radY = radX * aspect;
+            float sw = 0.055f, sh = sw * aspect;
+            for (int i = 0; i < n; ++i) {
+                float ang = 1.5707963f - (6.2831853f * i / n);
+                float cx = std::cos(ang) * radX;
+                float cy = std::sin(ang) * radY;
+                bool sel = (i == _houseMenu.selectedIndex);
+                simd_float4 tint = sel ? simd_make_float4(1.45f, 1.15f, 0.35f, 0.98f)
+                                       : simd_make_float4(0.60f, 0.78f, 0.92f, 0.75f);
+                float scale = sel ? 1.25f : 1.0f;
+                [self drawQuad:enc rect:{cx - sw*scale, cx + sw*scale, cy + sh*scale, cy - sh*scale} tex:_hudSlot tint:tint];
             }
         }
 

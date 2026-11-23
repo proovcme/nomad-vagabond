@@ -93,6 +93,10 @@
   - Реализованы `nAudioServer2` / `nDSoundServer2` (`setmode`, `openaudio`, `closeaudio`, `setmastervolume`, `flushaudio`), `nSoundNode` (`setfile`, `setambient`, `setlooping`, `setvolume`, `setfreq`, `setminmaxdist`), `nAudio` (`setaudio`).
   - Добиты оставшиеся команды `nGuiBar` (`setleftpos`, `setmiddlepos`, `setmiddleoffset`, `setrightpos`, `setextension`), `nContainer::setvisualization`, `nTexArrayNode::settexture`, `nMeshNode::setfilename`, `nLinkNode::settarget`.
   - **Покрытие реальным C++ на полном прогоне Миссии 1 достигло `99.59%` (22 063 / 22 154, осталось 91 заглушка, макс. 4 вызова на команду).**
+- **Модуль 13 (`native/core/ngui.hpp`, `nworld.hpp`, `main.mm`):**
+  - Реализован `nGuiLoadSavePanel` (`setrect`, `setspacing`, `setnumentriesx/y`, `setmaxentries`, `setdirectory`, `setcommand`, `setcancelselects`) и `n3DNode::setactive`/`getactive`.
+  - Добавлено визуальное радиальное HUD-колесо для `nHouseMenu` (открывается по `E` рядом со зданием, переключение стрелками `←/→/↑/↓`, подтверждение `E`).
+  - **Покрытие реальным C++ на полном прогоне Миссии 1 выросло до `99.68%` (22 083 / 22 154, осталось 71 заглушка, макс. 3 вызова на команду).**
 
 ---
 
@@ -100,7 +104,6 @@
 - [x] Ядро Nebula Device 1 + `NPK0`/`NVX1`/`NTX1`/`NOB0`/`NAX0` + `Tcl.framework`
 - [x] Полный дизассемблер и C++-лифтинг всех 11 DLL (454 класса, 8 314 методов)
 - [x] Рендер-конвейер 1-в-1 (`ndirect3d8` 226 шейдеров, 4× MSAA, `nFogNode`, `weather_normal.n`, `nIpol`, GPU-биллборды `nCloudRender`/`nLeafRender`, `nMeshSway`)
-- [x] Кампания, катсцены, физика героя, коллизии, боёвка, полёт самолётов и островов, радиальное меню, экономика, аудио-сервер (`99.59%` покрытия C++)
-- [ ] **Модуль 13 (следующий):** `nGuiLoadSavePanel` (загрузка/сохранение слотов из меню) + 3D-рендер HUD-шкал `nGuiBar` и радиального колеса `nHouseMenu`
-- [ ] **Модуль 14:** ИИ-эскадрильи, формации, `nBomber` / `nAirship3` / `nFactory` / `nGarage`
-- [ ] **Модуль 15:** Сетевой стек `nnetwork.dll` (4 класса, 23 `AddCmd`)
+- [x] Кампания, катсцены, физика героя, коллизии, боёвка, полёт самолётов и островов, радиальное меню, экономика, аудио-сервер, слоты сохранений (`99.68%` покрытия C++)
+- [ ] **Модуль 14 (следующий):** ИИ-эскадрильи, формации, `nBomber` / `nAirship3` / `nFactory` / `nGarage` + оставшиеся `nContainer` (`setfilter`/`setcharge`/`setareaofeffect`/`gettargetsymbolicname`)
+- [ ] **Модуль 15:** Сетевой стек `nnetwork.dll` (4 класса, 23 `AddCmd`: `nSocket2`, `nCommServer`, `nNetwork2`, `nNetNode`)

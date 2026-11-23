@@ -737,6 +737,17 @@ inline void registerWorldSystem(nKernelServer& ks, WorldHooks* whooks) {
         cl3d->addCmdProto("v_rz_f", "RZ__", [](nRoot* o, nCmd& c) {
             if (o && !c.inArgs.empty()) o->stubProps["rz"] = c.inArgs;
         });
+        cl3d->addCmdProto("v_setactive_b", "SACT", [](nRoot* o, nCmd& c) {
+            if (o && !c.inArgs.empty()) o->stubProps["active"] = c.inArgs;
+        });
+        cl3d->addCmdProto("b_getactive_v", "GACT", [](nRoot* o, nCmd& c) {
+            bool act = true;
+            if (o) {
+                auto it = o->stubProps.find("active");
+                if (it != o->stubProps.end() && !it->second.empty()) act = it->second[0].bVal;
+            }
+            c.outArgs.push_back(nArg::fromBool(act));
+        });
     }
     if (auto* clDH = ks.findClass("ndatahandler")) {
         clDH->addCmdProto("o_loadpermanent_s", "LOAP", [](nRoot* o, nCmd& c) {

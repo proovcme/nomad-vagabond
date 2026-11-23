@@ -49,6 +49,14 @@ public:
     GuiRect titleRect = {-0.5f, 0.5f, 0.96f, 0.55f};
     bool abortable = true;
     bool mouseOverSelect = true;
+    bool cancelSelects = false;
+
+    // nGuiLoadSavePanel grid & save-directory state (verified from nguiloadsavepanel.hpp)
+    GuiRect panelRect = {-0.6f, 0.6f, 0.5f, -0.5f};
+    float spacingX = 0.02f, spacingY = 0.02f;
+    int numEntriesX = 1, numEntriesY = 8, maxEntries = 8;
+    std::string panelCommand;
+    std::string saveDirectory = "home:save";
 
     void collectEntries(std::vector<nGuiMenuEntry*>& out) const {
         nRoot* entriesRoot = findChild("entries");
@@ -277,9 +285,43 @@ inline void registerGuiAndWorld(nKernelServer& ks, EngineHooks* hooks) {
         cl->addCmdProto("v_setmouseoverselect_b", "SMOS", [](nRoot* o, nCmd& c) {
             if (auto* m = dynamic_cast<nGuiStandardMenu*>(o); m && !c.inArgs.empty()) m->mouseOverSelect = c.inArgs[0].bVal;
         });
+        cl->addCmdProto("v_setcancelselects_b", "SCNS", [](nRoot* o, nCmd& c) {
+            if (auto* m = dynamic_cast<nGuiStandardMenu*>(o); m && !c.inArgs.empty()) m->cancelSelects = c.inArgs[0].bVal;
+        });
+        cl->addCmdProto("v_setrect_ffff", "SRCT", [](nRoot* o, nCmd& c) {
+            if (auto* m = dynamic_cast<nGuiStandardMenu*>(o); m && c.inArgs.size() >= 4)
+                m->panelRect = {c.inArgs[0].fVal, c.inArgs[1].fVal, c.inArgs[2].fVal, c.inArgs[3].fVal};
+        });
+        cl->addCmdProto("v_setspacing_ff", "SSPC", [](nRoot* o, nCmd& c) {
+            if (auto* m = dynamic_cast<nGuiStandardMenu*>(o); m && c.inArgs.size() >= 2) {
+                m->spacingX = c.inArgs[0].fVal; m->spacingY = c.inArgs[1].fVal;
+            }
+        });
+        cl->addCmdProto("v_setnumentriesx_i", "SNEX", [](nRoot* o, nCmd& c) {
+            if (auto* m = dynamic_cast<nGuiStandardMenu*>(o); m && !c.inArgs.empty()) m->numEntriesX = c.inArgs[0].iVal;
+        });
+        cl->addCmdProto("i_getnumentriesx_v", "GNEX", [](nRoot* o, nCmd& c) {
+            auto* m = dynamic_cast<nGuiStandardMenu*>(o); c.outArgs.push_back(nArg::fromInt(m ? m->numEntriesX : 1));
+        });
+        cl->addCmdProto("v_setnumentriesy_i", "SNEY", [](nRoot* o, nCmd& c) {
+            if (auto* m = dynamic_cast<nGuiStandardMenu*>(o); m && !c.inArgs.empty()) m->numEntriesY = c.inArgs[0].iVal;
+        });
+        cl->addCmdProto("i_getnumentriesy_v", "GNEY", [](nRoot* o, nCmd& c) {
+            auto* m = dynamic_cast<nGuiStandardMenu*>(o); c.outArgs.push_back(nArg::fromInt(m ? m->numEntriesY : 8));
+        });
+        cl->addCmdProto("v_setmaxentries_i", "SMXE", [](nRoot* o, nCmd& c) {
+            if (auto* m = dynamic_cast<nGuiStandardMenu*>(o); m && !c.inArgs.empty()) m->maxEntries = c.inArgs[0].iVal;
+        });
+        cl->addCmdProto("v_setdirectory_s", "SDIR", [](nRoot* o, nCmd& c) {
+            if (auto* m = dynamic_cast<nGuiStandardMenu*>(o); m && !c.inArgs.empty()) m->saveDirectory = c.inArgs[0].sVal;
+        });
+        cl->addCmdProto("v_setcommand_s", "SCMD", [](nRoot* o, nCmd& c) {
+            if (auto* m = dynamic_cast<nGuiStandardMenu*>(o); m && !c.inArgs.empty()) m->panelCommand = c.inArgs[0].sVal;
+        });
     };
     regMenu("nguimenu");
     regMenu("nguistandardmenu");
+    regMenu("nguiloadsavepanel");
 
     auto* clMH = ks.registerClass("nguimenuhandler", "nroot", [hooks]() {
         auto mh = std::make_unique<nGuiMenuHandler>();
