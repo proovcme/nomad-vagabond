@@ -109,6 +109,13 @@
   - Реализованы системные серверы и все оставшиеся рантайм-команды: `nSearchHandler`, `nGfxServer` / `nGlServer` (`setdisplaymode`, `setviewvolume`, `begincursors`/`setcursor`/`endcursors`, `closedisplay`), `nSBufShadowServer`, `nSceneGraph2` (mipLOD-скобки), `nOpcodeServer` (скобки классов/типов коллизий), `nDataHandler::setdatapaths`, `nPhysicsHandler::addblayer`, `nLxInputServer::setlongpressedtime`, `nGuiMenuHandler` (`reset`, `showcredits`), `nGuiSessionsPanel`, `nClan::getplayerisland`, оставшиеся команды `nContainer`/`nMaennel` и `nRealWorld` (`opengame`, `closegame`, `pausegame`, `contgame`, `loadprefs`, `applyprefs`, `refreshdisplay`, `beginaliases`/`endaliases`, `resetuserclan`, `activatefastpossess`, `sethandcontrol`, `setviewer2`, `setviewercarrier`).
   - **Покрытие реальным C++ на полном прогоне Миссии 1 (загрузка → главное меню → `char_john` → `chapter00_part01` → выход) достигло `100.0000%` (`0` заглушек)!**
   - Пройден стресс-тест всей кампании: успешно активированы **все `30 / 30` частей кампании** (`chapter00`–`chapter07`), суммарно заспавнено **`4 005` сущностей** без единого падения.
+- **Модуль 17 (`native/core/ntactical.hpp`, `main.mm`):**
+  - Портированы тактические боевые и геймплейные классы из `nnomads.dll` по дизассемблированным формулам и `AddCmd`:
+    - `nFlak` (`setbasevector`/`getbasevector`, `setmaxsideangle`/`setmaxupangle`/`setmaxdownangle` с точной конверсией `deg ↔ rad` из `nflak.asm` + `aimAt()` с ограничением углов наведения) и `nFlakEngine2` (8 команд управления скоростью/углами поворота турели, дефолт `30° / 0.5 с`).
+    - `nMissileEngine2` (10 команд: `maxspeed`, `maxspeedtime`, `stoptime`, `turnradius`, `turnradiustime`) и `nMissileEngine3` (8 команд: `ignitiondelay`, `agility`, `maxspeed`, `gravityfactor` + живой `stepHoming()` с задержкой зажигания, гравитацией и пропорциональным наведением).
+    - `nArtefactTransformer` (`setdownanim`/`isdownanim`, `setstackbase`/`getstackbase`, `setsuccessfx`/`getsuccessfx`) и `nArtefactStorage` (`setcapacity`/`getcapacity`, `insertartefact`, `setstackbase`, `setloadmode`, `emptystorage`).
+    - `nSquadronWatchTarget` (`setforgettargetdistance`/`angle` + `shouldForgetTarget()`), `nWatchTarget`, `nSilo`, `nFireWeapon`, `nFireMachineGun`, `nFlakMoving`, `nBuildFlak`.
+  - Пройден модульный тест (турель `rx=19.47° / ry=-45°`, перехват ракеты на `3.35 м`, хранилище `2/2`, `0` заглушек) и пересобран нативный `Project Nomads.app`.
 
 ---
 
@@ -116,5 +123,5 @@
 - [x] Ядро Nebula Device 1 + `NPK0`/`NVX1`/`NTX1`/`NOB0`/`NAX0` + `Tcl.framework`
 - [x] Полный дизассемблер и C++-лифтинг всех 11 DLL (454 класса, 8 314 методов)
 - [x] Рендер-конвейер 1-в-1 (`ndirect3d8` 226 шейдеров, 4× MSAA, `nFogNode`, `weather_normal.n`, `nIpol`, GPU-биллборды `nCloudRender`/`nLeafRender`, `nMeshSway`)
-- [x] Кампания, катсцены, физика героя, коллизии, боёвка, полёт самолётов/дирижаблей/островов, заводы/гаражи, радиальное меню, экономика, аудио-сервер, слоты сохранений, сетевой стек `nnetwork.dll`, системные серверы — **`100.00%` (0 заглушек) на Миссии 1 + `30/30` глав кампании (`4 005` сущностей)**
-- [ ] **Модуль 17 (следующий):** Портирование оставшейся боевой/ИИ-логики из `nnomads.dll` (`nSquad` — тактические эскадрильи, `nFlak`/`nTurret` — зенитные и пушечные турели, `nArtefactTransformer` — алтарь трансформации артефактов, `nBeamWeapon` — лучевое оружие) и живой визуальный полиш рендера/HUD на главах 0–2!
+- [x] Кампания, катсцены, физика героя, коллизии, боёвка, турели `nFlak`, самонаводящиеся ракеты `nMissileEngine2/3`, алтарь/склад артефактов, полёт самолётов/дирижаблей/островов, заводы/гаражи, радиальное меню, экономика, аудио-сервер, слоты сохранений, сетевой стек `nnetwork.dll`, системные серверы — **`100.00%` (0 заглушек) на Миссии 1 + `30/30` глав кампании (`4 005` сущностей)**
+- [ ] **Модуль 18 (следующий):** Портирование оставшихся классов частиц и эффектов из `nparticle.dll` (`nPServEmitter`, `nPointEmitter`, `nAreaEmitter`, `nMeshEmitter`, `nStaticMeshEmitter`, `nSprayRender`) и динамического света/теней (`nShadowCaster`, `nLightNode` динамическое освещение взрывов и выстрелов в Metal-шейдере)!
