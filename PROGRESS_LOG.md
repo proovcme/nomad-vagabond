@@ -105,6 +105,10 @@
   - Полностью реализован сетевой стек `nnetwork.dll` на BSD/POSIX сокетах macOS (`nSocket2`, `nNetwork2`, `nCommServer`, `nNetNode` — все 51 `AddCmd`, неблокирующие UDP-сокеты).
   - Зарегистрированы 21 Tcl-команда `nShaderNode`.
   - **Покрытие реальным C++ на полном прогоне Миссии 1 достигло `99.77%` (22 103 / 22 154, осталось всего 51 одиночная 1× заглушка).**
+- **Модуль 16 (`native/core/nsystem.hpp`, `main.mm`):**
+  - Реализованы системные серверы и все оставшиеся рантайм-команды: `nSearchHandler`, `nGfxServer` / `nGlServer` (`setdisplaymode`, `setviewvolume`, `begincursors`/`setcursor`/`endcursors`, `closedisplay`), `nSBufShadowServer`, `nSceneGraph2` (mipLOD-скобки), `nOpcodeServer` (скобки классов/типов коллизий), `nDataHandler::setdatapaths`, `nPhysicsHandler::addblayer`, `nLxInputServer::setlongpressedtime`, `nGuiMenuHandler` (`reset`, `showcredits`), `nGuiSessionsPanel`, `nClan::getplayerisland`, оставшиеся команды `nContainer`/`nMaennel` и `nRealWorld` (`opengame`, `closegame`, `pausegame`, `contgame`, `loadprefs`, `applyprefs`, `refreshdisplay`, `beginaliases`/`endaliases`, `resetuserclan`, `activatefastpossess`, `sethandcontrol`, `setviewer2`, `setviewercarrier`).
+  - **Покрытие реальным C++ на полном прогоне Миссии 1 (загрузка → главное меню → `char_john` → `chapter00_part01` → выход) достигло `100.0000%` (`0` заглушек)!**
+  - Пройден стресс-тест всей кампании: успешно активированы **все `30 / 30` частей кампании** (`chapter00`–`chapter07`), суммарно заспавнено **`4 005` сущностей** без единого падения.
 
 ---
 
@@ -112,5 +116,5 @@
 - [x] Ядро Nebula Device 1 + `NPK0`/`NVX1`/`NTX1`/`NOB0`/`NAX0` + `Tcl.framework`
 - [x] Полный дизассемблер и C++-лифтинг всех 11 DLL (454 класса, 8 314 методов)
 - [x] Рендер-конвейер 1-в-1 (`ndirect3d8` 226 шейдеров, 4× MSAA, `nFogNode`, `weather_normal.n`, `nIpol`, GPU-биллборды `nCloudRender`/`nLeafRender`, `nMeshSway`)
-- [x] Кампания, катсцены, физика героя, коллизии, боёвка, полёт самолётов/дирижаблей/островов, заводы/гаражи, радиальное меню, экономика, аудио-сервер, слоты сохранений, сетевой стек `nnetwork.dll` (`99.77%` покрытия C++)
-- [ ] **Модуль 16 (следующий):** Финальная добивка оставшихся 51 одиночной команды (`nSearchHandler`, `nSceneGraph2`, `nOctree`, `nInputServer`, `nGfxServer`) до **`100.00%`** покрытия на Миссии 1 + прогон всех 30 глав кампании!
+- [x] Кампания, катсцены, физика героя, коллизии, боёвка, полёт самолётов/дирижаблей/островов, заводы/гаражи, радиальное меню, экономика, аудио-сервер, слоты сохранений, сетевой стек `nnetwork.dll`, системные серверы — **`100.00%` (0 заглушек) на Миссии 1 + `30/30` глав кампании (`4 005` сущностей)**
+- [ ] **Модуль 17 (следующий):** Портирование оставшейся боевой/ИИ-логики из `nnomads.dll` (`nSquad` — тактические эскадрильи, `nFlak`/`nTurret` — зенитные и пушечные турели, `nArtefactTransformer` — алтарь трансформации артефактов, `nBeamWeapon` — лучевое оружие) и живой визуальный полиш рендера/HUD на главах 0–2!

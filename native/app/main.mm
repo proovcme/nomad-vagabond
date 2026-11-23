@@ -34,6 +34,7 @@
 #include "../core/nplayer.hpp"
 #include "../core/nproduction.hpp"
 #include "../core/nstory.hpp"
+#include "../core/nsystem.hpp"
 #include "../core/ntclserver.hpp"
 #include "../core/nworld.hpp"
 #include "../nnature/nnature.hpp"
@@ -1704,6 +1705,7 @@ int main(int argc, const char** argv) {
             [app run];
         };
         nebula::registerGuiAndWorld(rt.ks, &rt.guiHooks);
+        nebula::registerSystemModule16(rt.ks);
         rt.ks.resolveSuperClasses();
 
         // 3. Create core servers & mount data.npk
