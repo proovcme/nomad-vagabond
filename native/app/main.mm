@@ -27,6 +27,7 @@
 #include "../core/ngameplay.hpp"
 #include "../core/ngen_classes.hpp"
 #include "../core/ngui.hpp"
+#include "../core/ninput.hpp"
 #include "../core/nisland.hpp"
 #include "../core/nkernel.hpp"
 #include "../core/nnetwork.hpp"
@@ -965,6 +966,11 @@ static void playWav(const std::string& rawPath, bool loop) {
     uint16_t kc = event.keyCode;
     if (kc == 49 && !_keysDown.count(49)) _jumpPressed = true; // Space
     _keysDown.insert(kc);
+    if (gRuntime) {
+        if (auto* inp = dynamic_cast<nebula::nInputServerNode*>(gRuntime->ks.lookup("/sys/servers/input"))) {
+            inp->onMacKey(kc, true);
+        }
+    }
     NSString* ch = [event.charactersIgnoringModifiers lowercaseString];
     if (kc == 53) { // ESC
         if (auto* mh = [self menuHandler]) {
@@ -1137,7 +1143,13 @@ static void playWav(const std::string& rawPath, bool loop) {
 }
 
 - (void)keyUp:(NSEvent*)event {
-    _keysDown.erase(event.keyCode);
+    uint16_t kc = event.keyCode;
+    _keysDown.erase(kc);
+    if (gRuntime) {
+        if (auto* inp = dynamic_cast<nebula::nInputServerNode*>(gRuntime->ks.lookup("/sys/servers/input"))) {
+            inp->onMacKey(kc, false);
+        }
+    }
 }
 
 - (void)updateTitle {
@@ -1739,6 +1751,8 @@ int main(int argc, const char** argv) {
         nebula::registerSystemModule16(rt.ks);
         nebula::registerTacticalModule17(rt.ks);
         nebula::registerParticleModule18(rt.ks);
+        nebula::registerCollideModule19(rt.ks);
+        nebula::registerInputModule20(rt.ks);
         rt.ks.resolveSuperClasses();
 
         // 3. Create core servers & mount data.npk
