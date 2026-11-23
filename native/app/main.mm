@@ -129,13 +129,20 @@ fragment float4 mesh_fs(MeshVertOut in [[stage_in]],
         baseCol.rgb *= det * 2.0; // Direct3D8 D3DTOP_MODULATE2X (island2 detailmap shader)
     }
     float3 lit;
+    float3 diffCol = u.matDiffuse.rgb;
+    float3 emCol   = u.matEmissive.rgb;
+    bool zeroMat = (dot(diffCol, float3(1.0)) + dot(emCol, float3(1.0))) < 0.01;
+    if (zeroMat) diffCol = float3(1.0);
+
     if (u.matDiffuse.w > 0.5) {
         float3 N = normalize(in.worldNorm);
         float3 L = normalize(u.lightDir.xyz);
         float ndl = max(dot(N, L), 0.0);
+        // Soft sky-hemisphere + opposite-sun fill light (matches weather_normal.n licht1 + licht2)
+        float fill = max(dot(N, -L), 0.0) * 0.22;
         float hemi = N.y * 0.5 + 0.5;
-        float3 ambient = u.ambColor.rgb * mix(0.75, 1.25, hemi);
-        float3 sun = u.sunColor.rgb * ndl;
+        float3 skyAmb = max(u.ambColor.rgb, float3(0.32, 0.36, 0.44)) * mix(0.82, 1.28, hemi);
+        float3 sun = u.sunColor.rgb * ndl + u.fogColor.rgb * fill;
         float3 dyn = float3(0.0);
         if (u.dynLightCol.w > 0.001 && u.dynLightPos.w > 0.1) {
             float3 toL = u.dynLightPos.xyz - in.worldPos;
@@ -144,9 +151,17 @@ fragment float4 mesh_fs(MeshVertOut in [[stage_in]],
             float ndlDyn = max(dot(N, toL / max(dist, 0.001)), 0.25);
             dyn = u.dynLightCol.rgb * (att * att * u.dynLightCol.w * ndlDyn);
         }
-        lit = baseCol.rgb * (u.matDiffuse.rgb * (ambient + sun + dyn) + u.matEmissive.rgb);
+        lit = baseCol.rgb * (diffCol * (skyAmb + sun + dyn) + emCol);
     } else {
-        lit = baseCol.rgb * max(u.matDiffuse.rgb, u.matEmissive.rgb);
+        // D3DRS_LIGHTING = FALSE (clouds, particles, flares, sky): never multiply by zero!
+        float3 unlitTint = max(diffCol, emCol);
+        if (u.windParams.w > 0.5) {
+            // Sunlit fluffy clouds (wolke10): blend cloud texture with daylight sky/sun brightness
+            float3 cloudLight = clamp(u.sunColor.rgb * 0.65 + u.fogColor.rgb * 0.55 + float3(0.20), float3(0.45), float3(1.25));
+            lit = baseCol.rgb * cloudLight;
+        } else {
+            lit = baseCol.rgb * unlitTint;
+        }
     }
 
     if (u.flags.w > 0.5) {
@@ -155,7 +170,8 @@ fragment float4 mesh_fs(MeshVertOut in [[stage_in]],
         float fog = clamp((in.viewDist - fogStart) / (fogEnd - fogStart), 0.0, 0.88);
         lit = mix(lit, u.fogColor.rgb, fog);
     }
-    return float4(lit, baseCol.a);
+    float outAlpha = (u.matEmissive.w > 0.5) ? 1.0 : baseCol.a;
+    return float4(lit, outAlpha);
 }
 
 struct CloudVertIn {
@@ -1403,13 +1419,14 @@ static void playWav(const std::string& rawPath, bool loop) {
                     localM = simd_mul(localM, mat4FromNebula(rot));
                 }
                 simd_float4x4 M = simd_mul(inst.worldMat, localM);
-                float alphaCut = sm.shader.alphaTest ? sm.shader.alphaRef : (sm.isCloud ? 0.03f : 0.25f);
+                bool forceOpaque = (!isTrans && !sm.shader.alphaTest && !sm.shader.alphaEnable);
+                float alphaCut = forceOpaque ? 0.0f : (sm.shader.alphaTest ? sm.shader.alphaRef : (sm.isCloud ? 0.02f : 0.05f));
                 if (sm.shader.additive) alphaCut = 0.0f;
                 MeshUniformsCPU u{
                     simd_mul(VP, M), M, VP, sunDir,
                     simd_make_float4(sm.hasTex ? 1.0f : 0.0f, sm.hasDetailTex ? 1.0f : 0.0f, alphaCut, sm.shader.fogEnable ? 1.0f : 0.0f),
                     simd_make_float4(sm.shader.diffuse[0], sm.shader.diffuse[1], sm.shader.diffuse[2], sm.shader.lightEnable ? 1.0f : 0.0f),
-                    simd_make_float4(sm.shader.emissive[0], sm.shader.emissive[1], sm.shader.emissive[2], 1.0f),
+                    simd_make_float4(sm.shader.emissive[0], sm.shader.emissive[1], sm.shader.emissive[2], forceOpaque ? 1.0f : 0.0f),
                     sunCol, ambCol, fogCol, camRightVec, camUpVec,
                     simd_make_float4(windX, windZ, sm.isSway ? (windStr * 0.25f) : 0.0f, sm.isBillboard ? 1.0f : 0.0f),
                     dynLPos, dynLCol
