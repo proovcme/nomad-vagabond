@@ -172,8 +172,24 @@ class NomadAviationPaint extends BABYLON.MaterialPluginBase {
         float skin = 1.-smoothstep(.48,.50,vBand);
         float ribs = 1.-smoothstep(.025,.085,abs(fract(abs(p.x)*2.35)-.5));
         float linen = smoothstep(1.5,2.2,abs(p.x))*smoothstep(.50,.85,abs(n.y));
+        // The outer wing fabric has its own dope and rib tapes, including on atlas
+        // islands shared with hardware. Mask by height, span and face orientation.
+        float upperWing = linen * smoothstep(1.52,1.74,p.y);
+        vec3 fabricPaint = mix(bodyTone, trimTone, .19);
+        float chordFade = smoothstep(-2.8,.55,p.z);
+        vec3 canvasTone = toLinearSpace(fabricPaint) * (.79+.35*sheet.b+.16*ribs+.12*chordFade);
+        surfaceAlbedo = mix(surfaceAlbedo,canvasTone,upperWing*.89);
         float chip = sheet.g * skin * (1.-linen);
-        surfaceAlbedo *= mix(1.,.65+.59*sheet.b+.08*ribs*linen,skin);
+        // Paint fades towards the upper panels while the lower return keeps a deeper pigment.
+        float upturn = smoothstep(-.33,.78,n.y);
+        float finish = .50+.80*sheet.b+.18*upturn+.075*ribs*linen;
+        surfaceAlbedo *= mix(1.,finish,skin);
+        // A dark anti-glare panel runs ahead of the pilot on the red pursuit aircraft.
+        if (aircraftLiveryParams.x>.5 && aircraftLiveryParams.x<1.5) {
+          float noseDeck = smoothstep(-2.2,-1.95,p.z)*(1.-smoothstep(-1.04,-.94,p.z))
+            * (1.-smoothstep(.34,.39,abs(p.x))) * smoothstep(.45,.72,n.y);
+          surfaceAlbedo=mix(surfaceAlbedo,vec3(.041,.061,.064)*finish,noseDeck);
+        }
         surfaceAlbedo = mix(surfaceAlbedo,vec3(.31,.33,.32),chip*.77);
         aviationWear = max(aviationWear,chip);
         aviationRelief += skin*((sheet.r-.5)*1.15 + linen*ribs*.49);
