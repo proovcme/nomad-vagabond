@@ -387,6 +387,10 @@ export class NavigatorPlayer {
       const allowedNames = new Set(['Idle_Loop', 'Idle', 'Walk_Loop', 'Walk', 'Jog_Fwd_Loop', 'Sprint_Loop', 'Run', 'Jump_Loop', 'Jump']);
       for (const ag of res.animationGroups || []) {
         ag.stop();
+        if (ag.name === 'Interact') {
+          this.interactClip = ag;
+          continue;
+        }
         // Only register unique locomotion clips; keep A_TPose and utility clips permanently stopped
         if (!allowedNames.has(ag.name) || this.animGroups[ag.name]) continue;
         ag.enableBlending = true;
@@ -435,7 +439,21 @@ export class NavigatorPlayer {
     }
   }
 
+  pullSwitch() {
+    this.switchReach = .95;
+    if (this.interactClip) {
+      this.interactClip.start(false);
+      this.interactClip.setWeightForAllAnimatables(1);
+    }
+  }
+
   _animateCharacter(dt, horizSpeed, grounded) {
+    this.switchReach = Math.max(0,(this.switchReach || 0)-dt);
+    if (this.switchReach && this.interactClip?.isPlaying) {
+      for (const ag of Object.values(this.animGroups)) ag.setWeightForAllAnimatables(0);
+      return;
+    }
+    if (!this.switchReach && this.interactClip?.isPlaying) this.interactClip.stop();
     if (this.skeletalRoot && Object.keys(this.animGroups).length > 0) {
       const logical = !grounded
         ? 'Jump'
@@ -543,6 +561,12 @@ export class NavigatorPlayer {
         this.headNode.rotation.y = Math.sin(this.animTime * 0.45) * 0.09;
         this.headNode.rotation.x = Math.sin(this.animTime * 0.7) * 0.03;
       }
+    }
+
+    if(this.switchReach){
+      const reach=Math.sin(Math.PI*this.switchReach/.95);
+      this.armR.rotation.x=reach*1.2;
+      if(this.elbowR)this.elbowR.rotation.x=-reach*.55;
     }
 
     // Flowing cape wave animation

@@ -1101,14 +1101,16 @@ function launchSkyTorpedo() {
     return;
   }
   const chosen = capitalTargets[0];
-  demoState.torpedoCd = 9.0;
+  let carried = null;
   demoState.skyTorpedoes ||= [];
 
   let startPos, initDir;
   if (controlMode === 'aircraft' && ship?.group && !ship.dockedAsteroid) {
     ship.group.computeWorldMatrix(true);
     const wm = ship.group.getWorldMatrix();
-    startPos = BABYLON.Vector3.TransformCoordinates(new BABYLON.Vector3(0, -1.35, -1.5), wm);
+    carried = ship.stores.release('torpedo');
+    if (!carried) return;
+    startPos = carried.position.clone();
     initDir = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 0, -1), wm).normalize();
   } else if (asteroidBase?.group) {
     asteroidBase.group.computeWorldMatrix(true);
@@ -1133,7 +1135,10 @@ function launchSkyTorpedo() {
     demoState._torpTrailMat.alpha = 0.68;
     if (ship?.trailMat?.opacityTexture) demoState._torpTrailMat.opacityTexture = ship.trailMat.opacityTexture;
   }
-  const tMesh = createDetailedMissile('skyTorpedo', 1.85, '#3b4349', '#cc3e22', demoState._torpMat);
+  demoState.torpedoCd = 9;
+  const tMesh = carried || createDetailedMissile('skyTorpedo', 1.85, '#3b4349', '#cc3e22', demoState._torpMat);
+  tMesh._trailAnchor.material = demoState._torpMat;
+  tMesh._trailAnchor.setEnabled(true);
   tMesh.position.copyFrom(startPos);
   tMesh.lookAt(startPos.add(initDir));
   tMesh.rotate(BABYLON.Axis.X, Math.PI * 0.5, BABYLON.Space.LOCAL);
@@ -2018,11 +2023,16 @@ function missionInteraction() {
   const stage = demoState.stage;
   if (stage === 'find_lever' && near(demoState.leverNode.getAbsolutePosition())) {
     return action('[E] Включить аварийное питание', () => {
-      demoState.powerOn = true;
       if(demoState.passage){
-        demoState.stage='fog_start';demoState.leverBeaconMat.emissiveColor=BABYLON.Color3.FromHexString('#45df9a');
-        audio.playUpgrade();passageRadio('power');return;
+        const panel=demoState.leverNode.position;
+        player.placeOnAsteroid(asteroidBase,new BABYLON.Vector3(panel.x+1.33,panel.y,panel.z+.13));
+        player.yaw=Math.PI/2;
+        player.pullSwitch();
+        demoState.switchDelay=.28;
+        demoState.stage='fog_energizing';
+        audio.playPassageSound('starter');return;
       }
+      demoState.powerOn = true;
       demoState.stage = 'build_generator';
       demoState.leverBeaconMat.emissiveColor = BABYLON.Color3.FromHexString('#45df9a');
       audio.playUpgrade();
@@ -2562,6 +2572,7 @@ function getQuestState() {
         : ['Ангар эскадрильи', 'E у самолёта — выбрать борт и задание. E у штурвала в ангаре — вести крейсер.'],
       dover_convoy: ['Глава 2 · Перехват у Дувра', demoState.doverMission?.getObjectiveText?.() || 'Уничтожить линкор «Колосс» и эскорт Tribal.'],
       fog_search: ['Уйти от эсминца · '+(demoState.passage?.fix.name||''), demoState.passage?.fix.hint+' W/S — тяга, A/D — курс, стрелки — высота.'],
+      fog_energizing: ['Подача питания','Генератор набирает обороты. Следите за стрелкой на щите.'],
       fog_start: ['Запустить «Бродягу»','Подойдите к штурвалу в ангаре и нажмите E.'],
       fog_lift: ['Подъём с острова','Машины набирают обороты.'],
       fog_battery: ['Эсминец на прицеле','E — дать залп главным калибром.'],
@@ -2646,7 +2657,16 @@ engine.runRenderLoop(() => {
     stormRainEl.style.display = (gameState === 'playing' && world?.theme === 'storm') ? 'block' : 'none';
   }
   if (gameState === 'playing') {
-    world.motion?.update(dt,Boolean(demoState?.powerOn));
+    if(demoState?.stage==='fog_energizing' && !demoState.powerOn){
+      demoState.switchDelay-=dt;
+      if(demoState.switchDelay<=0)demoState.powerOn=true;
+    }
+    world.motion?.update(dt,Boolean(demoState?.powerOn),Boolean(demoState?.passage && !demoState.freeFlight && !demoState.doverMission));
+    if(demoState?.stage==='fog_energizing' && world.motion.voltage>=1){
+      demoState.stage='fog_start';
+      demoState.leverBeaconMat.emissiveColor=BABYLON.Color3.FromHexString('#45df9a');
+      passageRadio('power');
+    }
     world.industrialCranes?.update(dt);
     runTime += dt;
     world._skyLifeCtx = {
@@ -3740,6 +3760,7 @@ engine.runRenderLoop(() => {
       });
       // Update Heavy Aerial Sky-Torpedoes (anti-Dreadnought / anti-Fortress-Island / Dover Colossus)
       demoState.torpedoCd = Math.max(0, (demoState.torpedoCd || 0) - dt);
+      if (!demoState.torpedoCd) ship.stores.reload('torpedo');
       demoState.skyTorpedoes ||= [];
       for (let i = demoState.skyTorpedoes.length - 1; i >= 0; i--) {
         const tp = demoState.skyTorpedoes[i];

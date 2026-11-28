@@ -1,3 +1,4 @@
+import { AircraftStores } from './weapons/aircraftStores.js';
 import { fitInterbellumAircraft } from './props/interbellumAircraft.js?v=mission1';
 import { configureImportedAircraftMaterial } from './explorerAircraft.js?v=mission1';
 export const HANGAR_FLEET=Object.freeze([
@@ -21,6 +22,7 @@ export class HangarFleet {
    root.computeWorldMatrix(true);const bounds=root.getHierarchyBoundingVectors(true);
    root.position.set(record.x,3.38-bounds.min.y,record.z);root.parent=this.base.group;
    for(const m of res.meshes){m.isPickable=false;m.checkCollisions=true;if(!m.sourceMesh)m.receiveShadows=true;configureImportedAircraftMaterial(m.material,this.scene.getEngine(),record.variant);if(m.getTotalVertices()>0)this.shadowGenerator?.addShadowCaster(m,false);}
+   new AircraftStores(root, record.variant);
    record.root=root;record.loaded=true;record.floorOffset=-bounds.min.y;record.bounds={min:bounds.min.asArray(),max:bounds.max.asArray()};root.setEnabled(record.variant!==this.activeVariant);
   }catch(e){record.error=String(e?.message||e);console.warn('Hangar aircraft could not load',record.variant,e);}
  }

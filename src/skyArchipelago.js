@@ -3123,9 +3123,7 @@ export class SkyArchipelagoWorld {
         this.vagabondBase._towerBeaconMat.alpha = this.timeOfDay < 0.35 ? 0.58 : 0.24;
       }
     }
-    if (this.vagabondBase?._radarRotor) {
-      this.vagabondBase._radarRotor.rotation.y += dt * 0.58;
-    }
+
     if (this.vagabondBase?._windsock) {
       this.vagabondBase._windsock.rotation.y = Math.sin(this.simTime * 2.2) * 0.24;
       this.vagabondBase._windsock.rotation.z = Math.sin(this.simTime * 5.8) * 0.08;

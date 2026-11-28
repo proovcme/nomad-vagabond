@@ -1,3 +1,4 @@
+import { AircraftStores } from './weapons/aircraftStores.js';
 import { fieldRepairTexture } from './props/repairTexture.js';
 import { fitInterbellumAircraft } from './props/interbellumAircraft.js?v=mission1';
 import { leadPoint } from './combatAim.js?v=mission1';
@@ -470,6 +471,7 @@ export class ExplorerAircraft {
     this._deployedGearPoints = [];
     this._runwayState = null;
     this._buildModel();
+    this.stores = new AircraftStores(this.group, variant, -.72);
     this._rememberLandingGear(this.gearStruts, false);
     this.showSmokeKeyEnabled = true;
     this._bindInputs();
@@ -480,6 +482,8 @@ export class ExplorerAircraft {
 
   setVariant(variant) {
     if (!variant || variant === this.variant) return;
+    this.stores.root.dispose();
+    this.stores = new AircraftStores(this.group, variant, -.72);
     this.variant = variant;
     const baseSpec = AIRCRAFT_SPECS[variant] || AIRCRAFT_SPECS.cargo;
     const u = this._upgrades || { armor: 0, engine: 0, guns: 0 };
@@ -2322,6 +2326,7 @@ export class ExplorerAircraft {
     if (isPiloted && (this.keys['Space'] || this.keys['MouseLeft']) && this.gunCooldown <= 0) {
       this._firePrimaryGuns(forward, right, up);
     }
+    if (this.specialCooldown === 0 && spec.special === 'rocket_salvo') this.stores.reload('rocket');
     if (isPiloted && this.specialInputEnabled !== false && (this.keys['KeyF'] || this.keys['MouseRight']) && this.specialCooldown <= 0) {
       this._fireSpecialWeapon(forward, right, up);
     }
@@ -2818,28 +2823,27 @@ export class ExplorerAircraft {
         ? this.velocity.add(up.scale(-4.5))
         : this.velocity.add(launchDir.scale(115));
 
-      const ord = BABYLON.MeshBuilder.CreateCylinder(
-        isBomb ? 'acProjBomb' : 'acProjRocket',
-        { diameterTop: isBomb ? 0.38 : 0.22, diameterBottom: isBomb ? 0.52 : 0.34, height: isBomb ? 1.5 : 2.1, tessellation: 8 },
-        this.scene
-      );
-      ord.position.copyFrom(spawnPos);
-      ord.lookAt(spawnPos.add(launchDir));
-      ord.rotate(BABYLON.Axis.X, Math.PI * 0.5, BABYLON.Space.LOCAL);
-      ord.isPickable = false;
-      ord.material = this._getSharedProjectileMaterial(isBomb ? 'bomb' : 'rocket', isBomb ? '#ff6b35' : '#ffbe44');
+      const ord = isBomb ? BABYLON.MeshBuilder.CreateCylinder('acProjBomb',
+        { diameterTop:.38, diameterBottom:.52, height:1.5, tessellation:8 }, this.scene)
+        : this.stores.release('rocket');
+      if (!ord) continue;
+      if (isBomb) {
+        ord.position.copyFrom(spawnPos);
+        ord.lookAt(spawnPos.add(launchDir));
+        ord.rotate(BABYLON.Axis.X, Math.PI * .5, BABYLON.Space.LOCAL);
+        ord.isPickable = false;
+        ord.material = this._getSharedProjectileMaterial('bomb', '#ff6b35');
+      }
 
       let trail = null;
       if (!isBomb) {
         // Bright fiery motor exhaust plume on the rocket tail
-        const plume = BABYLON.MeshBuilder.CreateCylinder(`acRocketPlume_${i}`, { diameterTop: 0.34, diameterBottom: 0.02, height: 1.55, tessellation: 6 }, this.scene);
-        plume.parent = ord;
-        plume.position.set(0, -1.65, 0);
+        const plume = ord._trailAnchor;
         plume.material = this._getSharedProjectileMaterial('rocketPlume', '#fff0a8');
-        plume.isPickable = false;
+        plume.setEnabled(true);
         if (typeof BABYLON.TrailMesh === 'function') {
-          ord.computeWorldMatrix(true);
-          trail = new BABYLON.TrailMesh(`acRocketTrail_${Date.now()}_${i}`, ord, this.scene, 0.36, 36, true);
+          plume.computeWorldMatrix(true);
+          trail = new BABYLON.TrailMesh(`acRocketTrail_${Date.now()}_${i}`, plume, this.scene, 0.36, 36, true);
           trail.material = this._rocketTrailMat;
           trail.isPickable = false;
         }

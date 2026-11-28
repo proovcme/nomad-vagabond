@@ -13,6 +13,7 @@ export class PracticalLights {
     this.white=this._emissive('practicalTailWhite','#e7dec4',.20);
     this.beacon=this._emissive('practicalAircraftBeacon','#eee3d0',.10);
     this.warm=this._emissive('practicalHangarWarm','#ffd39a',1.6);
+    this.hangarBanks=[this.warm,...[1,2].map(i=>this._emissive('practicalHangarBank'+i,'#ffd39a',1.6))];
     this.generatorGreen=this._emissive('practicalGeneratorPilot','#48b579',.65);
     this.radarAmber=this._emissive('practicalRadarPilot','#dca34a',.70);
     this.ruinRed=this._emissive('practicalRuinWarning','#933327',.42);
@@ -73,7 +74,8 @@ export class PracticalLights {
 
   _installHangar() {
     for(const bar of this.base.group.getChildMeshes().filter(m=>/^(vagHangarLight_|hangarRoofLamp_)/.test(m.name))){
-      this.changedMeshes.push({mesh:bar,material:bar.material});bar.material=this.warm;
+      this.changedMeshes.push({mesh:bar,material:bar.material});const baseX=BABYLON.Vector3.TransformCoordinates(bar.computeWorldMatrix(true).getTranslation(),this.base.group.computeWorldMatrix(true).clone().invert()).x;
+      bar.material=this.hangarBanks[baseX < -18 ? 2 : baseX < -3 ? 1 : 0];
       if(!/^vagHangarLight_/.test(bar.name))continue;
       const housing=BABYLON.MeshBuilder.CreateBox('practicalInsetHangarHousing',{width:1.12,height:.32,depth:13.35},this.scene);
       housing.parent=bar.parent;housing.position.copyFrom(bar.position);housing.position.y+=.28;
@@ -96,6 +98,7 @@ export class PracticalLights {
       light.diffuse=BABYLON.Color3.FromHexString(d.daylight?'#cee1ff':'#ffe8c5').toLinearSpace();light.specular=BABYLON.Color3.FromHexString(d.daylight?'#c8dbed':'#e6cdb0').toLinearSpace();
       light.intensityMode=BABYLON.Light.INTENSITYMODE_LUMINOUSINTENSITY;light.falloffType=BABYLON.Light.FALLOFF_GLTF;
       light.intensity=d.intensity;light.range=d.range;light.shadowEnabled=false;light.renderPriority=20;
+      light._nominalIntensity=d.intensity;
       this._hangarLights.push(light);
     }
     this._syncHangarTargets();
@@ -200,6 +203,16 @@ export class PracticalLights {
     if(this.disposed)return;this.time+=Math.max(0,Math.min(dt,.1));
     this._syncAircraft();
     this._lightingRefreshTimer-=dt;if(this._lightingRefreshTimer<=0){this._lightingRefreshTimer=.5;this._syncHangarTargets();}
+    const voltage=this.scene.metadata?.hangarVoltage ?? 1;
+    if(voltage!==this.lastVoltage){
+      const level=i=>Math.max(0,Math.min(1,(voltage-.12-i*.27)*4));
+      this.hangarBanks.forEach((mat,i)=>this._intensity(mat,.03+1.57*level(i)));
+      for(const light of this._hangarLights){
+        const bank=light.position.x < -18 ? 2 : light.position.x < -3 ? 1 : 0;
+        light.intensity=light._nominalIntensity*(.035+.965*level(bank));
+      }
+      this.lastVoltage=voltage;
+    }
     // Slow subdued chasing approach lamps; no abrupt runway strobe.
     for(let i=0;i<6;i++){
       const wave=.5+.5*Math.cos(this.time*1.7-i*.72);
