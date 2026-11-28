@@ -62,6 +62,26 @@ export function buildAirfields(scene, islands, materials) {
     enamel.diffuseTexture=new B.Texture('./assets/textures/nomad/airfield-'+(i?'east':'west')+'.webp',scene);
     enamel.specularColor=B.Color3.Black(); board.material=enamel;
     counter('blue',14.85,5.45,4,.24,1.7,11);
+    const panel=B.MeshBuilder.CreatePlane('terminalFreightMural'+i,{width:7.4,height:2.8,sideOrientation:B.Mesh.DOUBLESIDE},scene);
+    panel.parent=root;panel.position.set(19*terminal,1.91,15.06*terminal);
+    panel.rotation.y=terminal>0?Math.PI:0;
+    let print=scene.getMaterialByName('portFreightEnamel');
+    if(!print){
+      print=new B.StandardMaterial('portFreightEnamel',scene);
+      print.diffuseTexture=new B.Texture('./assets/textures/nomad/terminal-freight-panel.webp',scene);
+      print.emissiveColor=new B.Color3(.19,.16,.12);print.specularColor=B.Color3.Black();
+    }
+    panel.material=print;panel.isPickable=false;
+    if(i===1){
+
+      for(const z of [22,26.8,31.6]){
+        drum('ivory',20,3.7,z,4.45,4.45,7.4);
+        drum('ochre',20,7.7,z,2.45,4.6,.60);
+        drum('blue',20,1.12,z,4.48,4.48,.24);
+      }
+      counter('ochre',20,8.45,27,1.45,1,11.4);
+      counter('blue',20,9.07,27,1.7,.22,11.7);
+    }
     for(const [ink,parts] of batches){
       const mesh=B.Mesh.MergeMeshes(parts,true,true);mesh.parent=root;mesh.name=root.name+'_'+ink;
       mesh.material=materials.get(ink);mesh.receiveShadows=true;mesh.isPickable=false;

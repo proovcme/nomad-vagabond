@@ -469,6 +469,8 @@ if (shotMode && worldMode === 'sky') {
     camera.position.copyFrom(vPos).addInPlace(new BABYLON.Vector3(11, 32, -52));
     camera.setTarget(vPos.add(new BABYLON.Vector3(-25, 17, -13)));
     camera.fov = .88;
+  } else if (shotMode === 'arch_chart') {
+    requestAnimationFrame(()=>openDeviceModal('map','playing'));
   } else if (shotMode === 'arch_mill') {
     player.boardShip(); controlMode='aircraft'; ui.setMode('aircraft');
     camera.position.copyFrom(fPos).addInPlace(new BABYLON.Vector3(68,40,17));
@@ -1030,7 +1032,7 @@ function switchDeviceTab(tabName) {
   const panes = { map: 'pane-map', settings: 'pane-settings', controls: 'pane-controls' };
   const tabs = { map: 'tab-map-btn', settings: 'tab-settings-btn', controls: 'tab-controls-btn' };
   const titles = {
-    map: 'ШТУРМАНСКИЙ ПЛАНШЕТ',
+    map: world?.isSkyWorld ? 'Воздушные линии' : 'ШТУРМАНСКИЙ ПЛАНШЕТ',
     settings: 'РАДИО И ПРИБОРЫ',
     controls: 'ЛЁТНАЯ ПАМЯТКА',
   };
@@ -1041,6 +1043,7 @@ function switchDeviceTab(tabName) {
     if (pEl && k !== 'map') pEl.classList.toggle('active', k === tabName);
     if (tEl) tEl.classList.toggle('active', k === tabName);
   }
+  mapModal.classList.toggle('paper-chart',tabName==='map' && Boolean(world?.isSkyWorld));
   const titleEl = document.getElementById('device-title');
   if (titleEl) titleEl.textContent = titles[tabName] || titles.map;
 }

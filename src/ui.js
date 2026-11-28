@@ -1,3 +1,4 @@
+import { drawAirChart } from './airChart.js';
 import { UPGRADE_CATALOG } from './world.js?v=mission1';
 
 /** Physical inputs only: no fabricated RPM or instrument-only simulation. */
@@ -415,6 +416,7 @@ export class GameUI {
   renderChart(world, ship, asteroidBase = null) {
     this.mapStarInfo.textContent = `${world.starType?.name || 'Небесный архипелаг'} • ${world.seedStr}`;
 
+    if(!world.isSkyWorld){this.chartCanvas.width=560;this.chartCanvas.height=390;}
     const ctx = this.chartCanvas.getContext('2d');
     const w = this.chartCanvas.width;
     const h = this.chartCanvas.height;
@@ -435,27 +437,11 @@ export class GameUI {
     ctx.stroke();
 
     if (world.isSkyWorld) {
-      const maxRange = Math.max(600, Math.abs(ship.group.position.x), Math.abs(ship.group.position.z));
-      const mapScale = Math.min((w-80)/(maxRange*2),(h-60)/(maxRange*1.5));
-      ctx.font='12px Courier New'; ctx.textAlign='left';
-      for(const island of world.islands) {
-        const x=cx+island.group.position.x*mapScale, y=cy+island.group.position.z*mapScale;
-        ctx.beginPath();ctx.ellipse(x,y,Math.max(8,island.radius*mapScale),Math.max(6,island.radius*mapScale*.75),0,0,Math.PI*2);
-        ctx.fillStyle=island===asteroidBase?'#c7a85c':island.type==='forest'?'#7e9c60':'#9e7650';ctx.fill();
-        ctx.fillStyle='#ece5c8';ctx.fillText(island.name,x+10,y-10);
-      }
-      const x=cx+ship.group.position.x*mapScale,y=cy+ship.group.position.z*mapScale;
-      ctx.fillStyle='#f5e8b8';ctx.fillText('▲ Ваш борт',x,y);
-      if(world.missionTarget){const p=world.missionTarget.position;ctx.fillStyle='#78d3c8';ctx.fillText('◆ '+world.missionTarget.name,cx+p.x*mapScale,cy+p.z*mapScale+18);}
+      drawAirChart(this.chartCanvas,world,ship,asteroidBase);
       this.mapStarInfo.textContent='НЕБЕСНЫЙ АРХИПЕЛАГ · '+world.seedStr;
       this.systemLog.replaceChildren();
       if(world.airLine){
-        const {fields,ledger,planes}=world.airLine;
-        ctx.save();ctx.strokeStyle='#e8bc74';ctx.setLineDash([4,4]);ctx.beginPath();
-        fields.ports.forEach((p,i)=>ctx[i?'lineTo':'moveTo'](cx+p.x*mapScale,cy+p.z*mapScale));
-        ctx.stroke();ctx.restore();
-        const flight=planes[1].root.position;ctx.fillStyle='#e9aa6e';ctx.beginPath();
-        ctx.arc(cx+flight.x*mapScale,cy+flight.z*mapScale,3.5,0,2*Math.PI);ctx.fill();
+        const {ledger}=world.airLine;
         const freight=document.createElement('details');freight.open=true;freight.className='log-entry';
         const title=document.createElement('summary');title.textContent='Ведомость воздушной линии';freight.append(title);
         for(const text of [
