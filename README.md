@@ -65,6 +65,8 @@ python3 scripts/repair_building_surfaces.py --report artifacts/first-pass/models
 
 `?qa=1` exposes development checkpoints. They set up test situations; they are not evidence of an uninterrupted first-mission playthrough. `?metrics=1` writes sampled canvas metrics to the body's DOM dataset. Neither appears on the normal route.
 
+[Художественное направление и музейные референсы интербеллума](workshop/INTERBELLUM.md)
+
 Визуальный язык архипелага опирается на окраску портовой авиации 1930-х. Морская зелень объединяет флот и портовые сооружения, киноварь выделяет пояс корпуса и край вымпела, охра и слоновая кость читаются на полотне и эмблемах. У «Бродяги» и маяка один раздвоенный вымпел с крылатой розой ветров. Для новых ассетов сравнивайте силуэт с палубной камеры, а масштаб краски, швов и потёртостей — с камеры у самолёта.
 
 Скрипт `python3 scripts/bake_workshop_surfaces.py` собирает карты обшивки самолётов, кирпича портовой фабрики и рельефа ангара. Зависимости указаны в `requirements.txt`. В карте обшивки красный канал хранит высоту стыков и заклёпок, зелёный — участки обнажённого металла, синий — вариацию покрытия.
