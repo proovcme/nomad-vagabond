@@ -472,8 +472,8 @@ if (shotMode && worldMode === 'sky') {
   } else if (shotMode === 'arch_airport' || shotMode === 'arch_airliner') {
     player.boardShip();controlMode='aircraft';ui.setMode('aircraft');
     if (shotMode === 'arch_airport') {
-      camera.position.copyFrom(iPos).addInPlace(new BABYLON.Vector3(-86,41,82));
-      camera.setTarget(iPos.add(new BABYLON.Vector3(-18,29,39)));
+      camera.position.copyFrom(iPos).addInPlace(new BABYLON.Vector3(44,65,85));
+      camera.setTarget(iPos.add(new BABYLON.Vector3(-16,27,42)));
     } else {
       const liner=world.airLine.planes[0].root;
       camera.parent=liner;camera.position.set(21,5,-25);

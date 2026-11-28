@@ -26,6 +26,8 @@ for kind,base,trim,mark in [('express','#e7d6ad','#1f4856','AL • 247'),('feede
         try: font=ImageFont.truetype('Arial Bold.ttf',24 if kind!='envelope' else 31)
         except OSError: font=ImageFont.truetype('DejaVuSans.ttf',24)
         stamp=Image.new('RGBA',(225,42));ImageDraw.Draw(stamp).text((2,0),mark,font=font,fill=trim)
-        if mid==383: stamp=ImageOps.mirror(stamp)
+        if mid==127: stamp=ImageOps.mirror(stamp)
         im.paste(stamp,(615 if kind!='envelope' else 365,mid-46),stamp)
+    # On starboard, the mesh UV runs from the keel up to the crown.
+    im.paste(ImageOps.flip(im.crop((0,0,1024,256))),(0,0))
     im.save(out/('airline-'+kind+'.webp'),quality=92)
