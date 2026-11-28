@@ -8,6 +8,7 @@ const element=()=>({width:256,height:256,style:{},getContext:()=>ctx,addEventLis
 globalThis.document={createElement:element,getElementById:element,addEventListener(){},removeEventListener(){},body:{appendChild(){},append(){}}};
 globalThis.window={addEventListener(){},removeEventListener(){},devicePixelRatio:1};globalThis.OffscreenCanvas=class{constructor(w,h){this.width=w;this.height=h;}getContext(){return ctx;}};
 const {deriveAircraftLightSockets}=await import('../src/explorerAircraft.js');
+const {fitInterbellumAircraft}=await import('../src/props/interbellumAircraft.js');
 const {PracticalLights}=await import('../src/practicalLights.js');
 const {SkyArchipelagoWorld}=await import('../src/skyArchipelago.js');
 const {AsteroidBase}=await import('../src/asteroidBase.js');
@@ -65,6 +66,17 @@ function triangleDistance(point,a,b,c){
  const va=d3*d6-d5*d4;if(va<=0&&(d4-d3)>=0&&(d5-d6)>=0)return B.Vector3.Distance(point,b.add(c.subtract(b).scale((d4-d3)/((d4-d3)+(d5-d6)))));
  const inverse=1/(va+vb+vc),v=vb*inverse,w=vc*inverse;return B.Vector3.Distance(point,a.add(ab.scale(v)).add(ac.scale(w)));
 }
+check('Cargo cowling reuses the original shell faces and imported winding',()=>{
+ const root=new B.TransformNode('qaCargoNose',scene);
+ const {mesh,indices}=loadAirframe('scrapyard_plane.glb',root);
+ mesh.sideOrientation=B.Material.CounterClockWiseSideOrientation;
+ fitInterbellumAircraft([mesh],scene,'cargo');
+ const panel=mesh.getChildMeshes().find(m=>m.name==='cargoCowlPanels');
+ assert(panel && panel.getTotalIndices()>0);
+ assert.equal(panel.getTotalIndices()+mesh.getTotalIndices(),indices.length);
+ assert.equal(panel.sideOrientation,mesh.sideOrientation);
+ root.dispose();
+});
 let lastRoot=null;
 for(const [variant,file]of [['cargo','scrapyard_plane.glb'],['fighter','scrapyard_fighter.glb'],['bomber','scrapyard_bomber.glb'],['attacker','scrapyard_attacker.glb']]){
  check(`${variant}: navigation fittings touch actual wing/tail/roof faces and rebind to the loaded variant`,()=>{

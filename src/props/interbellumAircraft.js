@@ -150,11 +150,71 @@ function fitUpperWing(frame, scene, material) {
   assembly.material=material; assembly.receiveShadows=true;
 }
 
+// Re-skin only the five authored loft rings on the transport's forward fuselage.
+function fitCargoCowling(frame, scene) {
+  const B=BABYLON, vertices=frame.getVerticesData('position'), normals=frame.getVerticesData('normal');
+  const original=frame.getIndices(), hull=[], positions=[], panelNormals=[], uvs=[], indices=[];
+  const stations=[-5.1,-4.85,-4.1,-3.45,-2.85];
+  const centers=[1.48,1.56,1.72,1.92,2.08];
+  const ringAt=z=>stations.findIndex(s=>Math.abs(s-z)<.001);
+  const hoops=stations.map(()=>new Map());
+  for(let i=0;i<original.length;i+=3){
+    const tri=[original[i],original[i+1],original[i+2]];
+    const rings=tri.map(v=>ringAt(vertices[v*3+2]));
+    if(rings.includes(-1)||Math.max(...rings)-Math.min(...rings)!==1||
+       tri.some(v=>Math.abs(vertices[v*3])>1.2)){
+      hull.push(...tri);continue;
+    }
+    const corners=tri.map((v,k)=>{
+      const j=v*3, point=B.Vector3.FromArray(vertices,j),ring=rings[k];
+      const angle=Math.atan2(point.x,point.y-centers[ring]);
+      hoops[ring].set(v,point);
+      return {j,point,u:.5+angle/(2*Math.PI)};
+    });
+    const seam=Math.max(...corners.map(c=>c.u))-Math.min(...corners.map(c=>c.u))>.5;
+    for(const {j,point,u} of corners){
+      indices.push(indices.length);positions.push(point.x,point.y,point.z);
+      panelNormals.push(normals[j],normals[j+1],normals[j+2]);
+      uvs.push(seam&&u<.5?u+1:u,1-(point.z-stations[0])/(stations[4]-stations[0]));
+    }
+  }
+  if(!indices.length)return;
+  frame.setIndices(hull);
+  const skin=new B.Mesh('cargoCowlPanels',scene);
+  Object.assign(new B.VertexData(),{positions,normals:panelNormals,uvs,indices}).applyToMesh(skin);
+  let enamel=scene.getMaterialByName('cargoCowlEnamel');
+  if(!enamel){
+    enamel=new B.PBRMaterial('cargoCowlEnamel',scene);
+    enamel.albedoTexture=new B.Texture('./assets/textures/nomad/cargo-cowling.webp',scene);
+    enamel.metallic=.36;enamel.roughness=.58;
+  }
+  skin.sideOrientation=frame.sideOrientation;
+  skin.parent=frame;skin.material=enamel;skin.receiveShadows=true;skin.isPickable=false;
+  const bands=[];
+  for(const station of [1,2]){
+    const ordered=[...hoops[station].values()].sort((a,b)=>
+      Math.atan2(a.x,a.y-centers[station])-Math.atan2(b.x,b.y-centers[station]));
+    const contour=ordered.filter((p,i)=>!i||B.Vector3.DistanceSquared(p,ordered[i-1])>.00001);
+    if(contour.length<4)continue;
+    bands.push(B.MeshBuilder.CreateTube('cowlRolledJoint',{path:[...contour,contour[0]],radius:.022,tessellation:7},scene));
+    for(const point of contour.filter((_,i)=>i%4===0)){
+      const clip=B.MeshBuilder.CreateCapsule('cowlFastener',{height:.13,radius:.025,tessellation:8,subdivisions:1},scene);
+      clip.rotation.x=Math.PI/2;clip.position.copyFrom(point);bands.push(clip);
+    }
+  }
+  if(bands.length){
+    const hardware=B.Mesh.MergeMeshes(bands,true,true);
+    hardware.name='cargoCowlClaspBands';hardware.parent=frame;
+    hardware.material=finishMaterial(scene,'cowlClasp','#b39970');hardware.isPickable=false;hardware.receiveShadows=true;
+  }
+}
+
 export function fitInterbellumAircraft(meshes, scene, variant, shadowGenerator = null) {
   const B = BABYLON, profile = PROFILES[variant] || PROFILES.cargo;
   const mat = finishMaterial(scene, variant, profile.color);
   if (variant === 'fighter') slimFighter(meshes);
   const frameMesh = meshes.find(m => m.name === 'airframe');
+  if (variant === 'cargo' && frameMesh) fitCargoCowling(frameMesh,scene);
   if (variant === 'attacker' && frameMesh) fitUpperWing(frameMesh, scene, mat);
   for (const propeller of meshes.filter(m => /^propeller_/.test(m.name))) {
     // Revolved metal spinner follows the original animated shaft and blade pivots.

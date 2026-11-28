@@ -12,8 +12,8 @@ export class PracticalLights {
     this.green=this._emissive('practicalStarboardGreen','#36ba7b',.85);
     this.white=this._emissive('practicalTailWhite','#e7dec4',.20);
     this.beacon=this._emissive('practicalAircraftBeacon','#eee3d0',.10);
-    this.warm=this._emissive('practicalHangarWarm','#ffd39a',1.6);
-    this.hangarBanks=[this.warm,...[1,2].map(i=>this._emissive('practicalHangarBank'+i,'#ffd39a',1.6))];
+    this.warm=this._emissive('practicalHangarWarm','#ffe2c0',1.6);
+    this.hangarBanks=[this.warm,...[1,2].map(i=>this._emissive('practicalHangarBank'+i,'#ffe2c0',1.6))];
     this.generatorGreen=this._emissive('practicalGeneratorPilot','#48b579',.65);
     this.radarAmber=this._emissive('practicalRadarPilot','#dca34a',.70);
     this.ruinRed=this._emissive('practicalRuinWarning','#933327',.42);
@@ -73,21 +73,44 @@ export class PracticalLights {
   }
 
   _installHangar() {
+    const B=BABYLON;
+    const profile=points=>points.map(([x,y])=>new B.Vector3(x,y,0));
+    const shade=B.MeshBuilder.CreateLathe('hangarEnamelReflector',{
+      shape:profile([[.01,.30],[.11,.30],[.13,.17],[.23,.10],[.47,-.01],[.51,-.08],[.48,-.105],[.40,-.07],[.18,.045],[.01,.045]]),
+      tessellation:28,sideOrientation:B.Mesh.DOUBLESIDE
+    },this.scene);
+    const guards=[shade];
+    for(let i=0;i<6;i++){
+      const a=i*Math.PI/3;
+      const wire=profile([[.29,-.04],[.285,-.23],[.21,-.38],[.09,-.43],[0,-.43]]);
+      for(const v of wire){v.z=v.x*Math.sin(a);v.x*=Math.cos(a);}
+      guards.push(B.MeshBuilder.CreateTube('lampGuardWire',{path:wire,radius:.017,tessellation:5},this.scene));
+    }
+    const hoop=B.MeshBuilder.CreateTorus('lampGuardHoop',{diameter:.52,thickness:.031,tessellation:24},this.scene);
+    hoop.position.y=-.28;guards.push(hoop);
+    const guard=B.Mesh.MergeMeshes(guards,true,true);
+    guard.name='hangarLampCageTemplate';guard.material=this.housing;guard.isVisible=false;this.meshes.push(guard);
+    const globes=this.hangarBanks.map(mat=>{
+      const lens=B.MeshBuilder.CreateLathe('hangarOpalGlass',{
+        shape:profile([[0,-.37],[.12,-.35],[.21,-.28],[.245,-.18],[.22,-.065],[.13,.035],[0,.035]]),tessellation:24,
+        sideOrientation:B.Mesh.DOUBLESIDE
+      },this.scene);
+      lens.material=mat;lens.isVisible=false;this.meshes.push(lens);return lens;
+    });
     for(const bar of this.base.group.getChildMeshes().filter(m=>/^(vagHangarLight_|hangarRoofLamp_)/.test(m.name))){
-      this.changedMeshes.push({mesh:bar,material:bar.material,scaling:bar.scaling.clone()});
-      const baseX=BABYLON.Vector3.TransformCoordinates(bar.computeWorldMatrix(true).getTranslation(),this.base.group.computeWorldMatrix(true).clone().invert()).x;
-      bar.material=this.hangarBanks[baseX < -18 ? 2 : baseX < -3 ? 1 : 0];
+      this.changedMeshes.push({mesh:bar,material:bar.material,isVisible:bar.isVisible});
+      bar.isVisible=false;
+      const baseX=B.Vector3.TransformCoordinates(bar.computeWorldMatrix(true).getTranslation(),this.base.group.computeWorldMatrix(true).clone().invert()).x;
+      const globe=globes[baseX < -18 ? 2 : baseX < -3 ? 1 : 0];
       const deep=bar.name.startsWith('vagHangarLight_');
-      const span=deep?13:24;
-      bar.scaling.z*=.16;
-      for(const side of [-1,1]){
-        const lens=bar.createInstance('hangarSideLens');
-        lens.parent=bar.parent;lens.position.z+=side*span*.32;lens.isPickable=false;this.meshes.push(lens);
+      for(const side of [-1,0,1]){
+        for(const piece of [guard,globe]){
+          const fitting=piece.createInstance('hangarPendant');
+          fitting.parent=bar.parent;fitting.position.copyFrom(bar.position);
+          fitting.position.z+=side*(deep?4.2:7.7);
+          fitting.position.y-=.14;fitting.isPickable=false;this.meshes.push(fitting);
+        }
       }
-      if(!deep)continue;
-      const housing=BABYLON.MeshBuilder.CreateBox('practicalInsetHangarHousing',{width:1.12,height:.32,depth:13.35},this.scene);
-      housing.parent=bar.parent;housing.position.copyFrom(bar.position);housing.position.y+=.28;
-      housing.material=this.housing;housing.receiveShadows=true;housing.isPickable=false;housing.checkCollisions=false;this.meshes.push(housing);
     }
     // Actual strip bottoms are y=12.80 in island coordinates. Point sources sit
     // just below those lenses, rather than inheriting an unrelated legacy parent.
