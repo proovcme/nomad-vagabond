@@ -471,6 +471,7 @@ export class ExplorerAircraft {
     this._runwayState = null;
     this._buildModel();
     this._rememberLandingGear(this.gearStruts, false);
+    this.showSmokeKeyEnabled = true;
     this._bindInputs();
     if (loadVisual && !(this.scene.getEngine() instanceof BABYLON.NullEngine) && typeof BABYLON.SceneLoader !== 'undefined') {
       this.readyPromise = this._loadGlbAircraft(this.variant);
@@ -1542,7 +1543,7 @@ export class ExplorerAircraft {
       if (!this.keys[e.code] && this._lastControlMode === 'aircraft') {
         if (e.code === 'KeyV') this._toggleExpertAerobatics = true;
         if (e.code === 'KeyX') this._requestBarrelRoll = true;
-        if (e.code === 'KeyT') this._cycleShowSmoke = true;
+        if (e.code === 'KeyT' && this.showSmokeKeyEnabled) this._cycleShowSmoke = true;
         if (e.code === 'KeyL') this._toggleLandingGear = true;
         if (e.code === 'KeyH') this._requestFlares = true;
         if (e.code === 'Digit1') this._toggleCockpitView = true;
@@ -2862,14 +2863,14 @@ export class ExplorerAircraft {
       pr.previousPosition = pr.mesh.position.clone();
       pr.mesh.position.addInPlace(pr.vel.scale(dt));
 
-      let hit = false, hitPoint = null;
+      let hit = false, hitPoint = null, hitMesh = null;
       if (world.isSkyWorld) {
         const move = pr.mesh.position.subtract(pr.previousPosition);
         const length = move.length();
         if (length>0.001) {
           const ray = new BABYLON.Ray(pr.previousPosition, move.scale(1/length), length);
-          const pick=this.scene.pickWithRay(ray,m=>m.checkCollisions&&m.isEnabled()&&(m.isVisible||m.metadata?.collisionProxy));
-          hit=Boolean(pick?.hit);if(hit)hitPoint=pick.pickedPoint?.clone()||pr.mesh.position.clone();
+          const pick=this.scene.pickWithRay(ray,m=>(m.checkCollisions||m.metadata?.convoyTarget?.alive)&&m.isEnabled()&&(m.isVisible||m.metadata?.collisionProxy));
+          hitMesh=pick?.pickedMesh;hit=Boolean(pick?.hit);if(hit)hitPoint=pick.pickedPoint?.clone()||pr.mesh.position.clone();
         }
       }
       if (world?.planets) {
@@ -2885,7 +2886,7 @@ export class ExplorerAircraft {
         if(below?.hit){hit=true;hitPoint=below.pickedPoint?.clone()||pr.mesh.position.clone();}
       }
       if (pr.life <= 0 || hit) {
-        if(hit)this.onProjectileImpact?.({kind:pr.kind,from:pr.previousPosition.clone(),to:pr.mesh.position.clone(),position:hitPoint||pr.mesh.position.clone(),expired:pr.life<=0});
+        if(hit)this.onProjectileImpact?.({mesh:hitMesh,kind:pr.kind,from:pr.previousPosition.clone(),to:pr.mesh.position.clone(),position:hitPoint||pr.mesh.position.clone(),expired:pr.life<=0});
         pr.trail?.dispose();
         pr.mesh.dispose(false, false);
         this.projectiles.splice(i, 1);

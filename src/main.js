@@ -266,7 +266,8 @@ function initWorld(seedStr, { menuPreview = false, fogMission = false, levelId =
     world.fleet=new HangarFleet(scene,asteroidBase,world.shadowGenerator);
     world.jobs=new AircraftJobs(scene,world,asteroidBase,{onReward:amount=>construction.addSalvage(amount),onToast:msg=>ui.showToast(msg,4500),onExplosion:(pos,scale)=>spawnDemoExplosion(pos,scale)});
     ship.onProjectileImpact=event=>{
-      const doverHit = event.position && demoState?.doverMission?.onPlayerHit?.(event.position, event.kind === 'bomb' ? 140 : event.kind === 'rocket' ? 85 : 22);
+      const target = event.mesh?.metadata?.convoyTarget;
+      const doverHit = target?.alive && demoState?.doverMission?.onPlayerHit(event.position, event.kind === 'bomb' ? 140 : event.kind === 'rocket' ? 85 : 22, target);
       const targetHit = doverHit || world.jobs?.onProjectileImpact(event);
       if(!targetHit&&event.position&&['bomb','rocket'].includes(event.kind))spawnDemoExplosion(event.position,event.kind==='bomb'?1.5:.7);
     };
@@ -920,10 +921,10 @@ if (shotMode && urlParams.get('hud') === '0') {
   }
 }
 
-async function startRun(seedStr, { skipPrologue = false, fastStream = false } = {}) {
+async function startRun(seedStr, { skipPrologue = false, fastStream = false, levelId = skipPrologue ? 'hangar' : 'prologue' } = {}) {
   const generation = ++runGeneration;
   audio.init();
-  initWorld(seedStr,{fogMission:!skipPrologue,levelId:skipPrologue?'hangar':'prologue'});
+  initWorld(seedStr,{fogMission:!skipPrologue,levelId});
   menuOverlay.style.display = 'none';
   defeatModal.style.display = 'none';
   victoryModal.style.display = 'none';
@@ -1087,6 +1088,11 @@ function launchSkyTorpedo() {
   const capitalTargets = [];
   if (demoState.enemyIsland?.alive) capitalTargets.push({ kind: 'island', obj: demoState.enemyIsland, label: 'вражескому острову «Монолит»' });
   if (demoState.dreadnought?.alive) capitalTargets.push({ kind: 'dreadnought', obj: demoState.dreadnought, label: demoState.dreadnought.isConvoy ? 'дирижаблю конвоя' : 'Дредноуту' });
+  const convoy = demoState.doverMission;
+  if (convoy?.priorityTarget) {
+    const target = convoy.priorityTarget;
+    capitalTargets.push({kind:'dover', obj:target, label:target === convoy.escort ? 'эсминцу Tribal' : 'линкору «Колосс»'});
+  }
   const bomber = (demoState.enemies || []).find((e) => e.alive && e.variant === 'bomber');
   if (bomber) capitalTargets.push({ kind: 'bomber', obj: bomber, label: 'бомбардировщику' });
 
@@ -1108,7 +1114,7 @@ function launchSkyTorpedo() {
     asteroidBase.group.computeWorldMatrix(true);
     const wm = asteroidBase.group.getWorldMatrix();
     startPos = BABYLON.Vector3.TransformCoordinates(new BABYLON.Vector3(56, 3.8, 0), wm);
-    initDir = chosen.obj.root.position.subtract(startPos).normalize();
+    initDir = (chosen.obj.root || chosen.obj).position.subtract(startPos).normalize();
   } else {
     return;
   }
@@ -1221,7 +1227,7 @@ document.getElementById('hangar-start-btn').addEventListener('click',()=>startFr
 async function startDoverConvoy(seed) {
   hideCombatOverlays();
   const generation = runGeneration + 1;
-  await startRun(seed, { skipPrologue: true, fastStream: true });
+  await startRun(seed, { skipPrologue: true, fastStream: true, levelId: 'dover_convoy' });
   if (generation !== runGeneration) return;
   demoState.powerOn = true;
   demoState.stage = 'dover_convoy';
@@ -1242,6 +1248,7 @@ async function startDoverConvoy(seed) {
   asteroidBase.missionBatteryControlled = true;
   // Launch player immediately on the Interbellum attacker airborne off Vagabond's beam!
   ship.setVariant?.('attacker');
+  ship.showSmokeKeyEnabled = false;
   player.boardShip();
   ship.undockFromAsteroid({ force: true });
   ship.hull = ship.maxHull;
@@ -1398,6 +1405,7 @@ document.getElementById('new-seed-defeat-btn').addEventListener('click', () => {
   restartCurrentMode(generateRandomSeed());
 });
 function restartCurrentMode(seed) {
+  if (demoState?.doverMission) return startDoverConvoy(seed);
   return demoState?.freeFlight ? startFreeFlight(seed) : startRun(seed);
 }
 document.getElementById('victory-free-flight-btn').addEventListener('click',()=>startFreeFlight(currentSeed));
@@ -2504,7 +2512,12 @@ function updateMission(dt) {
     }
   }
   let target = null, name = '';
-  if(stage==='fog_search'){target=demoState.passage.fix.position;name=demoState.passage.fix.name;}
+  if(stage==='dover_convoy' && demoState.doverMission?.priorityTarget){
+    const convoy = demoState.doverMission;
+    target = convoy.priorityTarget.position;
+    name = convoy.priorityTarget === convoy.escort ? 'Эскорт · Tribal' : 'Флагман · Колосс';
+  }
+  else if(stage==='fog_search'){target=demoState.passage.fix.position;name=demoState.passage.fix.name;}
   else if(stage==='fog_start'){target=deckPoint(...asteroidBase.helmLocalPos.asArray());name='Пусковой пульт';}
   else if(stage==='fog_battery'){target=demoState.passage.escort.position;name='Эсминец';}
   else if (['tutorial_flight', 'archipelago_flyby'].includes(stage)) {
@@ -2527,7 +2540,7 @@ function updateMission(dt) {
   if(contractTarget){target=contractTarget.position;name=contractTarget.name;}
   world.missionTarget = target ? {position:target, name} : null;
   if (demoState.marker) {
-    const compassOnly = stage === 'fog_search' || stage === 'fog_battery' || stage === 'free_flight' && controlMode === 'foot';
+    const compassOnly = stage === 'dover_convoy' || stage === 'fog_search' || stage === 'fog_battery' || stage === 'free_flight' && controlMode === 'foot';
     demoState.marker.isVisible = Boolean(target) && stage !== 'intro_cutscene' && !compassOnly && !construction.isOpen;
     if (target) {demoState.marker.position.copyFrom(target); demoState.marker.rotation.y += dt * 0.4;}
     demoState.marker.scaling.setAll(controlMode === 'foot' ? 0.24 : (stage === 'move_island' ? 3 : 1));
@@ -3729,8 +3742,9 @@ engine.runRenderLoop(() => {
         let hit = false;
         const curSpd = tp.vel.length();
         const curDir = tp.vel.scale(1 / Math.max(1, curSpd));
-        if (tp.target?.alive && tp.target.root && !tp.target.root.isDisposed?.()) {
-          const toTgt = tp.target.root.position.subtract(tp.mesh.position);
+        const targetNode = tp.target?.root || tp.target;
+        if (tp.target?.alive && targetNode?.position && !targetNode.isDisposed?.()) {
+          const toTgt = targetNode.position.subtract(tp.mesh.position);
           const dist = toTgt.length();
           if (dist > 1) {
             const desDir = toTgt.scale(1 / dist);
@@ -3739,7 +3753,7 @@ engine.runRenderLoop(() => {
             tp.vel.copyFrom(curDir.scale(Math.min(82, curSpd + 14 * dt)));
           }
           const hitRad = tp.kind === 'island' ? 42 : tp.kind === 'dreadnought' ? 28 : 10;
-          if (dist < hitRad) {
+          if (tp.kind !== 'dover' && dist < hitRad) {
             hit = true;
             spawnDemoExplosion(tp.mesh.position.clone(), 2.4);
             audio?.playExplosion?.(1.0);
@@ -3997,7 +4011,20 @@ engine.runRenderLoop(() => {
     }
 
     if (demoState?.stage !== 'intro_cutscene' && !construction?.isOpen) {updateInteractions();ui.setPrompt(nearestAction?.label || null);}
-    checkWinLose();
+    if (gameState === 'playing') checkWinLose();
+    const convoy = demoState?.doverMission;
+    if (gameState === 'playing' && convoy?.readyForDebrief) {
+      saveMissionRecord('dover_convoy', runTime, convoy.escort.alive ? 1 : 2);
+      gameState = 'victory';
+      audio.playVictory();
+      ui.showHUD(false);
+      hideCombatOverlays();
+      document.getElementById('victory-title').textContent = 'Перехват у Дувра завершён';
+      document.getElementById('victory-stats').textContent = convoy.escort.alive
+        ? 'Флагман потоплен. Эскорт отступил от Дувра.'
+        : '«Колосс» и его эскорт потоплены. Фарватер свободен.';
+      victoryModal.style.display = 'flex';
+    }
 
     world.jobs?.update(dt,{ship,controlMode,onFoot:controlMode==='foot',landed:ship.dockedAsteroid===asteroidBase});
     ui.updateHUD(ship, player, world, controlMode, keysAttuned, asteroidBase, getQuestState());
@@ -4070,6 +4097,7 @@ engine.runRenderLoop(() => {
     document.body.classList.toggle('in-prologue', introActive);
   }
   if(urlParams.get('profile')==='1' && !scene.metadata.performanceProbe)scene.metadata.performanceProbe=new PerformanceProbe(scene);
+  if (demoState?.doverMission?.markerLayer) demoState.doverMission.markerLayer.hidden = gameState !== 'playing';
   scene.render();
   scene.metadata.performanceProbe?.record();
   if (urlParams.get('metrics') === '1' && metricsFrames++ % 60 === 0) {

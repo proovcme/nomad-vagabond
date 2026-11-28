@@ -41,6 +41,11 @@ export class DoverConvoyMission {
     this.escort.maxHp = 260;
     this.escort.alive = true;
     this._escortSink = 0;
+    for (const target of [this.battleship, this.escort]) {
+      for (const mesh of target.getChildMeshes()) {
+        mesh.metadata = {...mesh.metadata, convoyTarget:target};
+      }
+    }
 
     // Shared tracer materials
     this.enemyTracerMat = new B.StandardMaterial('doverEnemyTracer', scene);
@@ -81,8 +86,17 @@ export class DoverConvoyMission {
   _radio(id, speaker, text) {
     if (this.radioSent.has(id)) return;
     this.radioSent.add(id);
-    this.ui?.showToast?.(`📻 ${speaker}: ${text}`, 5600);
+    this.ui?.showRadio?.('dispatcher', text, 5600, speaker);
     this.audio?.playObjective?.();
+  }
+
+  get priorityTarget() {
+    if (this.completed) return null;
+    return this.escort.alive ? this.escort : this.battleship;
+  }
+
+  get readyForDebrief() {
+    return this.completed && this._battleSink >= 3;
   }
 
   getObjectiveText() {
@@ -96,12 +110,12 @@ export class DoverConvoyMission {
   /**
    * Called when player projectiles / torpedoes / bombs impact near enemy ships.
    */
-  onPlayerHit(pos, damage = 25) {
+  onPlayerHit(pos, damage = 25, target = null) {
     if (this.disposed || this.completed || !pos) return false;
     const B = BABYLON;
 
     // 1. Check escort destroyer
-    if (this.escort.alive && B.Vector3.Distance(pos, this.escort.position) < 62) {
+    if (this.escort.alive && (target ? target === this.escort : B.Vector3.Distance(pos, this.escort.position) < 62)) {
       this.escort.hp = Math.max(0, this.escort.hp - damage);
       this.explode?.(pos, 1.4);
       if (this.escort.hp <= 0) {
@@ -116,7 +130,7 @@ export class DoverConvoyMission {
     }
 
     // 2. Check flagship Battleship «Колосс» & its 3 subsystems
-    if (this.battleship.alive && B.Vector3.Distance(pos, this.battleship.position) < 118) {
+    if (this.battleship.alive && (target ? target === this.battleship : B.Vector3.Distance(pos, this.battleship.position) < 118)) {
       this.battleship.computeWorldMatrix(true);
       const wm = this.battleship.getWorldMatrix();
       let hitSub = null;
@@ -212,7 +226,7 @@ export class DoverConvoyMission {
     }
 
     // 3. LIVE MAIN-BATTERY 152mm TRIPLE-TURRET FIRE SUPPORT FROM «БРОДЯГА»!
-    const primaryTarget = this.escort.alive ? this.escort : (this.battleship.alive ? this.battleship : null);
+    const primaryTarget = this.priorityTarget;
     if (primaryTarget && this.base?.mainTurrets?.length) {
       const targetPos = primaryTarget.position.clone().addInPlaceFromFloats(0, 10, 0);
       const toTgt = targetPos.subtract(this.base.group.position);
@@ -231,7 +245,7 @@ export class DoverConvoyMission {
     }
 
     // 4. Enemy AA Flak bursts toward player aircraft when close
-    if (ship && !ship.dockedAsteroid && (this.battleship.alive || this.escort.alive)) {
+    if (!this.completed && ship && !ship.dockedAsteroid && (this.battleship.alive || this.escort.alive)) {
       this.enemyFlakCd -= dt;
       const shooter = (this.escort.alive && B.Vector3.Distance(ship.group.position, this.escort.position) < 380)
         ? this.escort
@@ -267,7 +281,7 @@ export class DoverConvoyMission {
           }
         } else if (pr.kind === 'enemy') {
           this.explode?.(pr.end, 1.8);
-          if (ship && !ship.dockedAsteroid && B.Vector3.Distance(ship.group.position, pr.end) < 18) {
+          if (!this.completed && ship && !ship.dockedAsteroid && B.Vector3.Distance(ship.group.position, pr.end) < 18) {
             onPlayerDamage?.(9);
           }
         }
@@ -299,7 +313,8 @@ export class DoverConvoyMission {
   _updateMarkers(camera, playerPos) {
     if (!this.markerLayer || !camera) return;
     const eng = this.scene.getEngine();
-    const w = eng.getRenderWidth(), h = eng.getRenderHeight();
+    const canvas = eng.getRenderingCanvas();
+    const w = canvas.clientWidth, h = canvas.clientHeight;
     const transform = this.scene.getTransformMatrix();
     const vp = camera.viewport.toGlobal(w, h);
 
