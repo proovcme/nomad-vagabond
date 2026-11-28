@@ -241,31 +241,6 @@ export class SkyLife {
       document.body.appendChild(this._airshipMarker);
     }
 
-    // 2. Pair of peaceful Interbellum Crimson-and-Cream Mail Biplanes cruising between islands
-    this._mailPlanes = [];
-    for (let i = 0; i < 2; i++) {
-      const mpRoot = new B.TransformNode(`interbellumMailPlane_${i}`, scene);
-      const mpParts = [];
-      addP(mpParts, B.MeshBuilder.CreateCylinder(`mpFus_${i}`, { diameterTop: 0.7, diameterBottom: 1.5, height: 7.5, tessellation: 8 }, scene), 0, 0, 0, Math.PI * 0.5);
-      addP(mpParts, B.MeshBuilder.CreateBox(`mpWingU_${i}`, { width: 10.2, height: 0.22, depth: 1.7 }, scene), 0, 0.9, -0.8);
-      addP(mpParts, B.MeshBuilder.CreateBox(`mpWingL_${i}`, { width: 9.2, height: 0.22, depth: 1.5 }, scene), 0, -0.45, -0.6);
-      addP(mpParts, B.MeshBuilder.CreateBox(`mpTailH_${i}`, { width: 3.4, height: 0.16, depth: 1.0 }, scene), 0, 0.3, 3.2);
-      addP(mpParts, B.MeshBuilder.CreateBox(`mpTailV_${i}`, { width: 0.16, height: 1.7, depth: 1.1 }, scene), 0, 0.9, 3.2);
-      const mpMesh = B.Mesh.MergeMeshes(mpParts, true, true, undefined, false, false);
-      if (mpMesh) {
-        mpMesh.name = `interbellumMailPlaneMesh_${i}`;
-        mpMesh.parent = mpRoot;
-        mpMesh.material = i === 0 ? crimsonMat : creamMat;
-        mpMesh.isPickable = false; mpMesh.checkCollisions = false;
-      }
-      this._mailPlanes.push({
-        root: mpRoot,
-        radius: 310 + i * 115,
-        alt: 84 + i * 28,
-        speed: (0.065 - i * 0.014) * (i === 0 ? 1 : -1),
-        phase: i * 3.1,
-      });
-    }
     scene.onDisposeObservable.addOnce(() => { this._airshipMarker?.remove(); });
   }
 
@@ -323,17 +298,6 @@ export class SkyLife {
       }
     }
 
-    for (const mp of this._mailPlanes || []) {
-      const ang = this.time * mp.speed + mp.phase;
-      const mx = Math.cos(ang) * mp.radius;
-      const mz = Math.sin(ang) * mp.radius * 0.85;
-      const my = mp.alt + Math.sin(ang * 2.0) * 6.0;
-      mp.root.position.set(mx, my, mz);
-      const vx = -Math.sin(ang) * mp.radius * mp.speed;
-      const vz = Math.cos(ang) * mp.radius * 0.85 * mp.speed;
-      mp.root.rotation.y = Math.atan2(-vx, -vz);
-      mp.root.rotation.z = mp.speed > 0 ? 0.16 : -0.16;
-    }
     for (const bird of this.birds) {
       const angle = this.time * bird.speed * bird.dir + bird.phase;
       const rx = bird.radius;

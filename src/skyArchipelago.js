@@ -1,3 +1,4 @@
+import { AirLine } from './props/airLine.js';
 import { buildPortMachineWorks } from './props/portMachineWorks.js';
 import { configureBuildingMaterial } from './buildingMaterials.js?v=mission1';
 import { SkyCelestials } from './skyCelestials.js?v=mission1';
@@ -37,6 +38,7 @@ function registerSkyShaders() {
     `;
     BABYLON.Effect.ShadersStore.archSkyFragmentShader = `
       precision highp float;
+      uniform float uLinearOutput;
       varying vec3 vLocalDir;
       uniform vec3 uSunDir;
       uniform float uTime;
@@ -118,20 +120,12 @@ function registerSkyShaders() {
         float sunDot = max(0.0001, dot(d, sunSkyDir));
 
         // Painted panorama with cool blues and ivory sunlit clouds.
-        vec2 artUv=vec2(fract(atan(d.z,d.x)/6.2831853+.5+uTime*.00008),acos(clamp(d.y,-1.0,1.0))/3.14159265);
-        vec3 rawArt=texture2D(uSkyArtwork,artUv).rgb;
-        float artLuma = dot(rawArt, vec3(0.299, 0.587, 0.114));
-        vec3 gradedArt = mix(vec3(artLuma), rawArt, 0.73) * vec3(1.01, 1.01, 1.05);
-        vec3 skyArt = (gradedArt * gradedArt) * 0.96;
-        float seamDistance=min(artUv.x,1.0-artUv.x);
-        if(seamDistance<.035){
-          vec3 seamRaw=.5*(texture2D(uSkyArtwork,vec2(.001,artUv.y)).rgb+texture2D(uSkyArtwork,vec2(.999,artUv.y)).rgb);
-          float sLuma = dot(seamRaw, vec3(0.299, 0.587, 0.114));
-          vec3 sGraded = mix(vec3(sLuma), seamRaw, 0.73) * vec3(1.01, 1.01, 1.05);
-          skyArt=mix((sGraded * sGraded) * 0.96,skyArt,smoothstep(0.0,.035,seamDistance));
-        }
-        float artWeight=smoothstep(.0,.14,artUv.y)*(1.0-smoothstep(.94,1.0,artUv.y))*smoothstep(-.20,.04,h);
-        col=mix(col,skyArt * mix(1.0, 0.08, nightMask), uArtworkReady * artWeight * mix(0.69, 0.28, nightMask));
+        vec2 artUv=vec2(fract(atan(d.z,d.x)/6.2831853+.5+uTime*.00005),
+                        clamp(.84-asin(clamp(h,-1.,1.))*.62,.015,.985));
+        vec3 printed=texture2D(uSkyArtwork,artUv).rgb;
+        vec3 skyArt=printed;
+        float artWeight=smoothstep(-.28,-.06,h)*(1.-smoothstep(.88,1.,h));
+        col=mix(col,skyArt*mix(1.,.08,nightMask),uArtworkReady*artWeight*mix(.94,.25,nightMask));
 
         // Rich bright twinkling night stars (2 layered starfields: bright hero stars + dense faint star dust)
         if (nightMask > 0.05 && h > 0.01) {
@@ -180,7 +174,7 @@ function registerSkyShaders() {
         col += mix(vec3(0.16, 0.14, 0.10), vec3(0.14, 0.20, 0.32), nightMask) * solarCore;
 
         gl_FragColor = vec4(col, 1.0);
-        #include<imageProcessingCompatibility>
+        gl_FragColor.rgb=mix(gl_FragColor.rgb,pow(max(gl_FragColor.rgb,vec3(0.)),vec3(2.2)),uLinearOutput);
       }
     `;
   }
@@ -203,6 +197,7 @@ function registerSkyShaders() {
     `;
     BABYLON.Effect.ShadersStore.archCloudSeaFragmentShader = `
       precision highp float;
+      uniform float uLinearOutput;
       varying vec2 vUv;
       varying vec3 vWorldPos;
       uniform float uTime;
@@ -328,7 +323,7 @@ function registerSkyShaders() {
         col=mix(col,bank,bankWeight);
         alpha*=mix(.84,1.,smoothstep(.26,.70,billows.r));
         gl_FragColor = vec4(col, alpha);
-        #include<imageProcessingCompatibility>
+        gl_FragColor.rgb=mix(gl_FragColor.rgb,pow(max(gl_FragColor.rgb,vec3(0.)),vec3(2.2)),uLinearOutput);
       }
     `;
   }
@@ -347,6 +342,7 @@ function registerSkyShaders() {
     `;
     BABYLON.Effect.ShadersStore.archWaterfallFragmentShader = `
       precision highp float;
+      uniform float uLinearOutput;
       varying vec2 vUv;
       uniform float uTime;
 
@@ -375,7 +371,7 @@ function registerSkyShaders() {
         vec3 waterCol = mix(vec3(.35,.55,.61), vec3(.94,.92,.82), streak);
         float alpha = (0.28 + streak * 0.55) * sideFade * bottomFade;
         gl_FragColor = vec4(waterCol, alpha);
-        #include<imageProcessingCompatibility>
+        gl_FragColor.rgb=mix(gl_FragColor.rgb,pow(max(gl_FragColor.rgb,vec3(0.)),vec3(2.2)),uLinearOutput);
       }
     `;
   }
@@ -1728,10 +1724,11 @@ export class ForestIsland {
       {
         defines:['#define IMAGEPROCESSINGPOSTPROCESS'],
         attributes: ['position', 'uv'],
-        uniforms: ['worldViewProjection', 'uTime'],
+        uniforms: ['worldViewProjection', 'uTime','uLinearOutput'],
         needAlphaBlending: true,
       }
     );
+    this.waterfallMat.onBindObservable.add(()=>this.waterfallMat.setFloat('uLinearOutput',Number(this.scene.imageProcessingConfiguration.applyByPostProcess)));
     this.waterfallMat.setFloat('uTime', 0);
     this.waterfallMat.backFaceCulling = false;
 
@@ -2452,15 +2449,17 @@ export class SkyArchipelagoWorld {
       'archSkyShader',
       this.scene,
       { vertex: 'archSky', fragment: 'archSky' },
-      { attributes: ['position'], uniforms: ['worldViewProjection', 'uSunDir', 'uTime', 'uTimeOfDay', 'uCameraPosition','uVolumetricClouds','uArtworkReady'], samplers:['uSkyArtwork'], defines:['#define IMAGEPROCESSINGPOSTPROCESS'] }
+      { attributes: ['position'], uniforms: ['worldViewProjection','uLinearOutput', 'uSunDir', 'uTime', 'uTimeOfDay', 'uCameraPosition','uVolumetricClouds','uArtworkReady'], samplers:['uSkyArtwork'], defines:['#define IMAGEPROCESSINGPOSTPROCESS'] }
     );
+    this.skyMat.onBindObservable.add(()=>this.skyMat.setFloat('uLinearOutput',Number(this.scene.imageProcessingConfiguration.applyByPostProcess)));
     this.skyMat.setVector3('uSunDir', this.sunDir);
     this.skyMat.setVector3('uCameraPosition', this.scene.activeCamera.position);
     this.skyMat.setFloat('uArtworkReady',0);
     if (!(this.scene.getEngine() instanceof BABYLON.NullEngine)) {
       const placeholder = BABYLON.RawTexture.CreateRGBATexture(new Uint8Array([128,160,192,255]),1,1,this.scene,false,false);
       this.skyMat.setTexture('uSkyArtwork',placeholder);
-      const artwork = new BABYLON.Texture('./assets/textures/nomad/shattered-world-sky.webp',this.scene);
+      const artwork = new BABYLON.Texture('./assets/textures/nomad/airmail-cloud-horizon.webp',this.scene,false,false);
+      artwork.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
       const applyArtwork = () => {
         if (this.scene.isDisposed) return;
         this.skyMat.setTexture('uSkyArtwork',artwork);
@@ -2497,10 +2496,11 @@ export class SkyArchipelagoWorld {
           defines:['#define IMAGEPROCESSINGPOSTPROCESS'],
         attributes: ['position', 'uv'],
           samplers:['cloudRelief'],
-          uniforms: ['world', 'worldViewProjection', 'uTime', 'uScale', 'uOpacity', 'uCamPos', 'uSunDir', 'uTimeOfDay', 'uCloudVolume'],
+          uniforms: ['world','uLinearOutput', 'worldViewProjection', 'uTime', 'uScale', 'uOpacity', 'uCamPos', 'uSunDir', 'uTimeOfDay', 'uCloudVolume'],
           needAlphaBlending: true,
         }
       );
+      mat.onBindObservable.add(()=>mat.setFloat('uLinearOutput',Number(this.scene.imageProcessingConfiguration.applyByPostProcess)));
       mat.setTexture('cloudRelief',cloudRelief);
       mat.setFloat('uTime', idx * 35);
       mat.setFloat('uScale', sl.scale);
@@ -2973,6 +2973,9 @@ export class SkyArchipelagoWorld {
     asteroidBase.group.position.set(0, 35, 0);
     asteroidBase.prevPos.copyFrom(asteroidBase.group.position);
     enhanceVagabondIsland(asteroidBase, this.scene, this.shadowGenerator);
+    if (this.industrialIsland && this.forestIsland) {
+      this.airLine = new AirLine(this.scene, this.industrialIsland, this.forestIsland);
+    }
     this.skyLife = new SkyLife(this.scene,asteroidBase,this.forestIsland);
     if (!this.islands.includes(asteroidBase)) {
       this.islands.unshift(asteroidBase);
@@ -3113,6 +3116,7 @@ export class SkyArchipelagoWorld {
 
   update(dt, _ship, cameraPos) {
     this.simTime += dt;
+    this.airLine?.update(this.simTime);
     this.skyLife?.update(dt, this._skyLifeCtx || {});
     this.landmarks?.update(dt);
     this.practicalLights?.update(dt);

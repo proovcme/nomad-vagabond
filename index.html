@@ -778,6 +778,26 @@
     #storm-rain-overlay { position:fixed; inset:0; pointer-events:none; display:none; z-index:8; opacity:0.32; background-image:repeating-linear-gradient(104deg, transparent 0 26px, rgba(205,225,245,0.28) 26px 27px, transparent 27px 64px); background-size:120px 180px; animation:stormRainFall 0.28s linear infinite; }
     @keyframes stormRainFall { from { background-position:0 0; } to { background-position:-36px 180px; } }
     @media (max-width: 960px) { #mission-preview-card { display:none !important; } #tactical-radar-wrap { width:104px; height:104px; right:12px; bottom:12px; } }
+
+    #menu-overlay {background: #ecd6a8 url('./assets/textures/nomad/airmail-poster.webp') center / cover no-repeat;}
+    #menu-overlay .menu-col {width:min(390px,38vw);padding:clamp(24px,4vw,70px);box-sizing:content-box;background:linear-gradient(90deg,#f4dfb8 0%,#f4dfb8ed 69%,#f4dfb800);}
+    #menu-overlay .menu-col::before {content:'ВОЗДУШНЫЕ ЛИНИИ АРХИПЕЛАГА';color:#304e54;letter-spacing:.14em;font-weight:700;}
+    #menu-overlay .menu-emblem {filter:brightness(.34) sepia(.55);width:146px;}
+    #menu-overlay .menu-title {background:none;-webkit-text-fill-color:#173f49;color:#173f49;text-shadow:none;filter:none;font:700 clamp(48px,5.7vw,92px)/1 Georgia,serif!important;letter-spacing:-.055em!important;}
+    #menu-overlay .menu-subtitle {color:#8b3b28;text-shadow:none;}
+    #menu-overlay .menu-rule {background:#9a432e!important;width:82px;}
+    #menu-overlay .menu-item {color:#193e48;text-shadow:none;font-weight:700;}
+    #menu-overlay .menu-item:is(.selected,:hover,:focus-visible) {background:#184956;color:#fff0ce;box-shadow:inset 4px 0 #bc4c32;}
+    #menu-overlay .menu-item .dot {border-color:currentColor;}
+    #menu-overlay .menu-bottom {color:#29454a;background:#f3dfbb;padding:3px 8px;right:auto;}
+    #menu-overlay #mission-preview-card {background:#193e47f5!important;border-color:#e9ce9c!important;box-shadow:none!important;}
+    @media(max-width:720px){
+      #menu-overlay {background-position:65% top;background-size:auto 55%;background-color:#f3dfbb;align-items:flex-end;}
+      #menu-overlay .menu-col {width:100%;padding:14px 23px 30px;background:linear-gradient(0deg,#f3dfbb 88%,#f3dfbb00);box-sizing:border-box;}
+      #menu-overlay .menu-col::before,#menu-overlay .menu-rule,#menu-overlay .menu-emblem,#menu-overlay .menu-bottom {display:none;}
+      #menu-overlay .menu-title {font-size:44px!important;}
+      #menu-overlay .menu-subtitle {margin-bottom:8px;}
+    }
   </style>
 </head>
 <body>
@@ -966,7 +986,7 @@
         <circle cx="110" cy="17" r="2.6" fill="#f4e2ad"/>
       </svg>
       <h1 class="menu-title">БРОДЯГА</h1>
-      <div class="menu-subtitle">♦ НЕБЕСНЫЙ КРЕЙСЕР ♦</div>
+      <div class="menu-subtitle">НЕБЕСНЫЙ КРЕЙСЕР</div>
       <div class="menu-rule"></div>
       <div class="menu-nav" id="menu-nav">
         <button class="menu-item selected" id="start-btn"><span class="dot"></span>Туманный фарватер</button>

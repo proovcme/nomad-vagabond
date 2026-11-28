@@ -161,14 +161,14 @@ export default {
       "target": "escort",
       "seconds": 2.5,
       "fromPos": [
-        -39,
-        12,
-        101
+        -57,
+        4,
+        113
       ],
       "toPos": [
-        -18,
-        10,
-        95
+        -31,
+        5,
+        93
       ],
       "look": [
         0,

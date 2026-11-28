@@ -250,7 +250,7 @@ function initWorld(seedStr, { menuPreview = false, fogMission = false, levelId =
     }
   }
 
-  ship = new ExplorerAircraft(scene, camera, audio, 'cargo', { loadVisual: !menuPreview });
+  ship = new ExplorerAircraft(scene, camera, audio, shotMode === 'arch_poster' ? 'fighter' : 'cargo', { loadVisual: !menuPreview });
   smoke = new SmokeTrail(scene, ship);
   ship.dockOnAsteroid(asteroidBase);
 
@@ -469,6 +469,30 @@ if (shotMode && worldMode === 'sky') {
     camera.position.copyFrom(vPos).addInPlace(new BABYLON.Vector3(11, 32, -52));
     camera.setTarget(vPos.add(new BABYLON.Vector3(-25, 17, -13)));
     camera.fov = .88;
+  } else if (shotMode === 'arch_airport' || shotMode === 'arch_airliner') {
+    player.boardShip();controlMode='aircraft';ui.setMode('aircraft');
+    if (shotMode === 'arch_airport') {
+      camera.position.copyFrom(iPos).addInPlace(new BABYLON.Vector3(-86,41,82));
+      camera.setTarget(iPos.add(new BABYLON.Vector3(-18,29,39)));
+    } else {
+      const liner=world.airLine.planes[0].root;
+      camera.parent=liner;camera.position.set(21,5,-25);
+      camera.setTarget(BABYLON.Vector3.Zero());
+    }
+    camera.fov=.86;
+  } else if (shotMode === 'arch_poster') {
+    player.boardShip();controlMode='aircraft';ui.setMode('aircraft');
+    camera.position.copyFrom(vPos).addInPlace(new BABYLON.Vector3(-195,-16,-115));
+    const target = vPos.add(new BABYLON.Vector3(-55, 12, 0));
+    camera.setTarget(target);
+    camera.fov = .80;
+    const forward = target.subtract(camera.position).normalize();
+    const right = BABYLON.Vector3.Cross(forward, BABYLON.Axis.Y).normalize();
+    ship.undockFromAsteroid({force:true});
+    ship.group.position.copyFrom(camera.position).addInPlace(forward.scale(25))
+      .addInPlace(right.scale(8)).y -= 6;
+    ship.group.rotationQuaternion = aircraftHeading(forward.scale(1.45).subtract(right).normalize())
+      .multiply(BABYLON.Quaternion.RotationAxis(BABYLON.Axis.Z, -.28));
   } else if (shotMode === 'arch_vagabond') {
     player.boardShip();
     controlMode = 'aircraft';

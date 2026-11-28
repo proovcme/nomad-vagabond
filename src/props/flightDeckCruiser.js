@@ -315,13 +315,13 @@ export function createCruiserMaterials(scene) {
   const isNull = scene.getEngine() instanceof B.NullEngine;
 
   const hull = new B.PBRMaterial('cfCruiserHullMat', scene);
-  hull.albedoColor = c3('#81a4ad').toLinearSpace();
+  hull.albedoColor = c3('#596e85').toLinearSpace();
   hull.metallic = 0.12;
   hull.roughness = 0.83;
   hull.environmentIntensity = 0.80;
 
   const hullDark = new B.PBRMaterial('cfCruiserHullDarkMat', scene);
-  hullDark.albedoColor = c3('#677b82').toLinearSpace();
+  hullDark.albedoColor = c3('#465266').toLinearSpace();
   hullDark.metallic = 0.15;
   hullDark.roughness = 0.82;
   hullDark.environmentIntensity = 0.75;
@@ -342,7 +342,7 @@ export function createCruiserMaterials(scene) {
   boatWood.roughness = .94;
 
   const crimson = new B.PBRMaterial('cfCruiserCrimsonMat', scene);
-  crimson.albedoColor = c3('#b75a40').toLinearSpace();
+  crimson.albedoColor = c3('#ce5139').toLinearSpace();
   crimson.metallic = 0.06;
   crimson.roughness = 0.91;
   if (!isNull) {
@@ -719,13 +719,14 @@ function buildMidshipsSuperstructure(scene, parent, mats, shadowGen) {
 
   // Sculpted 1930s US Navy Cruiser Conning Tower & Wrap-Around Compass Bridge (curved octagonal tiers, zero boxes!)
   const bx = -54.0, bz = 0.0;
+  const bridgeIvory=[];
   // Base octagonal armored conning tower
-  put(hullParts, B.MeshBuilder.CreateCylinder('cfConningBase', { diameterTop: 13.5, diameterBottom: 15.2, height: 6.4, tessellation: 8 }, scene), bx, 24.4, bz, 0, Math.PI / 8);
+  put(bridgeIvory, B.MeshBuilder.CreateCylinder('cfConningBase', { diameterTop: 13.5, diameterBottom: 15.2, height: 6.4, tessellation: 8 }, scene), bx, 24.4, bz, 0, Math.PI / 8);
   // Wrap-around curved Admiral's Bridge & Compass Bridge decks with splinter shields
-  put(darkHullParts, B.MeshBuilder.CreateCylinder('cfBridgeDeck1', { diameter: 16.5, height: 1.2, tessellation: 12 }, scene), bx - 1.2, 28.0, bz, 0, 0, 0, 0.82, 1.0, 1.28);
-  put(hullParts, B.MeshBuilder.CreateCylinder('cfBridgeLowerBand', { diameterTop: 11.7, diameterBottom: 12.4, height: 1.45, tessellation: 12 }, scene), bx - .6, 29.25, bz);
+  put(bridgeIvory, B.MeshBuilder.CreateCylinder('cfBridgeDeck1', { diameter: 16.5, height: 1.2, tessellation: 12 }, scene), bx - 1.2, 28.0, bz, 0, 0, 0, 0.82, 1.0, 1.28);
+  put(bridgeIvory, B.MeshBuilder.CreateCylinder('cfBridgeLowerBand', { diameterTop: 11.7, diameterBottom: 12.4, height: 1.45, tessellation: 12 }, scene), bx - .6, 29.25, bz);
   put(darkParts, B.MeshBuilder.CreateCylinder('cfBridgeGlazingRecess', { diameter: 10.7, height: 2.65, tessellation: 12 }, scene), bx - .6, 31.2, bz);
-  put(darkHullParts, B.MeshBuilder.CreateCylinder('cfBridgeDeck2', { diameter: 12.6, height: 1.1, tessellation: 12 }, scene), bx - 1.0, 33.8, bz, 0, 0, 0, 0.80, 1.0, 1.35);
+  put(bridgeIvory, B.MeshBuilder.CreateCylinder('cfBridgeDeck2', { diameter: 12.6, height: 1.1, tessellation: 12 }, scene), bx - 1.0, 33.8, bz, 0, 0, 0, 0.80, 1.0, 1.35);
   // Open bridge wings with braced undersides and railings around each lookout.
   for (const flank of [-1,1]) {
     const outline=[[-3.9,6.3],[-3.45,10.8],[-1.35,12.0],[1.6,11.75],[2.8,10.3],[3.1,6.5]];
@@ -739,7 +740,7 @@ function buildMidshipsSuperstructure(scene, parent, mats, shadowGen) {
     for(const x of [-2.0,1.3]) darkHullParts.push(B.MeshBuilder.CreateTube('cfWingBracket',{path:[new B.Vector3(bx+x,24.4,flank*5.7),new B.Vector3(bx+x,27.79,flank*10.75)],radius:.24,tessellation:6},scene));
   }
   // Armored Fire-Control Director Tower atop the bridge
-  put(hullParts, B.MeshBuilder.CreateCylinder('cfDirectorBase', { diameterTop: 5.8, diameterBottom: 7.4, height: 4.8, tessellation: 10 }, scene), bx, 36.6, bz);
+  put(bridgeIvory, B.MeshBuilder.CreateCylinder('cfDirectorBase', { diameterTop: 5.8, diameterBottom: 7.4, height: 4.8, tessellation: 10 }, scene), bx, 36.6, bz);
   put(brassParts, B.MeshBuilder.CreateBox('cfDirectorRangefinder', { width: 1.0, height: 0.95, depth: 8.6 }, scene), bx - 0.6, 39.2, bz);
   // Individual panes sit within a continuous dark recess. Mullions and the canopy cast shadows.
   const panes = [], paneCount = 12, paneRadius = 5.6;
@@ -776,7 +777,7 @@ function buildMidshipsSuperstructure(scene, parent, mats, shadowGen) {
   put(darkParts, B.MeshBuilder.CreateCylinder('cfMastMain', { diameterTop: 0.38, diameterBottom: 1.45, height: 22.5, tessellation: 10 }, scene), bx, 49.5, bz);
   put(darkParts, B.MeshBuilder.CreateCylinder('cfMastLegL', { diameterTop: 0.28, diameterBottom: 0.72, height: 18.0, tessellation: 8 }, scene), bx + 3.4, 46.2, -2.6, -0.18, 0, 0.24);
   put(darkParts, B.MeshBuilder.CreateCylinder('cfMastLegR', { diameterTop: 0.28, diameterBottom: 0.72, height: 18.0, tessellation: 8 }, scene), bx + 3.4, 46.2,  2.6,  0.18, 0, 0.24);
-  put(hullParts, B.MeshBuilder.CreateCylinder('cfSpottingTop', { diameterTop: 5.2, diameterBottom: 4.4, height: 2.0, tessellation: 12 }, scene), bx, 47.4, bz, 0, 0, 0, 0.85, 1.0, 1.15);
+  put(bridgeIvory, B.MeshBuilder.CreateCylinder('cfSpottingTop', { diameterTop: 5.2, diameterBottom: 4.4, height: 2.0, tessellation: 12 }, scene), bx, 47.4, bz, 0, 0, 0, 0.85, 1.0, 1.15);
   put(darkParts, B.MeshBuilder.CreateBox('cfYardMain', { width: 0.28, height: 0.28, depth: 18.5 }, scene), bx, 53.0, bz);
   put(darkParts, B.MeshBuilder.CreateBox('cfYardUpper', { width: 0.20, height: 0.20, depth: 11.5 }, scene), bx, 56.8, bz);
   mountServiceEnsign(scene, parent, new B.Vector3(bx, 60.5, bz), 10.5, 3.5);
@@ -812,7 +813,8 @@ function buildMidshipsSuperstructure(scene, parent, mats, shadowGen) {
   }
 
   const buff=mats.hull.clone('cfFunnelOchre');
-  buff.albedoColor=c3('#d8ab72').toLinearSpace();
+  buff.albedoColor=c3('#efbb71').toLinearSpace();
+  mergeKit(bridgeIvory,'cfIvoryBridgeGalleries',parent,mats.white,shadowGen);
   mergeKit(jackets,'cfFunnelJackets',parent,buff,shadowGen);
   mergeKit(hullParts, 'cfSuperstructureHull', parent, mats.hull, shadowGen);
   mergeKit(darkHullParts, 'cfSuperstructureArmor', parent, mats.hullDark, shadowGen);

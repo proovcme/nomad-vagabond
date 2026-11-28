@@ -91,7 +91,7 @@ export function buildSculptedRadar(scene, name, parent, pos = new BABYLON.Vector
   ped.parent = root; ped.material = ironMat; ped.receiveShadows = true;
   if (shadowGen) shadowGen.addShadowCaster(ped, false);
 
-  // 2. Rotating Azimuth Cupola & Parabolic Mesh Dish
+  // 2. Rotating cupola and open wire aerial
   const rotor = new B.TransformNode(`${name}_rotor`, scene);
   rotor.parent = root;
   rotor.position.set(0, 3.1, 0);
@@ -106,7 +106,7 @@ export function buildSculptedRadar(scene, name, parent, pos = new BABYLON.Vector
   add(B.MeshBuilder.CreateSphere('cupola', { diameter: 3.1, segments: 12, slice: 0.62 }, scene), ironParts, 0, 0.0, 0, 0, 0, 0, 1.0, 0.88, 1.15);
   add(B.MeshBuilder.CreateTorus('collar', { diameter: 3.1, thickness: 0.28, tessellation: 18 }, scene), brassParts, 0, 0.12, 0);
   add(B.MeshBuilder.CreateCylinder('counterWt', { diameter: 1.45, height: 1.6, tessellation: 12 }, scene), ironParts, 0, 1.05, -1.65, Math.PI * 0.5, 0, 0);
-  // Twin curved trunnion support arms rising to the parabolic dish
+  // Twin curved trunnion support arms carrying the aerial
   for (const sx of [-1.15, 1.15]) {
     const arm = B.MeshBuilder.CreateTube(`arm_${sx}`, {
       path: [new B.Vector3(sx, 0.6, -0.3), new B.Vector3(sx * 1.1, 2.2, 0.2), new B.Vector3(sx * 0.75, 4.1, 0.65)],
@@ -115,52 +115,18 @@ export function buildSculptedRadar(scene, name, parent, pos = new BABYLON.Vector
     ironParts.push(arm);
   }
 
-  // Sculpted Parabolic Open-Grid Dish (radius 3.4m, tilted skyward at -24 deg)
-  const dishCenter = new B.Vector3(0, 4.55, 0.95);
-  const dishTilt = -0.34;
-  const rotPt = (x, y, z) => {
-    const cy = Math.cos(dishTilt), sy = Math.sin(dishTilt);
-    return new B.Vector3(
-      dishCenter.x + x,
-      dishCenter.y + (y * cy - z * sy),
-      dishCenter.z + (y * sy + z * cy)
-    );
+  // The rotating aerial has a freestanding steel frame and enamelled copper loops.
+  const rod = (name, points, radius, parts) => {
+    const path = points.map(([x, y, z]) => new B.Vector3(x, y, z));
+    parts.push(B.MeshBuilder.CreateTube(name, {path, radius, tessellation: 6}, scene));
   };
-
-  // 3 Concentric parabolic rings (outer heavy rim + 2 inner wire rings)
-  for (const [r, thick, matArr] of [[3.35, 0.18, ironParts], [2.25, 0.10, brassParts], [1.15, 0.09, brassParts]]) {
-    const depth = (r * r) * 0.085;
-    const pts = [];
-    for (let i = 0; i <= 24; i++) {
-      const a = (i / 24) * Math.PI * 2;
-      pts.push(rotPt(Math.cos(a) * r, Math.sin(a) * r, depth));
-    }
-    matArr.push(B.MeshBuilder.CreateTube(`ring_${r}`, { path: pts, radius: thick * 0.5, tessellation: 6 }, scene));
+  rod('aerialFrame', [[-3,3,.6],[3,3,.6],[3,6.3,.6],[-3,6.3,.6],[-3,3,.6]], .12, ironParts);
+  for (const side of [-1, 1]) {
+    rod('aerialBrace', [[0,3.2,-.4],[side*2.9,6.2,.6]], .085, brassParts);
   }
-
-  // 8 Curved parabolic radial ribs forming the iconic lattice dish
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    const c = Math.cos(a), s = Math.sin(a);
-    const ribPts = [];
-    for (let k = 0; k <= 6; k++) {
-      const r = (k / 6) * 3.35;
-      ribPts.push(rotPt(c * r, s * r, (r * r) * 0.085));
-    }
-    ironParts.push(B.MeshBuilder.CreateTube(`rib_${i}`, { path: ribPts, radius: 0.065, tessellation: 6 }, scene));
+  for (const x of [-2.2, -.75, .75, 2.2]) {
+    rod('aerialLoop', [[x-.48,3,.6],[x-.48,5.8,.6],[x+.48,5.8,.6],[x+.48,3,.6]], .065, copperParts);
   }
-
-  // Central hub + copper tripod waveguide feed horn projecting forward to the focal point
-  const hubPt = rotPt(0, 0, 0.05);
-  const focusPt = rotPt(0, 0, 2.45);
-  add(B.MeshBuilder.CreateSphere('dishHub', { diameter: 0.95, segments: 10 }, scene), brassParts, hubPt.x, hubPt.y, hubPt.z);
-  for (let i = 0; i < 3; i++) {
-    const a = (i / 3) * Math.PI * 2 + Math.PI / 6;
-    const basePt = rotPt(Math.cos(a) * 1.9, Math.sin(a) * 1.9, (1.9 * 1.9) * 0.085);
-    copperParts.push(B.MeshBuilder.CreateTube(`tripod_${i}`, { path: [basePt, focusPt], radius: 0.055, tessellation: 6 }, scene));
-  }
-  const horn = B.MeshBuilder.CreateCylinder('feedHorn', { diameterTop: 0.22, diameterBottom: 0.72, height: 0.78, tessellation: 10 }, scene);
-  add(horn, copperParts, focusPt.x, focusPt.y, focusPt.z, Math.PI * 0.5 + dishTilt, 0, 0);
 
   mergeInto(`${name}_ironMesh`, ironParts, rotor, darkIronMat, shadowGen);
   mergeInto(`${name}_brassMesh`, brassParts, rotor, brassMat, null);
