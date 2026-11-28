@@ -1,3 +1,4 @@
+import { PortLedger } from '../portLedger.js';
 import { buildAirfields, updateShuttle } from './airfields.js';
 // Civil traffic uses -Z as its nose, matching the playable aircraft.
 export class AirLine {
@@ -18,6 +19,7 @@ export class AirLine {
       materials.get(name).albedoTexture=texture;
     }
     paint('apron','#565c59');
+    this.ledger=new PortLedger();
     this.fields=buildAirfields(scene,[industrial,forest],materials);
     let batches=new Map();
     const part=(m,ink,x=0,y=0,z=0)=>{
@@ -148,6 +150,7 @@ export class AirLine {
     root.rotation.y=Math.atan2(205*Math.sin(a),-165*Math.cos(a));
     root.rotation.z=-.10-.035*Math.cos(a);
     for(const hub of hubs)hub.rotation.z=time*38;
+    this.ledger.update(time);
     updateShuttle(this,time);
   }
 }

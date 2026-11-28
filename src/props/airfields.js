@@ -162,6 +162,8 @@ export function updateShuttle(line, time) {
   for(const [at,who,call,text,clip] of calls){
     if(since<leg*68+at && clock>=leg*68+at){
       const field=(at===5?origin:1-origin)?'Восточный аэродром':'Западный аэродром';
+      if(at===61)line.ledger?.unload(1-origin);
+      if(at===5)line.ledger?.load(origin);
       line.onRadio?.(who,call||field,text,clip);
     }
   }

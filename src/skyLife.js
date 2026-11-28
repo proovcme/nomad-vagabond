@@ -244,22 +244,30 @@ export class SkyLife {
     scene.onDisposeObservable.addOnce(() => { this._airshipMarker?.remove(); });
   }
 
-  update(dt, { playerPos = null, camera = null, isPlaying = false, ship = null, construction = null, ui = null, audio = null } = {}) {
+  update(dt, { airLine = null, playerPos = null, camera = null, isPlaying = false, ship = null, construction = null, ui = null, audio = null } = {}) {
     this.time += dt;
     if (this._supplyCooldown > 0) this._supplyCooldown = Math.max(0, this._supplyCooldown - dt);
     if (this._horizonBarge && !this._horizonBarge.isDisposed()) {
-      const a = this.time * 0.032 + 0.7;
-      const r = 440;
-      const bx = Math.cos(a) * r;
-      const bz = Math.sin(a) * r;
-      const by = 96 + Math.sin(this.time * 0.42) * 5;
-      this._horizonBarge.position.set(bx, by, bz);
-      this._horizonBarge.rotation.y = Math.atan2(Math.sin(a), -Math.cos(a));
+      const port=airLine?.fields.ports[0];
+      if(port){
+        const cycle=Math.floor(this.time/148),phase=this.time%148;
+        const a=Math.max(0,phase-8)*Math.PI*2/140;
+        this._horizonBarge.position.set(port.x+28+260*(1-Math.cos(a)),
+          port.y+23+32*(1-Math.cos(a)),port.z+38+190*Math.sin(a));
+        this._horizonBarge.rotation.y=Math.atan2(-260*Math.sin(a),-190*Math.cos(a));
+        if(phase<8 && cycle!==this._loadedCycle){
+          airLine.ledger.loadAirship();this._loadedCycle=cycle;
+        }
+      }else{
+        const a=this.time*.032+.7;
+        this._horizonBarge.position.set(440*Math.cos(a),96+5*Math.sin(this.time*.42),440*Math.sin(a));
+        this._horizonBarge.rotation.y=Math.atan2(Math.sin(a),-Math.cos(a));
+      }
       for (const p of this._airshipProps || []) p.rotation.z += dt * 22;
 
       if (isPlaying && playerPos) {
         const dist = BABYLON.Vector3.Distance(playerPos, this._horizonBarge.position);
-        if (dist < 78 && this._supplyCooldown <= 0) {
+        if (dist < 78 && this._supplyCooldown <= 0 && (!airLine || airLine.ledger.issueKit())) {
           this._supplyCooldown = 45;
           if (ship) {
             ship.hull = ship.maxHull || 100;
@@ -286,7 +294,7 @@ export class SkyLife {
             this._airshipMarker.style.display = 'block';
             this._airshipMarker.style.left = `${proj.x}px`;
             this._airshipMarker.style.top = `${proj.y}px`;
-            this._airshipMarker.textContent = `⚓ Снабженец «Альбатрос» · ${Math.round(dist)}м`;
+            this._airshipMarker.textContent = `⚓ «Альбатрос» · ${Math.round(dist)} м` + (airLine ? ` · комплектов: ${airLine.ledger.airshipKits}` : '');
           } else {
             this._airshipMarker.style.display = 'none';
           }

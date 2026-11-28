@@ -1,3 +1,4 @@
+import { paintMillFields } from './props/millFields.js';
 import { riverX, riverLevel } from './props/cascade.js';
 import { fbm3 } from './planet.js?v=mission1';
 
@@ -209,7 +210,7 @@ function createMaterial(scene, name, tint) {
   return material;
 }
 
-async function bakeTerrainTexture(scene, geometry, material) {
+async function bakeTerrainTexture(scene, geometry, material, millFields) {
   if (typeof document === 'undefined' || scene.getEngine().constructor.name === 'NullEngine') return;
   const paths = [
     './assets/benchmark/textures/aerial_grass_rock/Diffuse.jpg',
@@ -289,7 +290,9 @@ async function bakeTerrainTexture(scene, geometry, material) {
     }
     pixels.data[at + 3] = 255;
   }
-  ctx.putImageData(pixels, 0, 0); texture.update(false);
+  ctx.putImageData(pixels, 0, 0);
+  if(millFields)paintMillFields(ctx,size,geometry);
+  texture.update(false);
   texture.wrapU = texture.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
   texture.anisotropicFilteringLevel = 8;
   material.albedoTexture = texture;
@@ -328,7 +331,7 @@ export function buildGeneratedIsland(scene, options = {}) {
     return mesh;
   });
   meshes[1].metadata = { ...meshes[1].metadata, turfEdge: { material: topMat, width: geometry.radiusX * 2.4, depth: geometry.radiusZ * 2.4 } };
-  const readyPromise = bakeTerrainTexture(scene, geometry, topMat).catch(error => console.warn('Terrain texture bake unavailable; keeping vertex-painted PBR terrain.', error));
+  const readyPromise = bakeTerrainTexture(scene, geometry, topMat, options.millFields).catch(error => console.warn('Terrain texture bake unavailable; keeping vertex-painted PBR terrain.', error));
   return {terrain:meshes[0], rock:meshes[1], getHeight:geometry.getHeight, contains:geometry.contains, bounds:geometry.bounds,
     readyPromise, seed:geometry.seed, geometry,
     diagnostics:{meshes:2, triangles:(geometry.top.indices.length+geometry.rock.indices.length)/3, vertices:(geometry.top.positions.length+geometry.rock.positions.length)/3, textureSources:3},

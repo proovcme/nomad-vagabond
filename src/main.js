@@ -469,6 +469,10 @@ if (shotMode && worldMode === 'sky') {
     camera.position.copyFrom(vPos).addInPlace(new BABYLON.Vector3(11, 32, -52));
     camera.setTarget(vPos.add(new BABYLON.Vector3(-25, 17, -13)));
     camera.fov = .88;
+  } else if (shotMode === 'arch_mill') {
+    player.boardShip(); controlMode='aircraft'; ui.setMode('aircraft');
+    camera.position.copyFrom(fPos).addInPlace(new BABYLON.Vector3(68,40,17));
+    camera.setTarget(fPos.add(new BABYLON.Vector3(22,7,-20))); camera.fov=.84;
   } else if (shotMode === 'arch_cascade') {
     player.boardShip(); controlMode='aircraft'; ui.setMode('aircraft');
     const lip=fPos.add(world.forestIsland.waterfallLip);
@@ -2716,6 +2720,7 @@ engine.runRenderLoop(() => {
     world.industrialCranes?.update(dt);
     runTime += dt;
     world._skyLifeCtx = {
+      airLine: world.airLine,
       playerPos: controlMode === 'foot' ? player.group.position : ship.group.position,
       camera,
       isPlaying: !freezeCameraForShot,

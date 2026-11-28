@@ -26,3 +26,16 @@ assert.equal(calls.length,8);
 assert.deepEqual(calls.filter(c=>c.clip==='civil-cleared').map(c=>c.who),['Восточный аэродром','Западный аэродром']);
 for(const {clip} of calls)assert.ok(readFileSync(new URL('../assets/audio/fog-passage/'+clip+'.mp3',import.meta.url)).length>1500);
 console.log('PASS outbound and return landing, ground handling, continuous positions and eight radio cues');
+const {PortLedger}=await import('../src/portLedger.js');
+const ledger=new PortLedger();
+line.ledger=ledger;line.lastClock=undefined;
+let touchedEast=false,touchedWest=false;
+for(let t=0;t<350;t++){
+  ledger.update(t);updateShuttle(line,t);
+  if(t===36)touchedEast=ledger.millParts>4 && ledger.cargo.lots===0;
+  if(t===104)touchedWest=ledger.portFlour>2 && ledger.cargo.lots===0;
+  for(const k of ['grain','flour','millParts','portFlour','kits','spares'])assert(ledger[k]>=0);
+}
+assert(touchedEast && touchedWest,'actual shuttle delivers both directions');
+ledger.loadAirship();assert(ledger.issueKit() && ledger.issueKit() && !ledger.issueKit(),'airship inventory is finite');
+console.log('PASS production, freight exchange and finite player supplies');

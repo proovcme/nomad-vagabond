@@ -1,3 +1,4 @@
+import { dressMillFields, millCultivated } from './props/millFields.js';
 import { cascadeMesh, riverX, riverLevel } from './props/cascade.js';
 import { AirLine } from './props/airLine.js';
 import { buildPortMachineWorks } from './props/portMachineWorks.js';
@@ -1668,7 +1669,7 @@ export class ForestIsland {
   }
 
   _buildIslandBody(shadowGen) {
-    this.generated = buildGeneratedIsland(this.scene, {seed:this.seedNum, radiusX:68, radiusZ:57, depth:64, river:true, style:'forest', parent:this.group, shadowGenerator:shadowGen});
+    this.generated = buildGeneratedIsland(this.scene, {seed:this.seedNum, radiusX:68, radiusZ:57, depth:64, millFields:true, river:true, style:'forest', parent:this.group, shadowGenerator:shadowGen});
     applyRockProjection(this.generated.rock.material, this.scene, 'forest');
     this.getTopHeightLocal = this.generated.getHeight;
     this.readyPromise = this.generated.readyPromise;
@@ -1827,6 +1828,7 @@ export class ForestIsland {
     // Iconic European Rural Windmill + Alpine Schloss Castle overlooking the Forest Island waterfall!
     const wmX = 22, wmZ = -18;
     const wmY = this.getTopHeightLocal(wmX, wmZ);
+    dressMillFields(this.scene,this);
     this.windmillLandmark = buildAncientWindmillLandmark(this.scene, this.group, new BABYLON.Vector3(wmX, wmY - 0.4, wmZ), shadowGen);
     const castleX = -10, castleZ = 18;
     const castleY = this.getTopHeightLocal(castleX, castleZ);
@@ -1865,7 +1867,7 @@ export class ForestIsland {
           const grove=groves[i%groves.length];
           const lx=tree?grove[0]+14*Math.sqrt(r)*Math.cos(ang):Math.cos(ang)*58*r;
           const lz=tree?grove[1]+12*Math.sqrt(r)*Math.sin(ang):Math.sin(ang)*48*r;
-          if (!this.generated.contains(lx,lz,.035)) continue;
+          if (millCultivated(lx,lz) || !this.generated.contains(lx,lz,.035)) continue;
           if (Math.hypot(lx-22,lz+18)<8 || Math.hypot(lx+10,lz-18)<14 ||
               Math.hypot(lx+35,lz+10)<9 || (lz>5 && Math.abs(lx-riverX(lz))<4.8)) continue;
 

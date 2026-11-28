@@ -449,6 +449,25 @@ export class GameUI {
       if(world.missionTarget){const p=world.missionTarget.position;ctx.fillStyle='#78d3c8';ctx.fillText('◆ '+world.missionTarget.name,cx+p.x*mapScale,cy+p.z*mapScale+18);}
       this.mapStarInfo.textContent='НЕБЕСНЫЙ АРХИПЕЛАГ · '+world.seedStr;
       this.systemLog.replaceChildren();
+      if(world.airLine){
+        const {fields,ledger,planes}=world.airLine;
+        ctx.save();ctx.strokeStyle='#e8bc74';ctx.setLineDash([4,4]);ctx.beginPath();
+        fields.ports.forEach((p,i)=>ctx[i?'lineTo':'moveTo'](cx+p.x*mapScale,cy+p.z*mapScale));
+        ctx.stroke();ctx.restore();
+        const flight=planes[1].root.position;ctx.fillStyle='#e9aa6e';ctx.beginPath();
+        ctx.arc(cx+flight.x*mapScale,cy+flight.z*mapScale,3.5,0,2*Math.PI);ctx.fill();
+        const freight=document.createElement('details');freight.open=true;freight.className='log-entry';
+        const title=document.createElement('summary');title.textContent='Ведомость воздушной линии';freight.append(title);
+        for(const text of [
+          'Мельница · зерно '+ledger.grain+' · мука '+ledger.flour+' · запчасти '+ledger.millParts,
+          'Западный порт · мука '+ledger.portFlour+' · запчасти '+ledger.spares+' · ремкомплекты '+ledger.kits,
+          '«Ласточка» · '+ledger.manifest,
+          '«Альбатрос» · ремкомплекты на борту '+ledger.airshipKits,
+          ledger.lastDelivery]){
+          const row=document.createElement('div');row.textContent=text;freight.append(row);
+        }
+        this.systemLog.append(freight);
+      }
       for(const island of world.islands){const entry=document.createElement('div');entry.className='log-entry';entry.textContent=island.name+' · '+island.biomeLabel;this.systemLog.appendChild(entry);}
       return;
     }

@@ -225,6 +225,11 @@ export function buildAncientWindmillLandmark(scene, parent, pos, shadowGen = nul
   const spire = BABYLON.MeshBuilder.CreateCylinder('wmSpire', { diameterTop: 0.12, diameterBottom: 0.38, height: 3.4, tessellation: 8 }, scene);
   spire.position.set(0, 25.0, 0); brassParts.push(spire);
 
+  const doors=BABYLON.MeshBuilder.CreateBox('millLoadingDoors',{width:2.35,height:2.7,depth:.28},scene);
+  doors.position.set(.25,1.4,4.15);roofParts.push(doors);
+  const lintelBeam=BABYLON.MeshBuilder.CreateBox('millDoorLintel',{width:2.8,height:.28,depth:.46},scene);
+  lintelBeam.position.set(.25,2.87,4.17);stoneParts.push(lintelBeam);
+
   // Adjacent ruined stone archway for Project Nomads ancient-civilization storytelling
   for (const sx of [-9.5, -15.5]) {
     const pillar = BABYLON.MeshBuilder.CreateCylinder(`wmArchPillar_${sx}`, { diameterTop: 1.5, diameterBottom: 2.0, height: 8.5, tessellation: 8 }, scene);
@@ -233,7 +238,17 @@ export function buildAncientWindmillLandmark(scene, parent, pos, shadowGen = nul
   const lintel = BABYLON.MeshBuilder.CreateBox('wmArchLintel', { width: 8.2, height: 1.4, depth: 1.8 }, scene);
   lintel.position.set(-12.5, 8.8, 5.5); lintel.rotation.z = 0.06; stoneParts.push(lintel);
 
-  mergeGroup(stoneParts, 'nomadWindmillStone', root, pal.limestone, shadowGen);
+  const lime=pal.limestone.clone('windmillLimewash');
+  lime.albedoTexture=new BABYLON.Texture('./assets/textures/nomad/mill-limewash.webp',scene);
+  lime.albedoTexture.uScale=3;lime.albedoTexture.vScale=2;
+  for(const [y,r] of [[5.4,3.9],[10.1,3.48]]){
+    for(const angle of [-1.1,.25,1.65,3.1]){
+      const shutter=BABYLON.MeshBuilder.CreateBox('millShutter',{width:.79,height:1.24,depth:.22},scene);
+      shutter.position.set(Math.sin(angle)*r,y,Math.cos(angle)*r);
+      shutter.rotation.y=angle;roofParts.push(shutter);
+    }
+  }
+  mergeGroup(stoneParts, 'nomadWindmillStone', root, lime, shadowGen);
   mergeGroup(roofParts, 'nomadWindmillRoof', root, pal.terracotta, shadowGen);
   mergeGroup(brassParts, 'nomadWindmillBrass', root, pal.brass, null);
 
