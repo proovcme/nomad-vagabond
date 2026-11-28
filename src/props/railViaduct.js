@@ -13,7 +13,7 @@ export function headland(scene, seed, radius, depth, stoneParts, turfParts, cent
       points.push(r*Math.cos(a)-drop*radius*.12,-depth*drop*(1+tooth+.29*joint*drop),r*.91*Math.sin(a));
       const shelfShade=[1,.94,.76,.94,.84,.66,.76,.62][layer];
       const light=(.84+.12*Math.cos(3*a+.5)+.08*Math.sin(12*a+.6*layer))*shelfShade;
-      colors.push(light,light*(.98-.07*drop),light*(.93-.12*drop),1);uvs.push(j/count*4,drop*2);
+      colors.push(light,light*(.98-.07*drop),light*(.93-.12*drop),1);uvs.push(j/count*3+seed*.37,1-drop+.07*Math.sin(a*2+seed));
       if(j&&layer){const k=layer*(count+1)+j,b=k-count-1;indices.push(k,b-1,b,k,k-1,b-1);}
     }
   }

@@ -802,7 +802,7 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
   };
   const sandstone=new B.PBRMaterial('horizonSunlitSandstone',scene);
   sandstone.albedoTexture=new B.Texture('./assets/textures/nomad/railway-sandstone.webp',scene);
-  sandstone.albedoColor=c3('#b9774c').toLinearSpace();
+  sandstone.albedoColor=c3('#fff0d9').toLinearSpace();
   sandstone.roughness=.98;
   sandstone.metallic=0;
   finalize(chalkParts,'horizonEuropeChalkCliffs',sandstone);
