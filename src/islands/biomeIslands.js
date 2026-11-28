@@ -217,8 +217,15 @@ export function buildBiomeIsland(scene, {
     });
   }
 
+  const names={
+    volcanic:['Огненная гряда','Вулканический остров'],
+    glacier:['Ледовая обсерватория','Высокогорная станция'],
+    desert:['Красный каньон','Остров ветряных башен'],
+    ancient:['Старое святилище','Руины обсерватории'],
+  };
+  const [name,biomeLabel]=names[biome] || ['Дальний остров','Остров архипелага'];
   return {
-    group,
+    group, name, biomeLabel, radius:Math.max(radiusX,radiusZ),
     biome,
     generated,
     update(simTime) {
