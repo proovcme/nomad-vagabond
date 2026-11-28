@@ -1,3 +1,4 @@
+import { buildAirfields, updateShuttle } from './airfields.js';
 // Civil traffic uses -Z as its nose, matching the playable aircraft.
 export class AirLine {
   constructor(scene, industrial, forest) {
@@ -16,6 +17,8 @@ export class AirLine {
       const texture=new B.Texture('./assets/textures/nomad/airline-'+name+'.webp',scene,false,false);
       materials.get(name).albedoTexture=texture;
     }
+    paint('apron','#565c59');
+    this.fields=buildAirfields(scene,[industrial,forest],materials);
     let batches=new Map();
     const part=(m,ink,x=0,y=0,z=0)=>{
       m.position.set(x,y,z);
@@ -83,6 +86,12 @@ export class AirLine {
         const pane=box('glass',side*width*.65,.82,-tail*.72,.63,.73,1.47);
         pane.rotation.y=side*.39;pane.rotation.z=side*.24;
       }
+      for(const sign of [-1,1]){
+        const x=sign*(twin?3.85:2.13);
+        beam([x*.85,-.6,-1.2],[x,-1.45,-1.45],.15,'alloy');
+        const wheel=part(B.MeshBuilder.CreateCylinder('landingWheel',{diameter:.8,height:.32,tessellation:16},scene),'blue',x,-1.43,-1.45);
+        wheel.rotation.z=Math.PI/2;
+      }
       const hubs=[];
       for(const x of twin?[-4.35,4.35]:[0]){
         const z=twin?-2.7:-tail+.35;
@@ -133,11 +142,12 @@ export class AirLine {
   update(time){
     this.moored.rotation.y=.28+.13*Math.sin(time*.066);
     this.moored.rotation.x=.016*Math.sin(time*.17);
-    for(const [i,{root,hubs}] of this.planes.entries()){
-      const a=time*(i?.045:.055)+i*2.8;
-      root.position.set(-135+Math.cos(a)*205,70+i*34+7*Math.sin(a*2),-135+Math.sin(a)*165);
-      root.rotation.y=Math.atan2(205*Math.sin(a),-165*Math.cos(a));root.rotation.z=-.10-.035*Math.cos(a);
-      for(const hub of hubs)hub.rotation.z=time*(i?32:38);
-    }
+    const {root,hubs}=this.planes[0];
+    const a=time*.055;
+    root.position.set(-135+Math.cos(a)*205,70+7*Math.sin(a*2),-135+Math.sin(a)*165);
+    root.rotation.y=Math.atan2(205*Math.sin(a),-165*Math.cos(a));
+    root.rotation.z=-.10-.035*Math.cos(a);
+    for(const hub of hubs)hub.rotation.z=time*38;
+    updateShuttle(this,time);
   }
 }

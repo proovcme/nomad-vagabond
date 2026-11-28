@@ -469,6 +469,18 @@ if (shotMode && worldMode === 'sky') {
     camera.position.copyFrom(vPos).addInPlace(new BABYLON.Vector3(11, 32, -52));
     camera.setTarget(vPos.add(new BABYLON.Vector3(-25, 17, -13)));
     camera.fov = .88;
+  } else if (shotMode === 'arch_airfield') {
+    player.boardShip();
+    controlMode = 'aircraft';
+    ui.setMode('aircraft');
+    const line = world.airLine;
+    world.simTime = 32;
+    line.update(world.simTime);
+    const port = line.fields.ports[1];
+    camera.position.copyFrom(port).addInPlace(line.fields.side.scale(-59)).addInPlace(line.fields.axis.scale(-44));
+    camera.position.y += 19;
+    camera.setTarget(port.add(new BABYLON.Vector3(0,4,0)));
+    camera.fov = .91;
   } else if (shotMode === 'arch_airport' || shotMode === 'arch_airliner') {
     player.boardShip();controlMode='aircraft';ui.setMode('aircraft');
     if (shotMode === 'arch_airport') {
@@ -2707,6 +2719,15 @@ engine.runRenderLoop(() => {
       ui,
       audio,
     };
+    if (world.airLine && !world.airLine.onRadio) {
+      world.airLine.onRadio = (speaker, callsign, text, clip) => {
+        const quietPassage = demoState?.passage && ['fog_search', 'approach'].includes(demoState.stage);
+        if (freezeCameraForShot || !(demoState?.freeFlight || quietPassage || demoState?.stage === 'mission_complete')) return;
+        if (document.getElementById('radio-dialogue-box')?.style.display === 'flex') return;
+        ui.showRadio(speaker, text, 4600, callsign);
+        audio.playPassageRadio(clip);
+      };
+    }
     world.update(
       dt,
       () => {

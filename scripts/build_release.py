@@ -4,6 +4,7 @@ import hashlib, json, pathlib, shutil, subprocess, sys
 root=pathlib.Path(__file__).resolve().parents[1]
 subprocess.run(['node',str(root/'workshop/check.mjs')],cwd=root,check=True)
 subprocess.run(['node',str(root/'scripts/validate_artifacts.mjs')],cwd=root,check=True)
+subprocess.run(['node',str(root/'scripts/check_civil_route.mjs')],cwd=root,check=True)
 out=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else '/tmp/nomad-release')
 if out.exists():
     raise SystemExit(f'Release directory already exists: {out}')
