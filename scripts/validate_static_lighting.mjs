@@ -25,6 +25,17 @@ animateLiftPropellers(scene,.2);
 assert.deepEqual(drive.rotors.map(({mesh})=>mesh.rotation.y),resting);
 drive.power=1;animateLiftPropellers(scene,.2);
 drive.rotors.forEach(({mesh,side},i)=>assert.equal(Math.sign(mesh.rotation.y-resting[i]),side));
+const {EnemyFortressIsland}=await import('../src/enemyFortressIsland.js');
+const {buildHeavyBattleship}=await import('../src/props/heavyBattleship.js');
+const {buildPursuitDestroyer}=await import('../src/props/pursuitDestroyer.js');
+for(const [vessel,count] of [[new EnemyFortressIsland(scene,B.Vector3.Zero()),4],[buildPursuitDestroyer(scene),4],[buildHeavyBattleship(scene),6]]){
+ const rotors=vessel.liftDrive.rotors;
+ assert.equal(rotors.length,count);
+ const angles=rotors.map(({mesh})=>mesh.rotation.y);
+ animateLiftPropellers(scene,.1);
+ rotors.forEach(({mesh,side},i)=>assert.equal(Math.sign(mesh.rotation.y-angles[i]),side));
+ vessel.dispose();
+}
 const lifts=scene.transformNodes.filter(node=>node.name.startsWith('bridgeLift_'));
 assert.equal(lifts.length,3);
 assert.equal(world.horizonRail.rotors.length,4);

@@ -1,5 +1,4 @@
 import { installLiftPropellers } from './props/liftPropellers.js';
-import { createRustedMetalTexture } from './textures.js?v=mission1';
 
 function c3(hex) {
   return BABYLON.Color3.FromHexString(hex);
@@ -112,7 +111,7 @@ export class EnemyFortressIsland {
     this._rockMat = rockMat;
     this._armorMat = armorMat;
     this._ownedMaterials = [rockMat, armorMat, crimsonMat, coreMat];
-    this._ownedTextures = rustTex ? [rustTex.albedoTex, rustTex.bumpTex] : [];
+    this._ownedTextures = [rockDiff,rockNorm,armorDiff].filter(Boolean);
   }
 
   /** Apply hit damage from Flak 88 shell or Anti-Island Missile. */
