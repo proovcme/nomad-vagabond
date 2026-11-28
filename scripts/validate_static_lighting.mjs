@@ -44,6 +44,22 @@ for(const lift of lifts){
  const vertices=stone.getVerticesData('position');
  for(let i=0;i<vertices.length;i+=3)assert(vertices[i]<=2.01||vertices[i]>=72.99,'stone pier hangs under the span');
 }
+// The two exposed edges share the old terrain height and land-use texture coordinates.
+const fields=scene.getMeshByName('viaductValleyFields');
+const fieldUV=fields.getVerticesData('uv'), fieldPos=fields.getVerticesData('position');
+const farmStart=fields.getTotalVertices()/2;
+assert(Number.isInteger(farmStart));
+const sample=(k)=>B.Vector3.FromArray(fieldPos,k*3);
+let matches=0;
+for(let a=0;a<farmStart;a++){
+ for(let b=farmStart;b<fields.getTotalVertices();b++){
+  if(Math.abs(fieldUV[2*a]-fieldUV[2*b])>1e-6 || Math.abs(fieldUV[2*a+1]-fieldUV[2*b+1])>1e-6)continue;
+  assert(Math.abs(sample(a).y-sample(b).y)<.001);
+  assert(Math.abs(B.Vector3.Distance(sample(a),sample(b))-72*1.45)<.01);
+  matches++;
+ }
+}
+assert(matches>=20,'paired valley fault lost its matching edges');
 // Every spill point has a matching river vertex and lies at the generated cliff edge.
 const fall=scene.getMeshByName('forestWaterfall');
 const water=fall.getVerticesData('position'),uv=fall.getVerticesData('uv');

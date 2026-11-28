@@ -1,3 +1,4 @@
+import { buildViaductBanks, valleyElevation } from './viaductBanks.js';
 import { headland, bridgeLift, cliffMaterial } from './railViaduct.js';
 import { cascadeMesh } from './cascade.js';
 /**
@@ -663,7 +664,7 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
     [5.30, 1480, 44, 'viaduct', 1.80],
   ];
 
-  const tiledRoofs=[];
+  const tiledRoofs=[], valleyGrass=[], valleyRock=[];
   const railwayViews=[],rotors=[];
   const paint=(name,color)=>{
     const m=new B.StandardMaterial(name,scene);m.diffuseColor=c3(color);m.specularColor=B.Color3.Black();m.emissiveColor=m.diffuseColor.scale(.22);return m;
@@ -684,7 +685,11 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
     const ux = Math.cos(face), uz = Math.sin(face);
     const nx = -Math.cos(ang), nz = -Math.sin(ang); // inward toward center
 
-    const coast=headland(scene,idx,46*s,68*s,chalkParts,meadowParts,new B.Vector3(cx,y+9*s,cz));
+    const splitValley=kind==='viaduct' && railwayViews.length===0;
+    const ground=(x,z)=>splitValley ? valleyElevation(x,z) : 0;
+    const center=new B.Vector3(cx,y+9*s,cz);
+    if(splitValley) buildViaductBanks(scene,center,-face,s,valleyGrass,valleyRock);
+    const coast=splitValley ? [] : headland(scene,idx,46*s,68*s,chalkParts,meadowParts,new B.Vector3(cx,y+9*s,cz));
 
     // Small hillside groves flank settlements, leaving the market and viaduct clear.
     for(const flank of [-1,1])for(let j=0;j<6;j++){
@@ -692,7 +697,15 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
       const size=s*(.62+.34*Math.abs(Math.sin(j*1.8+idx)));
       groveMatrices.push(B.Matrix.Compose(new B.Vector3(size,size*(1+.2*Math.sin(j)),size),
         B.Quaternion.RotationYawPitchRoll(j*1.9,0,.035*Math.cos(j)),
-        new B.Vector3(cx+(ux*along+nx*across)*s,y+8.9*s,cz+(uz*along+nz*across)*s)));
+        new B.Vector3(cx+(ux*along+nx*across)*s,y+(8.9+ground(along,across))*s,cz+(uz*along+nz*across)*s)));
+    }
+    if(splitValley){
+      // A field hedge survives on either side of the tear, along the same parcel line.
+      for(const along of [15,18,21,24,27,30,33,36,39,116,119,122,125,128,131,134,137,140]){
+        const across=20+.4*Math.sin(along);
+        groveMatrices.push(B.Matrix.Compose(new B.Vector3(1.4*s,.48*s,.8*s),B.Quaternion.RotationYawPitchRoll(-face,0,0),
+          new B.Vector3(cx+(ux*along+nx*across)*s,y+(9+ground(along,across))*s,cz+(uz*along+nz*across)*s)));
+      }
     }
     // Cascading white cliff waterfall plunging from the island edge into the cloud sea (artbook signature!)
     if (idx % 2 === 0) {
@@ -712,10 +725,11 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
     const at=(along,across)=>[cx+(ux*along+nx*across)*s,cz+(uz*along+nz*across)*s];
     const house=(along,across,w,d,h,red)=>{
       const [x,z]=at(along,across),roof=red?tiledRoofs:roofParts;
-      put(cityParts,B.MeshBuilder.CreateBox('horizonHouse',{width:w*s,height:h*s,depth:d*s},scene),x,y+(9+h*.5)*s,z,0,heading);
-      addGableRoof(roof,scene,'horizonGable',(w+1)*s,d*.42*s,(d+1)*s,x,y+(9+h)*s,z,heading);
+      const floor=9+ground(along,across), footing=splitValley?3:0;
+      put(cityParts,B.MeshBuilder.CreateBox('horizonHouse',{width:w*s,height:(h+footing)*s,depth:d*s},scene),x,y+(floor+(h-footing)*.5)*s,z,0,heading);
+      addGableRoof(roof,scene,'horizonGable',(w+1)*s,d*.42*s,(d+1)*s,x,y+(floor+h)*s,z,heading);
       const [chimX,chimZ]=at(along+w*.28,across);
-      put(roof,B.MeshBuilder.CreateBox('horizonChimney',{width:1.3*s,height:2.6*s,depth:1.2*s},scene),chimX,y+(9+h+d*.42+.3)*s,chimZ,0,heading);
+      put(roof,B.MeshBuilder.CreateBox('horizonChimney',{width:1.3*s,height:2.6*s,depth:1.2*s},scene),chimX,y+(floor+h+d*.42+.3)*s,chimZ,0,heading);
     };
     for(let j=0;j<5;j++){
       house(-22+j*10,12+2*Math.sin(idx+j),7+(j%3),5+(j%2),5+(j+idx)%4,j%3!==0);
@@ -738,18 +752,19 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
       }
     } else {
       const [endX,endZ]=at(124,0);
-      headland(scene,idx+19,28*s,51*s,chalkParts,meadowParts,new B.Vector3(endX,y+9*s,endZ));
+      if(!splitValley) headland(scene,idx+19,28*s,51*s,chalkParts,meadowParts,new B.Vector3(endX,y+9*s,endZ));
       const [bx,bz]=at(36,0);
       house(121,-5,19,8,6,true);house(132,4,9,6,8,false);
       house(12,-9,18,9,7,true);house(-12,-9,13,8,9,false);
-      const [tx,tz]=at(-2,-7);
-      put(cityParts,B.MeshBuilder.CreateBox('stationTower',{width:6*s,height:20*s,depth:6*s},scene),tx,y+19*s,tz,0,heading);
-      put(tiledRoofs,B.MeshBuilder.CreateCylinder('stationBelfry',{diameterTop:.6*s,diameterBottom:10*s,height:6*s,tessellation:4},scene),tx,y+32*s,tz,0,heading+Math.PI*.25);
+      const towerX=splitValley?-25:-2;
+      const [tx,tz]=at(towerX,-7), hill=ground(towerX,-7);
+      put(cityParts,B.MeshBuilder.CreateBox('stationTower',{width:6*s,height:20*s,depth:6*s},scene),tx,y+(19+hill)*s,tz,0,heading);
+      put(tiledRoofs,B.MeshBuilder.CreateCylinder('stationBelfry',{diameterTop:.6*s,diameterBottom:10*s,height:6*s,tessellation:4},scene),tx,y+(32+hill)*s,tz,0,heading+Math.PI*.25);
       const support=railwayViews.length===1?'rotor':'balloon';
       bridgeLift(scene,support,s,heading,new B.Vector3(bx,y-2*s,bz),liftPaint,rotors);
       {
-        const [x,z]=at(50,0),[eyeX,eyeZ]=at(63,175);
-        railwayViews.push({target:new B.Vector3(x,y+9*s,z),eye:new B.Vector3(eyeX,y+28*s,eyeZ)});
+        const [x,z]=at(50,0),[eyeX,eyeZ]=at(splitValley?94:63,splitValley?207:175);
+        railwayViews.push({target:new B.Vector3(x,y+9*s,z),eye:new B.Vector3(eyeX,y+(splitValley?69:28)*s,eyeZ)});
       }
     }
   });
@@ -770,6 +785,13 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
       m.freezeWorldMatrix();
     }
   };
+  const valleySoil=pal.grass.clone('valleyFieldParcels');
+  valleySoil.albedoTexture=new B.Texture('./assets/textures/nomad/viaduct-valley.webp',scene);
+  finalize(valleyGrass,'viaductValleyFields',valleySoil);
+  const valleyStone=new B.PBRMaterial('valleyFractureStone',scene);
+  valleyStone.albedoTexture=new B.Texture('./assets/textures/nomad/viaduct-rock.webp',scene);
+  valleyStone.metallic=0; valleyStone.roughness=1;
+  finalize(valleyRock,'viaductValleyEscarpment',valleyStone);
   finalize(chalkParts,'horizonEuropeChalkCliffs',cliffMaterial(scene));
   finalize(meadowParts, 'horizonEuropeMeadows', pal.grass);
   finalize(cityParts, 'horizonEuropeCities', pal.limestone);
