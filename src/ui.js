@@ -17,6 +17,7 @@ export class GameUI {
     this.flightDial = document.getElementById('flight-dial');
     this.aviationInstruments=document.getElementById('aviation-instruments');
     this.throttleVal=document.getElementById('dial-throttle');
+    this.motorSwitch=document.getElementById('motor-switch');
     this.currentMode='foot';
     this.hudVisible=false;
     this.thrustRow = document.getElementById('thrust-row');
@@ -191,6 +192,17 @@ export class GameUI {
       }
     }
 
+    if (this.motorSwitch) {
+      const runway = mode === 'aircraft' && ship._runwayState;
+      this.motorSwitch.hidden = !runway;
+      if (runway) {
+        this.motorSwitch.disabled = ship.driveSpeed > .1 || (runway.ignition === 'off' && ship.fuel <= .05);
+        if (this.motorSwitch.dataset.state !== runway.ignition) {
+          this.motorSwitch.dataset.state = runway.ignition;
+          this.motorSwitch.textContent = {off:'Пуск мотора · I', starting:'Пуск… · отменить', running:'Мотор работает · стоп'}[runway.ignition];
+        }
+      }
+    }
     if(mode==='aircraft') {
       const values=aircraftInstrumentValues(spd,instrumentAltitude,ship.throttle);
       if(this.dialSpeed)this.dialSpeed.textContent=String(values.airspeedKmh);

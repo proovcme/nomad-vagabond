@@ -1689,6 +1689,8 @@ export class ExplorerAircraft {
   dockOnAsteroid(asteroid, options = {}) {
     this.dockedAsteroid=asteroid;this.dockedPlanet=null;this.waterPlanet=null;
     this._runwayState=null;this._takeoffPitchGrace=0;
+    this._propRpm=0;
+    if(this._propBlurMat)this._propBlurMat.alpha=0;
     const pad=options.localPad||asteroid.padLocalPos;
     this._dockLocal=new BABYLON.Vector3(pad.x,pad.y,pad.z);
     this.velocity.copyFrom(asteroid.velocity);this.throttle=0;this.driveSpeed=0;
@@ -1698,16 +1700,34 @@ export class ExplorerAircraft {
   /** Start a real +X runway roll. The local start is a deck point, not an aircraft pivot. */
   positionForTakeoff(asteroid, localStart = {x:8,y:3.38,z:0}) {
     this.dockOnAsteroid(asteroid,{localPad:localStart});
-    this._runwayState={base:asteroid,local:this._dockLocal.clone(),yaw:0,pitch:0,requestTakeoff:false};
+    this._runwayState={base:asteroid,local:this._dockLocal.clone(),yaw:0,pitch:0,requestTakeoff:false,ignition:"off",startElapsed:0};
     this.lastTakeoff=null;this.keys={};this.camInited=false;
     return this.groundProfile;
+  }
+
+  toggleRunwayEngine() {
+    const state = this._runwayState;
+    if (!state || this.driveSpeed > 0.1 || this.keys.KeyW) return false;
+    if (state.ignition === 'off' && this.fuel <= .05) return false;
+    state.ignition = state.ignition === 'off' ? 'starting' : 'off';
+    state.startElapsed = 0;
+    return true;
   }
 
   _updateRunwayRoll(dt, isPiloted, toastCb) {
     const state=this._runwayState,base=this.dockedAsteroid,profile=this.groundProfile;
     if(!state||!base)return false;
     if(isPiloted){
-      if(this.keys.KeyW&&this.fuel>.05){
+      if (this.fuel <= .05) state.ignition = 'off';
+      else if (this.keys.KeyW && state.ignition === 'off') {
+        state.ignition = 'starting';
+        state.startElapsed = 0;
+      }
+      if (state.ignition === 'starting') {
+        state.startElapsed += dt;
+        if (state.startElapsed >= 1.2) state.ignition = 'running';
+      }
+      if(this.keys.KeyW && state.ignition === 'running'){
         this.throttle=clamp(this.throttle+dt*1.4,0,1);
         this.driveSpeed=Math.min(profile.liftoffSpeed+6,this.driveSpeed+profile.groundAccel*(.30+.70*this.throttle)*dt);
         this.fuel=Math.max(0,this.fuel-.20*dt);
@@ -1725,7 +1745,13 @@ export class ExplorerAircraft {
       const rotate=canRotate&&(this.keys.ArrowUp||this.keys.Space||state.requestTakeoff||state.local.x>=profile.autoRotateX);
       state.pitch+=( (rotate ? .12 : 0)-state.pitch)*Math.min(1,dt*3.5);
       for(const wheel of this.wheels)wheel.rotation.x-=this.driveSpeed*dt*2.5;
-      this._spinPropellers(dt*(8+this.throttle*30));
+      const targetSpeed = state.ignition === 'running' ? 8 + this.throttle * 30
+        : state.ignition === 'starting' ? 3.5 : 0;
+      this._propRpm += (targetSpeed - this._propRpm) * (1 - Math.exp(-dt * 3));
+      if (this._propRpm < .05 && !targetSpeed) this._propRpm = 0;
+      this._spinPropellers(Math.min(.42, dt * this._propRpm));
+      if (this._propBlurMat) this._propBlurMat.alpha = clamp((this._propRpm - 10) / 30, 0, 1) * .42;
+      this.audio?.setAircraftEngine?.(this._propRpm / 38, this.driveSpeed, false, !targetSpeed);
       this._updateGlbControlSurfaceRig(dt, 0, 0.36, rotate ? 0.34 : 0, steering * 0.38, 1.0);
     }
     this._dockLocal.copyFrom(state.local);this._applyDockPose();

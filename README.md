@@ -12,7 +12,7 @@
 
 - **Туманный фарватер.** Вы начинаете в воздухе на грузовом самолёте. Уходите от эсминца через туманный архипелаг, следуйте радиоориентирам и отыщите крейсер на камнях. Сядьте на палубу, подайте аварийное питание, запустите подъёмные машины и дайте залп по преследователю. Для посадки и действий у механизмов нажимайте **E**, когда появится подсказка.
 - **Перехват у Дувра.** Вы ведёте штурмовик против линкора «Колосс» и его эскорта Tribal. «Бродяга» поддерживает вас огнём. Клавиша **T** запускает воздушную торпеду по эскорту, а после его потопления — по флагману. Цель главы — потопить «Колосс».
-- **Ангар · свободный вылет.** В ангаре стоят грузовой самолёт, истребитель, штурмовик и бомбардировщик. Подойдите к выбранной машине и нажмите **E**. У каждого борта своя управляемость и работа. Полный список клавиш доступен в меню «Управление» и по **F1**.
+- **Ангар · свободный вылет.** В ангаре стоят грузовой самолёт, истребитель, штурмовик и бомбардировщик. Подойдите к выбранной машине и нажмите **E**. На полосе клавиша **I** или выключатель на приборной доске запускает и глушит мотор на стоянке. Удержание **W** запускает мотор и начинает разбег. У каждого борта своя управляемость и работа. Полный список клавиш доступен в меню «Управление» и по **F1**.
 
 ## Мастерская игры
 
@@ -80,7 +80,7 @@ B открывает вид сверху. ЛКМ выбирает свободн
 
 
 ### Four-aircraft hangar
-The menu’s «Ангар · свободный вылет» starts in the powered hangar with all four original aircraft. Walk to a plane and press E; the ground crew moves it onto the runway. W accelerates, Up/Space rotates, S brakes. Each variant has its own acceleration, rotation/liftoff speeds, mass and turn response. Cargo: hover and hold F to winch three crates, then land at home. Fighter: intercept two scouts. Attacker: destroy two flak positions. Bomber: bomb two fuel depots with F. The first tutorial mission remains a separate menu entry.
+The menu’s «Ангар · свободный вылет» starts in the powered hangar with all four original aircraft. Walk to a plane and press E; the ground crew moves it onto the runway. Press I or click the panel switch to start or stop the engine at rest. Holding W also starts it and then accelerates, Up/Space rotates, S brakes. Each variant has its own acceleration, rotation/liftoff speeds, mass and turn response. Cargo: hover and hold F to winch three crates, then land at home. Fighter: intercept two scouts. Attacker: destroy two flak positions. Bomber: bomb two fuel depots with F. The first tutorial mission remains a separate menu entry.
 
 The period airframes use the original GLBs with fitted canopy frames, variant-specific propeller spinners and period liveries. The original four pin-up designs in `assets/textures/nomad/squadron-nose-art.webp` were generated for this project and normalized into one alpha atlas. Preview with `?shot=arch_airframe&airframe=fighter&hud=0` or use `cargo`, `attacker` and `bomber`.
 

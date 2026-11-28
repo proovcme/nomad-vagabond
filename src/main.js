@@ -1510,6 +1510,10 @@ canvas.addEventListener('mousedown', () => {
   if (gameState === 'playing') audio.init();
 });
 
+document.getElementById('motor-switch')?.addEventListener('click', () => {
+  if (gameState === 'playing' && controlMode === 'aircraft') ship?.toggleRunwayEngine();
+});
+
 window.addEventListener('keydown', (e) => {
   if (gameState === 'menu' || gameState === 'defeat' || gameState === 'victory') return;
 
@@ -1536,6 +1540,7 @@ window.addEventListener('keydown', (e) => {
   }
 
   if (gameState !== 'playing' || demoState?.stage === 'intro_cutscene' || construction?.isOpen) return;
+  if (e.code === 'KeyI' && !e.repeat && controlMode === 'aircraft') ship?.toggleRunwayEngine();
   if (e.code === 'KeyB' && !demoState?.passage && controlMode === 'foot' && demoState?.powerOn) {
     openConstruction();
     return;
@@ -2890,7 +2895,7 @@ engine.runRenderLoop(() => {
     }
 
     // Silence aircraft engine when on foot, docked, or in asteroid helm mode
-    if (controlMode !== 'aircraft' || ship?.dockedAsteroid) {
+    if (controlMode !== 'aircraft' || (ship?.dockedAsteroid && !ship._runwayState)) {
       audio?.setAircraftEngine?.(0, 0, false, true);
     }
 
@@ -4069,7 +4074,7 @@ engine.runRenderLoop(() => {
     position: ship.group.position.asArray(),
     footPosition: player?.localPos?.asArray(),
     variant:ship.variant,
-    runway:ship._runwayState?{x:ship._runwayState.local.x,z:ship._runwayState.local.z,pitch:ship._runwayState.pitch,speed:ship.driveSpeed}:null,
+    runway:ship._runwayState?{x:ship._runwayState.local.x,z:ship._runwayState.local.z,pitch:ship._runwayState.pitch,ignition:ship._runwayState.ignition,propSpeed:ship._propRpm,speed:ship.driveSpeed}:null,
     forward: ship.group.rotationQuaternion ? BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0,0,-1), BABYLON.Matrix.FromQuaternionToRef(ship.group.rotationQuaternion,new BABYLON.Matrix())).asArray() : null,
     target: world.missionTarget?.name,
     landmark: world.landmarks?.snapshot,
