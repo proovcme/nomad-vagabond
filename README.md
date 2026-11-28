@@ -67,6 +67,8 @@ python3 scripts/repair_building_surfaces.py --report artifacts/first-pass/models
 
 Визуальный язык архипелага опирается на окраску портовой авиации 1930-х. Морская зелень объединяет флот и портовые сооружения, киноварь выделяет пояс корпуса и край вымпела, охра и слоновая кость читаются на полотне и эмблемах. У «Бродяги» и маяка один раздвоенный вымпел с крылатой розой ветров. Для новых ассетов сравнивайте силуэт с палубной камеры, а масштаб краски, швов и потёртостей — с камеры у самолёта.
 
+Скрипт `python3 scripts/bake_workshop_surfaces.py` собирает карты обшивки самолётов, кирпича портовой фабрики и рельефа ангара. Зависимости указаны в `requirements.txt`. В карте обшивки красный канал хранит высоту стыков и заклёпок, зелёный — участки обнажённого металла, синий — вариацию покрытия.
+
 Fixed camera views: `?shot=arch_vagabond`, `arch_forest`, `arch_industrial`, `arch_panorama`, `arch_flight`, `arch_shipyard`.
 
 This remains a prototype: desktop keyboard/mouse controls, no touch flight controls, no save system, preliminary mission pacing and audio. Dense imported vegetation and shadow passes still require a measured performance pass before release.

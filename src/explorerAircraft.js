@@ -31,6 +31,10 @@ class NomadAviationPaint extends BABYLON.MaterialPluginBase {
     super(material, 'NomadAviationPaint', 212, {NOMAD_AVIATION_PAINT:false}, true);
     this.setVariant(variant);
     this.repairAtlas=fieldRepairTexture(material.getScene());
+    const scene = material.getScene();
+    const sheetPath = './assets/textures/nomad/airframe-sheet.webp';
+    this.sheet = scene.getTextureByName(sheetPath) || new BABYLON.Texture(sheetPath, scene);
+    this.sheet.gammaSpace = false;
     this.artTexture = material.getScene().getTextureByName('squadronNoseArt');
     if (!this.artTexture) {
       this.artTexture = new BABYLON.Texture('./assets/textures/nomad/squadron-nose-art.webp', material.getScene());
@@ -45,9 +49,10 @@ class NomadAviationPaint extends BABYLON.MaterialPluginBase {
   getClassName() {return 'NomadAviationPaint';}
   prepareDefines(defines) {defines.NOMAD_AVIATION_PAINT=true;}
   getUniforms() {return {ubo:[{name:'aircraftLiveryParams',size:4,type:'vec4'}],fragment:'uniform vec4 aircraftLiveryParams;'};}
-  getSamplers(samplers) { samplers.push('aviationNoseArt','aviationRepairAtlas'); }
-  getActiveTextures(textures) { textures.push(this.artTexture,this.repairAtlas); }
+  getSamplers(samplers) { samplers.push('aviationNoseArt','aviationRepairAtlas','aviationSheet'); }
+  getActiveTextures(textures) { textures.push(this.artTexture,this.repairAtlas,this.sheet); }
   bindForSubMesh(buffer) {
+    buffer.setTexture('aviationSheet',this.sheet);
     buffer.setTexture('aviationRepairAtlas',this.repairAtlas);
     buffer.setTexture('aviationNoseArt', this.artTexture);
     const noseArtReady = this.artTexture.isReady() && !this.artTexture.loadingError;
@@ -80,6 +85,7 @@ class NomadAviationPaint extends BABYLON.MaterialPluginBase {
         #ifdef NOMAD_AVIATION_PAINT
         varying vec3 aviationPoint;
         varying vec3 aviationNormal;
+        uniform sampler2D aviationSheet;
         uniform sampler2D aviationNoseArt;
         uniform sampler2D aviationRepairAtlas;
         float fieldRepair;
@@ -159,6 +165,18 @@ class NomadAviationPaint extends BABYLON.MaterialPluginBase {
 
         vec3 p = aviationPoint;
         vec3 n = normalize(aviationNormal);
+        // Sheet laps wrap around the fuselage. Wing bays run outboard along the spars.
+        vec2 barrel = vec2(p.z * .67, atan(p.y-1.82, p.x) * .477465);
+        vec2 skinUV = abs(p.x)>1.42 ? p.xz*vec2(.56,.64) : barrel;
+        vec3 sheet = texture2D(aviationSheet, skinUV).rgb;
+        float skin = 1.-smoothstep(.48,.50,vBand);
+        float ribs = 1.-smoothstep(.025,.085,abs(fract(abs(p.x)*2.35)-.5));
+        float linen = smoothstep(1.5,2.2,abs(p.x))*smoothstep(.50,.85,abs(n.y));
+        float chip = sheet.g * skin * (1.-linen);
+        surfaceAlbedo *= mix(1.,.65+.59*sheet.b+.08*ribs*linen,skin);
+        surfaceAlbedo = mix(surfaceAlbedo,vec3(.31,.33,.32),chip*.77);
+        aviationWear = max(aviationWear,chip);
+        aviationRelief += skin*((sheet.r-.5)*1.15 + linen*ribs*.49);
         // Four fuselage-side paint zones in the original glTF model coordinates.
         vec4 panel = vec4(1.64, 2.08, 1.66, 1.22);
         float maxWidth = 1.22;
@@ -232,7 +250,7 @@ class NomadAviationPaint extends BABYLON.MaterialPluginBase {
         float atlasRough = metallicRoughness.g;
         float hardware = smoothstep(0.48, 0.82, atlasMetal) * step(0.5, vBandMR);
         metallicRoughness.r = clamp(max(hardware * 0.88, aviationWear * 0.68), 0.0, 0.88);
-        metallicRoughness.g = mix(clamp(atlasRough * 0.46 + 0.39 + (0.23 - aviationRelief) * 0.25, 0.46, 0.91),
+        metallicRoughness.g = mix(clamp(atlasRough * 0.32 + 0.54 + (0.23 - aviationRelief) * 0.25, 0.46, 0.91),
                                   clamp(atlasRough * 0.57 + 0.22, 0.29, 0.70), hardware);
         metallicRoughness=mix(metallicRoughness,vec2(mix(.48,.0,patchCloth),mix(.61,.96,patchCloth)),fieldRepair);
         #endif
@@ -266,8 +284,8 @@ export function configureImportedAircraftMaterial(material, engine, variant = 'c
   material.albedoColor.set(1.0, 1.0, 1.0);
   material.metallic = 1;
   material.roughness = 1;
-  material.environmentIntensity = 1.24;
-  material.specularIntensity = 1.05;
+  material.environmentIntensity = .88;
+  material.specularIntensity = .82;
   if (material.clearCoat) {
     material.clearCoat.isEnabled = false;
   }

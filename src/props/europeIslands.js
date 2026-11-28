@@ -64,15 +64,27 @@ function createEuropeanMasonryTextures(scene) {
       const lit = ((wx + wy) % 3) !== 0;
       ctx.fillStyle = '#5a5043';
       ctx.fillRect(wx - 3, wy - 3, 28, 52);
-      ctx.fillStyle = lit ? '#e8bd6d' : '#353e4a';
+      const pane = ctx.createLinearGradient(wx, wy, wx + 9, wy + 46);
+      pane.addColorStop(0, lit ? '#65513d' : '#26363b');
+      pane.addColorStop(.45, lit ? '#bea06e' : '#536969');
+      pane.addColorStop(1, lit ? '#c2aa7d' : '#34464a');
+      ctx.fillStyle = pane;
       ctx.fillRect(wx, wy, 22, 46);
       // Window mullions
       ctx.fillStyle = '#4e4438';
       ctx.fillRect(wx + 10, wy, 2, 46);
       ctx.fillRect(wx, wy + 20, 22, 2);
       // Recessed window normal
-      nCtx.fillStyle = 'rgb(88, 88, 220)';
-      nCtx.fillRect(wx - 2, wy - 2, 26, 50);
+      nCtx.fillStyle = 'rgb(128,128,255)';
+      nCtx.fillRect(wx, wy, 22, 46);
+      nCtx.fillStyle = 'rgb(78,128,245)';
+      nCtx.fillRect(wx - 2, wy, 2, 46);
+      nCtx.fillStyle = 'rgb(175,128,245)';
+      nCtx.fillRect(wx + 22, wy, 2, 46);
+      ctx.fillStyle = '#decca6';
+      ctx.fillRect(wx - 4, wy + 46, 30, 2);
+      ctx.fillStyle = 'rgba(64,49,40,.36)';
+      ctx.fillRect(wx - 3, wy + 49, 28, 3);
     }
   }
 
@@ -137,6 +149,13 @@ function createTimberCottageTextures(scene) {
     ctx.fillRect(x - 5, 89, 36, 4);
     nCtx.fillStyle = 'rgb(128,92,249)';
     nCtx.fillRect(x - 5, 89, 36, 2);
+  }
+  // Split grain follows each post and lintel rather than crossing the lime infill.
+  for (let i = 0; i < 440; i++) {
+    const h = Math.imul(i + 1, 0x45d9f3b) >>> 0;
+    ctx.fillStyle = h & 16 ? 'rgba(228,190,132,.21)' : 'rgba(38,27,19,.32)';
+    ctx.fillRect((h % 4)*64 + ((h >>> 8)%10), (h >>> 12)%232, 1, 4 + (h >>> 24)%20);
+    ctx.fillRect((h >>> 12)%248, (h%2)*120 + ((h >>> 7)%12), 3 + (h >>> 24)%16, 1);
   }
   // Stone foundation plinth
   ctx.fillStyle = '#8b8272';

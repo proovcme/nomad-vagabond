@@ -1209,7 +1209,9 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   hCavernBack.position.set(-35.0, 5.99, 10.0);
   const bulkhead=new BABYLON.PBRMaterial('hangarPaintedBulkhead',scene);
   bulkhead.albedoTexture=new BABYLON.Texture('./assets/textures/nomad/hangar-bulkhead.webp',scene);
-  bulkhead.roughness=.84;bulkhead.metallic=.18;
+  bulkhead.bumpTexture=new BABYLON.Texture('./assets/textures/nomad/hangar-bulkhead-normal.webp',scene);
+  bulkhead.bumpTexture.level=.68;
+  bulkhead.roughness=.79;bulkhead.metallic=.06;
   function paintBulkhead(mesh, horizontalAxis, length) {
     const xyz=mesh.getVerticesData(BABYLON.VertexBuffer.PositionKind);
     const uv=mesh.getVerticesData(BABYLON.VertexBuffer.UVKind);
@@ -2042,12 +2044,16 @@ export class IndustrialIsland {
     const steelMat = new BABYLON.PBRMaterial('indSteelMat', this.scene);
     steelMat.albedoColor = c3('#5e554c');
     steelMat.metallic = 0.58;
-    steelMat.roughness = 0.52;
+    steelMat.roughness = .76;
+    steelMat.albedoTexture = new BABYLON.Texture('./assets/textures/nomad/weathered-iron-v2.jpg', this.scene);
+    steelMat.albedoColor = c3('#b0aaa1');
 
     const hazardMat = new BABYLON.PBRMaterial('indHazardMat', this.scene);
     hazardMat.albedoColor = c3('#f5ad2e');
     hazardMat.metallic = 0.38;
-    hazardMat.roughness = 0.46;
+    hazardMat.roughness = .79;
+    hazardMat.albedoTexture = steelMat.albedoTexture;
+    hazardMat.bumpTexture = fRustTex.bumpTex;
 
     const glowMat = new BABYLON.StandardMaterial('indFurnaceGlow', this.scene);
     glowMat.diffuseColor = c3('#ffd068');
@@ -2061,7 +2067,21 @@ export class IndustrialIsland {
     const hall = BABYLON.MeshBuilder.CreateBox('indRefineryHall', { width: 26, height: 12, depth: 17.5 }, this.scene);
     hall.parent = this.group;
     hall.position.set(-14, 8.2, -7.75);
-    hall.material = rustMat;
+    const brickwork = new BABYLON.PBRMaterial('refineryFiredBrick', this.scene);
+    brickwork.albedoTexture = new BABYLON.Texture('./assets/textures/nomad/port-brick.webp', this.scene);
+    brickwork.bumpTexture = new BABYLON.Texture('./assets/textures/nomad/port-brick-normal.webp', this.scene);
+    brickwork.metallic = 0;
+    brickwork.roughness = .96;
+    // Use metre-scale courses on both the long elevation and the gable ends.
+    const points = hall.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+    const normals = hall.getVerticesData(BABYLON.VertexBuffer.NormalKind);
+    const brickUV = hall.getVerticesData(BABYLON.VertexBuffer.UVKind);
+    for (let i = 0; i < hall.getTotalVertices(); i++) {
+      brickUV[2*i] = points[3*i + (Math.abs(normals[3*i]) > .5 ? 2 : 0)] / 4.1;
+      brickUV[2*i+1] = points[3*i + (Math.abs(normals[3*i+1]) > .5 ? 2 : 1)] / 2.5;
+    }
+    hall.setVerticesData(BABYLON.VertexBuffer.UVKind, brickUV);
+    hall.material = brickwork;
     hall.receiveShadows = true;
     if (shadowGen) shadowGen.addShadowCaster(hall, false);
 
@@ -2074,12 +2094,39 @@ export class IndustrialIsland {
     };
     // Sawtooth roof bays + glowing skylights
     for (let i = 0; i < 3; i++) {
-      const bay = BABYLON.MeshBuilder.CreateCylinder(`indRoofBay_${i}`, { diameter: 7.5, height: 17.5, tessellation: 3 }, this.scene);
-      bay.parent = this.group;
-      bay.position.set(-22 + i * 8, 15.2, -8);
-      bay.rotation.x = Math.PI * 0.5;
-      bay.material = steelMat;
-
+      const bayWidth = 26 / 3;
+      const left = -27 + i * bayWidth, right = left + bayWidth;
+      const baseY = 14.20, rise = 2.8, front = 1.0, rear = -16.5;
+      // Vertical northlight glazing and a long pitched sheet return to the brick parapet.
+      const roof = BABYLON.MeshBuilder.CreateBox('indRoofSheet', {
+        width: Math.hypot(bayWidth,rise), height: .17, depth: 17.85,
+      }, this.scene);
+      roof.position.set((left+right)/2,baseY+rise/2,-7.75);
+      roof.rotation.z = -Math.atan2(rise,bayWidth);
+      windowFrames.push(roof);
+      framePiece('indRoofEave',left,baseY+rise,-7.75,.14,.18,17.85);
+      const northlight = BABYLON.MeshBuilder.CreateBox('indRoofNorthlight', {width:.032,height:rise-.13,depth:17.36},this.scene);
+      northlight.position.set(left,baseY+rise/2,-7.75);
+      northlight.parent = this.group;
+      northlight.material = this.scene.getMaterialByName('indNorthlightGlass') || new BABYLON.PBRMaterial('indNorthlightGlass',this.scene);
+      northlight.material.albedoColor = c3('#667e80');
+      northlight.material.roughness = .46;
+      northlight.material.metallic = .05;
+      for (let post=0; post<=6; post++) {
+        framePiece('indRoofGlazingBar',left,baseY+rise/2,rear+post*17.5/6,.18,rise+.1,.10);
+      }
+      for (const end of [front,rear]) {
+        const gable = new BABYLON.Mesh('indRoofGable',this.scene);
+        const data = new BABYLON.VertexData();
+        data.positions = [left,baseY,end,right,baseY,end,left,baseY+rise,end];
+        data.indices = end===front ? [0,2,1] : [0,1,2];
+        data.uvs = [0,0,2,0,0,1];
+        data.normals = [];
+        BABYLON.VertexData.ComputeNormals(data.positions,data.indices,data.normals);
+        data.applyToMesh(gable);
+        windowFrames.push(gable);
+      }
+      framePiece('indHallColumn',left,8.2,1.10,.23,12,.23);
       const win = BABYLON.MeshBuilder.CreateBox(`indFurnaceWin_${i}`, { width: 4.5, height: 2.2, depth: 0.4 }, this.scene);
       win.parent = this.group;
       win.position.set(-21 + i * 7, 7.2, 1.1);
@@ -2199,13 +2246,20 @@ export class IndustrialIsland {
     }
 
     // 2. Open-frame Hangar Bay
-    const hangarRoof = BABYLON.MeshBuilder.CreateBox('indHangarRoof', { width: 18, height: 1.2, depth: 16 }, this.scene);
+    const hangarRoof = BABYLON.MeshBuilder.CreateBox('indHangarRoof', { width: 18, height: .38, depth: 16 }, this.scene);
     hangarRoof.parent = this.group;
     hangarRoof.position.set(-10, 12.5, 14);
     hangarRoof.material = steelMat;
     for (const sx of [-18, -2]) {
       for (const sz of [7, 21]) {
-        const leg = BABYLON.MeshBuilder.CreateBox(`indHangarLeg_${sx}_${sz}`, { width: 1.3, height: 10.5, depth: 1.3 }, this.scene);
+        const sections = [[0,.18,.76],[-.35,.75,.13],[.35,.75,.13]];
+        const pieces = sections.map(([offset,width,depth])=>{
+          const part=BABYLON.MeshBuilder.CreateBox('indRolledSteel',{width,height:10.5,depth},this.scene);
+          part.position.z=offset;
+          return part;
+        });
+        const leg = BABYLON.Mesh.MergeMeshes(pieces,true);
+        leg.name = `indHangarLeg_${sx}_${sz}`;
         leg.parent = this.group;
         leg.position.set(sx, 7.2, sz);
         leg.material = hazardMat;

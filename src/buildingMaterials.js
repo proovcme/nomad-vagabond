@@ -31,10 +31,19 @@ class BuildingAtlasPaint extends BABYLON.MaterialPluginBase {
   }
   getCustomCode(type){
     if(type!=='fragment')return null;
-    return {CUSTOM_FRAGMENT_UPDATE_ALBEDO:`
+    return {CUSTOM_FRAGMENT_DEFINITIONS:`
+      #ifdef BUILDING_ATLAS_PAINT
+      float armorGrain;
+      #endif
+    `, CUSTOM_FRAGMENT_UPDATE_METALLICROUGHNESS:`
+      #ifdef BUILDING_ATLAS_PAINT
+      metallicRoughness.g=clamp(.66+.22*metallicRoughness.g-.10*armorGrain,.51,.94);
+      #endif
+    `, CUSTOM_FRAGMENT_UPDATE_ALBEDO:`
       #ifdef BUILDING_ATLAS_PAINT
       // Grade the existing atlas, never replace its UVs or hide wear under a flat multiply.
       float buildingLum=dot(surfaceAlbedo,vec3(.2126,.7152,.0722));
+      armorGrain=clamp(buildingLum*2.,0.,1.);
       float buildingWear=smoothstep(.065,.24,surfaceAlbedo.r-surfaceAlbedo.b);
       float buildingDetail=clamp(pow(max(buildingLum,.001)/.26,.70),.22,1.42);
       vec3 buildingPaint=mix(buildingPaintPrimary.rgb,buildingPaintTrim.rgb,buildingWear*.78)*buildingDetail;
@@ -73,7 +82,10 @@ export function configureBuildingMaterial(material,kind,engine) {
     material.albedoColor.set(1,1,1);
     material.metallic=.22;material.roughness=.78;
   }else if(role==='body'){
-    material.albedoColor.copyFrom(color(palette.body));material.metallic=.66;material.roughness=.57;
+    material.albedoColor.copyFrom(color(palette.body));material.metallic=.59;material.roughness=.73;
+    const path='./assets/textures/nomad/weathered-iron-v2.jpg';
+    const scene=material.getScene();
+    material.albedoTexture ||= scene.getTextureByName(path) || new BABYLON.Texture(path,scene);
   }else if(role==='trim'){
     material.albedoColor.copyFrom(color(palette.trim));material.metallic=.84;material.roughness=.39;
   }else if(role==='oxide'){

@@ -85,6 +85,39 @@ function slimFighter(meshes) {
   }
 }
 
+// Both exposed axle ends follow the original tailwheel when its strut retracts.
+function fitTailwheelHubs(meshes, scene, heavy) {
+  const gear = meshes.find(mesh => mesh.name === 'gear_tail');
+  if (!gear) return;
+  const B = BABYLON;
+  const radius = heavy ? .28 : .24;
+  const outerFace = heavy ? .24 : .10;
+  const parts = [];
+  for (const side of [-1, 1]) {
+    const profile = [[0, .022], [.19,.022], [.21,.006], [.41,.006], [.46,.018], [.52,.016], [.54,-.004]];
+    const rim = B.MeshBuilder.CreateLathe('stampedWheelHub', {
+      shape: profile.map(([r, depth]) => new B.Vector3(r*radius, depth, 0)),
+      tessellation: 20, sideOrientation: B.Mesh.DOUBLESIDE,
+    },scene);
+    rim.rotation.z = -side*Math.PI/2;
+    rim.position.set(side*outerFace, radius, 0);
+    parts.push(rim);
+    for (let i = 0; i < 5; i++) {
+      const a = i*2*Math.PI/5;
+      const nut = B.MeshBuilder.CreateCylinder('hubNut', {diameter:.022,height:.014,tessellation:6},scene);
+      nut.rotation.z = Math.PI/2;
+      nut.position.set(side*(outerFace+.014),radius + Math.sin(a)*radius*.32,Math.cos(a)*radius*.32);
+      parts.push(nut);
+    }
+  }
+  const hubs = B.Mesh.MergeMeshes(parts,true);
+  hubs.name = 'tailwheelPressedHubs';
+  hubs.material = finishMaterial(scene,'wheelHub','#aaa18e');
+  hubs.parent = gear;
+  hubs.isPickable = false;
+  hubs.receiveShadows = true;
+}
+
 // Staggered upper wing of the two-seat attack biplane, in airframe coordinates.
 function fitUpperWing(frame, scene, material) {
   const B = BABYLON;
@@ -213,6 +246,7 @@ export function fitInterbellumAircraft(meshes, scene, variant, shadowGenerator =
   const B = BABYLON, profile = PROFILES[variant] || PROFILES.cargo;
   const mat = finishMaterial(scene, variant, profile.color);
   if (variant === 'fighter') slimFighter(meshes);
+  fitTailwheelHubs(meshes, scene, variant === 'cargo' || variant === 'bomber');
   const frameMesh = meshes.find(m => m.name === 'airframe');
   if (variant === 'cargo' && frameMesh) fitCargoCowling(frameMesh,scene);
   if (variant === 'attacker' && frameMesh) fitUpperWing(frameMesh, scene, mat);
