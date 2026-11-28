@@ -77,7 +77,8 @@ export class MaterialKit {
       runway.material=mat;runway.receiveShadows=true;
     }
     const wall=new BABYLON.PBRMaterial('paintedHangarWallOlive',scene);this.apply(wall,'aviation-runway-graphite-v1.jpg',.24,.74,[.58,.56,.50,.48]);
-    for(const mesh of scene.meshes)if(/^vagHangar(?:Back|Side|Ceil)/.test(mesh.name))mesh.material=wall;
+    const ceiling=scene.getMeshByName('vagHangarCeil');
+    if(ceiling)ceiling.material=wall;
     const floor=scene.getMeshByName('hangarInnerFloor');
     if(floor && floor.material?.name !== 'cfCruiserDeckSteelMat'){const mat=new BABYLON.PBRMaterial('aviationHangarFloorSteel',scene);this.apply(mat,'armored-deck-plates.png',.36,.62,[.78,.80,.78,.24]);floor.material=mat;}
     scene.onDisposeObservable.addOnce(()=>this.dispose());

@@ -1198,7 +1198,20 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   const hCavernBack = BABYLON.MeshBuilder.CreateBox('vagHangarBack', { width: 1.0, height: 11.92, depth: 38.0 }, scene);
   hCavernBack.parent = hangarNode;
   hCavernBack.position.set(-35.0, 5.99, 10.0);
-  hCavernBack.material = concreteMat;
+  const bulkhead=new BABYLON.PBRMaterial('hangarPaintedBulkhead',scene);
+  bulkhead.albedoTexture=new BABYLON.Texture('./assets/textures/nomad/hangar-bulkhead.webp',scene);
+  bulkhead.roughness=.84;bulkhead.metallic=.18;
+  function paintBulkhead(mesh, horizontalAxis, length) {
+    const xyz=mesh.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+    const uv=mesh.getVerticesData(BABYLON.VertexBuffer.UVKind);
+    for(let i=0;i<xyz.length/3;i++){
+      uv[2*i]=xyz[3*i+horizontalAxis]/length+.5;
+      uv[2*i+1]=xyz[3*i+1]/11.92+.5;
+    }
+    mesh.setVerticesData(BABYLON.VertexBuffer.UVKind,uv);
+    mesh.material=bulkhead;
+  }
+  paintBulkhead(hCavernBack,2,38);
 
   const hCavernCeil = BABYLON.MeshBuilder.CreateBox('vagHangarCeil', { width: 40.4, height: 1.4, depth: 37.8 }, scene);
   hCavernCeil.parent = hangarNode;
@@ -1210,7 +1223,7 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
     const hWall = BABYLON.MeshBuilder.CreateBox(`vagHangarSide_${idx}`, { width: 40.4, height: 11.92, depth: 1.8 }, scene);
     hWall.parent = hangarNode;
     hWall.position.set(-14.3, 5.99, wz);
-    hWall.material = concreteMat;
+    paintBulkhead(hWall,0,40.4);
 
     const pillar = BABYLON.MeshBuilder.CreateBox(`vagHangarPillar_${idx}`, { width: 2.6, height: 12.0, depth: idx===0?1.3:2.6 }, scene);
     pillar.parent = hangarNode;
@@ -1525,7 +1538,7 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   };
 
   // Real CC0 props inside the Hangar Apron (skipped 31k-tri Lantern_01 for fast Vagabond rendering)
-  instantiateGLBInto(scene, './assets/benchmark/models/Barrel_01/', 'Barrel_01_1k.gltf', asteroidBase.group, new BABYLON.Vector3(2.5, 3.38, -5.8), 1.1, 0.4, shadowGen);
+  instantiateGLBInto(scene, './assets/benchmark/models/Barrel_01/', 'Barrel_01_1k.gltf', asteroidBase.group, new BABYLON.Vector3(-2.5, 3.38, -7.8), 1.1, 0.4, shadowGen);
   instantiateGLBInto(scene, './assets/benchmark/models/old_military_crate/', 'old_military_crate_1k.gltf', asteroidBase.group, new BABYLON.Vector3(1.8, 3.38, 5.8), 1.2, 0.8, shadowGen);
   decorateVagabondCarrier(asteroidBase, scene, shadowGen);
   finishRockHangar(scene, asteroidBase, shadowGen, rockMasses);

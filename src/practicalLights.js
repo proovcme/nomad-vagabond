@@ -74,9 +74,17 @@ export class PracticalLights {
 
   _installHangar() {
     for(const bar of this.base.group.getChildMeshes().filter(m=>/^(vagHangarLight_|hangarRoofLamp_)/.test(m.name))){
-      this.changedMeshes.push({mesh:bar,material:bar.material});const baseX=BABYLON.Vector3.TransformCoordinates(bar.computeWorldMatrix(true).getTranslation(),this.base.group.computeWorldMatrix(true).clone().invert()).x;
+      this.changedMeshes.push({mesh:bar,material:bar.material,scaling:bar.scaling.clone()});
+      const baseX=BABYLON.Vector3.TransformCoordinates(bar.computeWorldMatrix(true).getTranslation(),this.base.group.computeWorldMatrix(true).clone().invert()).x;
       bar.material=this.hangarBanks[baseX < -18 ? 2 : baseX < -3 ? 1 : 0];
-      if(!/^vagHangarLight_/.test(bar.name))continue;
+      const deep=bar.name.startsWith('vagHangarLight_');
+      const span=deep?13:24;
+      bar.scaling.z*=.16;
+      for(const side of [-1,1]){
+        const lens=bar.createInstance('hangarSideLens');
+        lens.parent=bar.parent;lens.position.z+=side*span*.32;lens.isPickable=false;this.meshes.push(lens);
+      }
+      if(!deep)continue;
       const housing=BABYLON.MeshBuilder.CreateBox('practicalInsetHangarHousing',{width:1.12,height:.32,depth:13.35},this.scene);
       housing.parent=bar.parent;housing.position.copyFrom(bar.position);housing.position.y+=.28;
       housing.material=this.housing;housing.receiveShadows=true;housing.isPickable=false;housing.checkCollisions=false;this.meshes.push(housing);
@@ -105,7 +113,7 @@ export class PracticalLights {
   }
 
   _syncHangarTargets() {
-    const targets=this.base.group.getChildMeshes().filter(mesh=>mesh.getTotalVertices?.()>0&&(/^hangar/i.test(mesh.name)||/^vagHangar|^vagCarrierRunway$|^vagabondUnifiedRockShell/.test(mesh.name)||(()=>{for(let n=mesh.parent;n;n=n.parent)if(/^parkedAircraft_/.test(n.name))return true;return false;})()));
+    const targets=this.base.group.getChildMeshes().filter(mesh=>mesh.getTotalVertices?.()>0&&(/^hangar/i.test(mesh.name)||/^vagHangar|^vagCarrierRunway$|^vagabondUnifiedRockShell/.test(mesh.name)||(()=>{for(let n=mesh.parent;n;n=n.parent)if(n.name==='vagPowerLever'||/^parkedAircraft_/.test(n.name))return true;return false;})()));
     // A parked aircraft also receives the same practical light. In open air these
     // three local lights are removed from its shader entirely.
     if(this.ship.group&&BABYLON.Vector3.Distance(this.ship.group.position,this.base.group.position)<38){

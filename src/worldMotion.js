@@ -30,21 +30,55 @@ export class WorldMotion {
     // A moving-coil meter on the aisle side of the switch cabinet.
     const dial=B.MeshBuilder.CreateCylinder('switchboardVoltmeter',{diameter:.67,height:.07,tessellation:32},scene);
     dial.parent=this.leverNode;dial.position.set(0,1.09,.49);dial.rotation.x=Math.PI/2;dial.material=steel;
-    const face=metal(scene,'switchboardEnamel','#e3cf9a',.88);
-    const plate=B.MeshBuilder.CreateCylinder('voltmeterFace',{diameter:.59,height:.018,tessellation:32},scene);
-    plate.parent=dial;plate.position.y=.045;plate.material=face;
-    const pivot=new B.TransformNode('voltmeterPivot',scene);pivot.parent=this.leverNode;pivot.position.set(0,1.00,.555);
-    const ink=metal(scene,'voltmeterInk','#382317',.9);
-    for(let i=0;i<9;i++){
-      const angle=-1+i*.25;
-      const mark=B.MeshBuilder.CreateBox('voltmeterGraduation',{width:.014,height:i%2?.032:.052,depth:.01},scene);
-      mark.parent=pivot;mark.position.set(-Math.sin(angle)*.27,Math.cos(angle)*.27,0);mark.rotation.z=angle;mark.material=ink;
+    dial.position.y=.96;
+    const brass=metal(scene,'switchboardBrass','#b39657',.42);
+    dial.material=brass;
+    const panelMaterial=(name,file)=>{
+      const mat=metal(scene,name,'#ffffff',.77);
+      mat.metallic=.16;
+      mat.albedoTexture=new B.Texture('./assets/textures/nomad/'+file,scene);
+      mat.albedoTexture.uScale=-1;mat.albedoTexture.uOffset=1;
+      return mat;
+    };
+    const sign=B.MeshBuilder.CreatePlane('switchboardServiceDoor',{width:1.08,height:1.47},scene);
+    sign.parent=this.leverNode;sign.position.set(0,.75,.458);sign.rotation.y=Math.PI;
+    sign.material=panelMaterial('switchboardEnamel','switchboard-enamel.webp');
+    const scale=B.MeshBuilder.CreateDisc('voltmeterScale',{radius:.297,tessellation:48},scene);
+    scale.parent=this.leverNode;scale.position.set(0,.96,.537);scale.rotation.y=Math.PI;
+    scale.material=panelMaterial('switchboardPaper','switchboard-volts.webp');
+    scale.material.albedoTexture.vScale=-1;scale.material.albedoTexture.vOffset=1;
+    const casing=scene.getMeshByName('vagLeverBox');
+    if(casing){
+      casing.material.albedoColor=B.Color3.FromHexString('#486c60');
+      casing.material.albedoTexture=new B.Texture('./assets/textures/nomad/weathered-iron-v2.jpg',scene);
+      casing.material.metallic=.36;casing.material.roughness=.7;
+      steel.albedoTexture=casing.material.albedoTexture;
+      steel.roughness=.72;steel.metallic=.31;
+      grip.albedoTexture=casing.material.albedoTexture;grip.metallic=.05;
+    }
+    const pivot=new B.TransformNode('voltmeterPivot',scene);pivot.parent=this.leverNode;pivot.position.set(0,.88,.549);
+    const pipe=metal(scene,'switchboardConduit','#71674e',.57);
+    for(const side of [-1,1]){
+      const z=side*.21;
+      const path=[new B.Vector3(-.51,.47,z),new B.Vector3(-.68,.47,z),new B.Vector3(-.73,.42,z),new B.Vector3(-.73,.12,z),new B.Vector3(-.8,.055,z),new B.Vector3(-1.3,.055,z)];
+      const tube=B.MeshBuilder.CreateTube('switchboardFeed',{path,radius:.043,tessellation:8},scene);
+      tube.parent=this.leverNode;tube.material=pipe;
+    }
+    for(const [y,w,h,d] of [[.07,1.18,.12,.98],[1.51,1.15,.055,.95]]){
+      const rim=B.MeshBuilder.CreateBox('switchboardLip',{width:w,height:h,depth:d},scene);
+      rim.parent=this.leverNode;rim.position.y=y;rim.material=steel;
+    }
+    for(const y of [.34,.91]){
+      const hinge=B.MeshBuilder.CreateCylinder('switchboardDoorHinge',{diameter:.052,height:.20,tessellation:10},scene);
+      hinge.parent=this.leverNode;hinge.position.set(-.53,y,.47);hinge.material=brass;
     }
     this.needle=new B.TransformNode('voltmeterNeedlePivot',scene);this.needle.parent=pivot;
     const pointer=B.MeshBuilder.CreateBox('voltmeterNeedle',{width:.019,height:.24,depth:.013},scene);
     pointer.parent=this.needle;pointer.position.set(0,.11,.014);pointer.material=grip;
+    const hub=B.MeshBuilder.CreateSphere('voltmeterSpindle',{diameter:.05,segments:10},scene);
+    hub.parent=pivot;hub.position.z=.024;hub.material=brass;
     // The old bulb becomes a small inset status lens, leaving the moving handle readable.
-    const lamp=scene.getMeshByName('vagLeverBeacon');if(lamp){lamp.scaling.set(.30,.30,.30);lamp.position.set(.56,1.32,.27);}
+    const lamp=scene.getMeshByName('vagLeverBeacon');if(lamp){lamp.material.diffuseColor=B.Color3.FromHexString('#702f23');lamp.material.specularColor.set(.09,.05,.03);lamp.scaling.set(.22,.22,.22);lamp.position.set(.56,1.32,.27);}
   }
   _discover(){
     for(const node of this.scene.transformNodes)if((node.name==='radarRotor'||node.name==='vagRadarRotor')&&!this.radars.has(node)){if(node.rotationQuaternion){node.rotation.copyFrom(node.rotationQuaternion.toEulerAngles());node.rotationQuaternion=null;}this.radars.add(node);}

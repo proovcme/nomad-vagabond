@@ -22,6 +22,14 @@ export class HangarFleet {
    root.computeWorldMatrix(true);const bounds=root.getHierarchyBoundingVectors(true);
    root.position.set(record.x,3.38-bounds.min.y,record.z);root.parent=this.base.group;
    for(const m of res.meshes){m.isPickable=false;m.checkCollisions=true;if(!m.sourceMesh)m.receiveShadows=true;configureImportedAircraftMaterial(m.material,this.scene.getEngine(),record.variant);if(m.getTotalVertices()>0)this.shadowGenerator?.addShadowCaster(m,false);}
+   const shadowMaterial=this.scene.getMaterialByName('acContactShadowMat');
+   if(shadowMaterial){
+     const footprint=BABYLON.MeshBuilder.CreateGround('hangarAircraftContact',{
+       width:(bounds.max.z-bounds.min.z)*.88, height:(bounds.max.x-bounds.min.x)*.84
+     },this.scene);
+     footprint.parent=root;footprint.position.y=bounds.min.y+.024;
+     footprint.material=shadowMaterial;footprint.isPickable=false;
+   }
    new AircraftStores(root, record.variant);
    record.root=root;record.loaded=true;record.floorOffset=-bounds.min.y;record.bounds={min:bounds.min.asArray(),max:bounds.max.asArray()};root.setEnabled(record.variant!==this.activeVariant);
   }catch(e){record.error=String(e?.message||e);console.warn('Hangar aircraft could not load',record.variant,e);}

@@ -60,6 +60,14 @@ export function finishRockHangar(scene, base, shadowGenerator, rockMasses) {
     // Inner wall faces are z=±8.9. Put ribs in the room instead of inside the wall solid.
     for (const z of [-8.67,28.77]) serviceDetails.push(box(`hangarRib_${x}_${z}`, [.38,11.5,.4], [x,9.14,z], iron));
     serviceDetails.push(box(`hangarRoofRib_${x}`, [.38,.30,37.0], [x,15.10,10], iron));
+    // Paired knee braces tie the frames into the shell above the aircraft bays.
+    for(const side of [-1,1]){
+      const z=side<0?-7.35:27.45;
+      const brace=box('hangarFrameKnee',[.22,3.75,.19],[x,13.77,z],iron);
+      brace.rotation.x=side<0?.78:-.78;
+      serviceDetails.push(brace);
+      serviceDetails.push(box('hangarFrameTie',[.24,.14,2.18],[x,14.55,z],iron));
+    }
     box(`hangarRoofLamp_${x}`, [.25,.12,24], [x,14.78,10], glow);
   }
   // Visible hoist connects both playable decks; E travels with the cabin.
