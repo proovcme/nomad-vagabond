@@ -295,7 +295,9 @@ async function bakeTerrainTexture(scene, geometry, material, millFields) {
   texture.update(false);
   texture.wrapU = texture.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
   texture.anisotropicFilteringLevel = 8;
+  const preview=material.albedoTexture;
   material.albedoTexture = texture;
+  if(preview?.name==='millGroundPreview')preview.dispose();
   const bumpPath = geometry.style === 'industrial'
     ? './assets/benchmark/textures/anti_slip_concrete/nor_gl.jpg'
     : './assets/benchmark/textures/aerial_grass_rock/nor_gl.jpg';
@@ -313,6 +315,13 @@ export function buildGeneratedIsland(scene, options = {}) {
   const prefix = `generatedIsland_${geometry.style}_${geometry.seed}`;
   const topMat = createMaterial(scene, `${prefix}_terrainMat`, '#ffffff');
   topMat.albedoColor.set(1, 1, 1);
+  if(options.millFields && typeof document!=='undefined' && scene.getEngine().constructor.name!=='NullEngine'){
+    const preview=new BABYLON.DynamicTexture('millGroundPreview',256,scene,true);
+    const ctx=preview.getContext();
+    ctx.fillStyle='#78874e';ctx.fillRect(0,0,256,256);
+    paintMillFields(ctx,256,geometry);
+    preview.update(false);topMat.albedoTexture=preview;
+  }
   const rockMat = createMaterial(scene, `${prefix}_rockMat`, '#f5efe6');
   if (scene.getEngine().constructor.name !== 'NullEngine') {
     const texture = new BABYLON.Texture('./assets/benchmark/textures/aerial_rocks_02/Diffuse.jpg', scene);
