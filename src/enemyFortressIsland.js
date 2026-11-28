@@ -1,3 +1,4 @@
+import { installLiftPropellers } from './props/liftPropellers.js';
 import { createRustedMetalTexture } from './textures.js?v=mission1';
 
 function c3(hex) {
@@ -103,22 +104,10 @@ export class EnemyFortressIsland {
       beacon.position.set(sx, 12 + sh + 1.2, sz);
     }
 
-    // Glowing Aether Lift Core visible beneath the cliff brow
-    this.liftCore = reg(B.MeshBuilder.CreateSphere('enemyIslLiftCore', { diameter: 14, segments: 10 }, scene), coreMat);
-    this.liftCore.position.set(0, -28, 0);
-
-    // Giant spinning lift rotor under keel
-    this.rotorHub = new B.TransformNode('enemyIslRotorHub', scene);
-    this.rotorHub.parent = this.root;
-    this.rotorHub.position.set(0, -40, 0);
-    for (let i = 0; i < 4; i++) {
-      const blade = B.MeshBuilder.CreateBox(`enemyIslRotorBlade_${i}`, { width: 3.2, height: 0.55, depth: 36 }, scene);
-      blade.parent = this.rotorHub;
-      blade.rotation.y = (i * Math.PI) / 4;
-      blade.material = armorMat;
-      blade.isPickable = false;
-      blade.alwaysSelectAsActiveMesh = true;
-    }
+    this.liftDrive=installLiftPropellers(this.root,[
+      {x:-12,y:-36,offset:23,radius:10,anchorY:-19,anchorZ:10},
+      {x:12,y:-38,offset:23,radius:11,anchorY:-20,anchorZ:9},
+    ],{mount:armorMat,blade:scene.getMaterialByName('cfCruiserWhiteMat')||armorMat});
 
     this._rockMat = rockMat;
     this._armorMat = armorMat;
@@ -174,9 +163,7 @@ export class EnemyFortressIsland {
   update(dt, spawnExplosionFn, audio) {
     if (this.disposed) return;
 
-    if (this.rotorHub && !this.rotorHub.isDisposed?.()) {
-      this.rotorHub.rotation.y += dt * (this.collapsing ? 0.8 : 2.6);
-    }
+    this.liftDrive.power=this.collapsing ? 0 : 1;
 
     if (this.collapsing) {
       this.collapseTimer -= dt;

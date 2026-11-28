@@ -1,3 +1,4 @@
+import { installLiftPropellers } from './liftPropellers.js';
 /**
  * Heavy Interwar Sky-Battleship «Колосс» (inspired by HMS Nelson / Rodney, 1927):
  * Signature "all-forward" main armament (3 triple 16-inch turrets A, B, X forward of a towering
@@ -120,13 +121,6 @@ export function buildHeavyBattleship(scene) {
     for (const wx of [22, 28, 34]) {
       spar('AmberGlow', [wx - 0.8, 26.8, side * 7.25], [wx + 0.8, 26.8, side * 7.25], 0.28);
     }
-    // Recessed anti-gravity keel levitation bays along the battleship belly
-    for (const kx of [-58, -14, 34, 72]) {
-      const pod = B.MeshBuilder.CreateBox('colAgPod', { width: 14, height: 2.8, depth: 3.4 }, scene);
-      add('DarkSteel', pod, kx, -12.6, side * 6.4);
-      const glow = B.MeshBuilder.CreateBox('colAgGlow', { width: 11.2, height: 1.2, depth: 0.35 }, scene);
-      add('AmberGlow', glow, kx, -12.7, side * 8.15);
-    }
     // Diagonal white-crimson bow insignia band on the dreadnought prow
     const bandW = B.MeshBuilder.CreateBox('colBandW', { width: 6.2, height: 11.5, depth: 0.45 }, scene);
     bandW.rotation.set(side * 0.14, side * 0.28, 0.24);
@@ -231,5 +225,10 @@ export function buildHeavyBattleship(scene) {
   root.maxHp = 900;
   root.alive = true;
 
+  root.liftDrive=installLiftPropellers(root,[
+    {x:-60,y:-15,offset:16,radius:12,anchorY:-4,anchorZ:8},
+    {x:0,y:-17,offset:19,radius:14,anchorY:-5,anchorZ:9},
+    {x:66,y:-14,offset:15,radius:12,anchorY:-4,anchorZ:7}
+  ],{mount:mat('HullDark'),blade:mat('White')});
   return root;
 }

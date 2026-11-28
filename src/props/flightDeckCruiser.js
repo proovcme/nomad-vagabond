@@ -1,3 +1,4 @@
+import { installLiftPropellers } from './liftPropellers.js';
 import { mountServiceEnsign } from './serviceEnsign.js';
 import { fieldRepairTexture } from './repairTexture.js';
 /**
@@ -8,7 +9,7 @@ import { fieldRepairTexture } from './repairTexture.js';
  *   3. Three large sculpted superfiring triple-barrel 6-inch cruiser turrets (A, B, C) forward.
  *   4. Sculpted 1930s curved/faceted cruiser bridge, wrap-around wings, tripod foremast with rigging,
  *      and twin oval raked funnels with steam pipes & crimson bands.
- *   5. Clean cantilevered carrier stern overhang (zero stern rocket nozzles) + recessed keel levitation bays.
+ *   5. Cantilevered stern overhang and three pairs of keel-mounted lift propellers.
  */
 
 function c3(hex) {
@@ -922,55 +923,6 @@ function buildWideAftFlightDeck(scene, parent, mats, shadowGen) {
   mergeKit(crimsonParts, 'cfFlightDeckVents', parent, mats.crimson, null);
 }
 
-/**
- * Module 5: Recessed Armored Under-Hull Levitation / Anti-Gravity Units (strictly beneath the keel).
- */
-function buildAntigravKeelPods(scene, parent, mats) {
-  const B = BABYLON;
-  const darkParts = [], glowParts = [], brassParts = [];
-  const put = (arr, m, x, y, z, rx = 0) => { m.position.set(x, y, z); m.rotation.x = rx; arr.push(m); };
-
-  // 5 recessed armored anti-gravity thruster bays along the 234m cruiser keel
-  const pods = [
-    { x: -108, w: 12.0, z: 5.4, y: -11.4 },
-    { x:  -68, w: 15.0, z: 8.6, y: -13.2 },
-    { x:  -24, w: 16.5, z: 9.8, y: -13.6 },
-    { x:   18, w: 14.5, z: 8.2, y: -12.4 },
-    { x:   54, w: 12.0, z: 5.8, y: -9.4 },
-  ];
-  for (const p of pods) {
-    // Fair the lift machinery into the curved keel. The raised shoulders enter
-    // the shell and the lower shoe narrows around its emitter.
-    const stations=[[-.65,.14,3.9],[-.50,.80,4.9],[-.37,1,5.1],[.37,1,5.1],[.50,.80,4.9],[.65,.14,3.9]];
-    const rings=stations.map(([dx,beam,rise])=>[
-      [-.63,rise],[-.91,1.55],[-1,.52],[-1,-.78],[-.74,-1.31],
-      [.74,-1.31],[1,-.78],[1,.52],[.91,1.55],[.63,rise]
-    ].map(([z,y])=>new B.Vector3(p.x+p.w*dx,p.y+y,z*p.z*beam)));
-    darkParts.push(B.MeshBuilder.CreateRibbon('cfKeelFairing',{
-      pathArray:rings,closePath:true,sideOrientation:B.Mesh.DOUBLESIDE,
-    },scene));
-    for(const ring of [rings[0],rings[rings.length-1]]) {
-      const center=ring.reduce((sum,v)=>sum.addInPlace(v),B.Vector3.Zero()).scaleInPlace(1/ring.length);
-      darkParts.push(B.MeshBuilder.CreateRibbon('cfKeelEnd',{pathArray:[ring,ring.map(()=>center)],closePath:true,sideOrientation:B.Mesh.DOUBLESIDE},scene));
-    }
-    for(const flank of [-1,1]) {
-      const trim=stations.map(([dx,beam])=>new B.Vector3(p.x+p.w*dx,p.y+.59,flank*p.z*beam));
-      brassParts.push(B.MeshBuilder.CreateTube('cfLiftTrim',{path:trim,radius:.12,tessellation:6},scene));
-    }
-    // Downward-facing levitation emitter core ring visible from below
-    put(glowParts, B.MeshBuilder.CreateCylinder(`cfAgCore_${p.x}`, { diameter: Math.min(p.w * 0.72, p.z * 1.45), height: 0.3, tessellation: 14 }, scene), p.x, p.y - 1.32, 0);
-    for (const side of [-1, 1]) {
-      put(glowParts, B.MeshBuilder.CreateBox(`cfAgGlow_${p.x}_${side}`, { width: p.w * 0.78, height: 1.15, depth: 0.28 }, scene), p.x, p.y - 0.1, side * (p.z + 0.12));
-      for (let lx = -p.w * 0.32; lx <= p.w * 0.33; lx += p.w * 0.16) {
-        put(darkParts, B.MeshBuilder.CreateBox(`cfAgLouver_${p.x}_${side}_${lx}`, { width: 0.34, height: 1.45, depth: 0.42 }, scene), p.x + lx, p.y - 0.1, side * (p.z + 0.16));
-      }
-    }
-  }
-  mergeKit(darkParts, 'cfAntigravPods', parent, mats.darkSteel, null);
-  mergeKit(brassParts, 'cfAntigravBrass', parent, mats.brass, null);
-  mergeKit(glowParts, 'cfAntigravGlow', parent, mats.amberGlow, null);
-}
-
 // New outer plating around the existing hangar. The service stairs run along
 // the port face; the wider starboard shoulder covers the offset second bay.
 function buildHangarOuterPlating(scene, parent, mats) {
@@ -1074,7 +1026,11 @@ export function buildFlightDeckCruiserModel(asteroidBase, scene, shadowGen = nul
   buildMidshipsSuperstructure(scene, asteroidBase.group, mats, shadowGen);
   buildWideAftFlightDeck(scene, asteroidBase.group, mats, shadowGen);
   buildHangarOuterPlating(scene, asteroidBase.group, mats);
-  buildAntigravKeelPods(scene, asteroidBase.group, mats);
+  asteroidBase.liftDrive=installLiftPropellers(asteroidBase.group,[
+    {x:-90,y:-15,offset:17,radius:13,anchorY:-4,anchorZ:9},
+    {x:-27,y:-17,offset:22,radius:16,anchorY:-5,anchorZ:12},
+    {x:43,y:-14,offset:18,radius:14,anchorY:-4,anchorZ:9},
+  ],{mount:mats.hullDark,blade:mats.white});
   if (!(scene.getEngine() instanceof BABYLON.NullEngine)) {
     const wear=new BABYLON.Texture('./assets/textures/nomad/cruiser-service-wear.webp',scene);
     wear.gammaSpace=false;

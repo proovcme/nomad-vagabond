@@ -13,6 +13,18 @@ const {bakeTargets,refineBakeSurface,geometryKey,sceneTriangles,buildBakeBVH,bak
 const engine=new B.NullEngine(),scene=new B.Scene(engine);scene.useRightHandedSystem=true;
 const cam=new B.FreeCamera('validationCamera',new B.Vector3(0,60,100),scene);scene.activeCamera=cam;
 const world=new SkyArchipelagoWorld(scene,'AETHER-742'),base=new AsteroidBase(scene,742);world.registerVagabondBase(base);
+const {animateLiftPropellers}=await import('../src/props/liftPropellers.js');
+const drive=base.liftDrive;
+assert.equal(drive.rotors.length,6);
+for(const island of [world.forestIsland,world.industrialIsland]){
+ assert(!island.group.getChildMeshes().some(mesh=>/liftPropeller|^islandRotor/i.test(mesh.name)));
+}
+drive.power=drive.speed=0;
+const resting=drive.rotors.map(({mesh})=>mesh.rotation.y);
+animateLiftPropellers(scene,.2);
+assert.deepEqual(drive.rotors.map(({mesh})=>mesh.rotation.y),resting);
+drive.power=1;animateLiftPropellers(scene,.2);
+drive.rotors.forEach(({mesh,side},i)=>assert.equal(Math.sign(mesh.rotation.y-resting[i]),side));
 const lifts=scene.transformNodes.filter(node=>node.name.startsWith('bridgeLift_'));
 assert.equal(lifts.length,3);
 assert.equal(world.horizonRail.rotors.length,4);

@@ -94,8 +94,7 @@ export class FogPassage {
     this.salvoBolts=[];
     this.flashMaterial=new B.StandardMaterial('fogPassageTracer',scene);
     this.flashMaterial.disableLighting=true;this.flashMaterial.emissiveColor=new B.Color3(1,.59,.15);
-    this.keelLights=base.group.getChildMeshes().filter(m=>m.name==='cfAntigravGlow');
-    this.keelLights.forEach(m=>m.setEnabled(false));
+    if(base.liftDrive){base.liftDrive.power=0;base.liftDrive.speed=0;}
   }
 
   get fix(){return this.fixes[this.index];}
@@ -173,13 +172,13 @@ export class FogPassage {
       for(const {bolt,end} of this.salvoBolts){explode(end,effects.impact);bolt.dispose();}
       this.salvoBolts=[];
     }
-    if(t===1){this.escort.rotation.z+=dt*.34;this.escort.position.y-=dt*17;}
+    if(t===1){this.escort.liftDrive.power=0;this.escort.rotation.z+=dt*.34;this.escort.position.y-=dt*17;}
     if(this.salvoTime<4.2)return false;
     this.escort.setEnabled(false);return true;
   }
 
   lift(dt,base) {
-    this.keelLights.forEach(m=>m.setEnabled(true));
+    if(base.liftDrive)base.liftDrive.power=1;
     this.liftTime=Math.min(6,this.liftTime+dt);
     const t=this.liftTime/6;
     base.group.position.y=this.restY+24*t*t*(3-2*t);

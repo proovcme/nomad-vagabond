@@ -1,26 +1,48 @@
 // A continuous rim joins the turf to stepped, fissured rock. Both pieces go into the horizon batches.
 export function headland(scene, seed, radius, depth, stoneParts, turfParts, center) {
-  const B=BABYLON, count=48,profiles=[[1,0],[1.015,.05],[.94,.20],[.96,.25],[.92,.42],[.78,.47],[.83,.66],[.52,.74]];
-  const points=[],colors=[],uvs=[],indices=[],normals=[];
-  for(const [layer,[scale,drop]] of profiles.entries()){
-    for(let j=0;j<=count;j++){
-      const a=j%count*Math.PI*2/count,fold=Math.sin(7*a+seed)*.046+Math.sin(3*a+.3*seed)*.082;
-      const tooth=.13*Math.sin(5*a+seed)+.1*Math.cos(3*a-seed);
-      // Fracture the lower beds into stepped buttresses, with a broad overhang at one end.
-      const joint=Math.pow(.5+.5*Math.sin(5*a+seed),4);
-      const undercut=drop*(.18*Math.cos(a-seed)+.15*joint);
-      const r=radius*(1+fold)*(scale+undercut);
-      points.push(r*Math.cos(a)-drop*radius*.12,-depth*drop*(1+tooth+.29*joint*drop),r*.91*Math.sin(a));
-      const shelfShade=[1,.94,.76,.94,.84,.66,.76,.62][layer];
-      const light=(.84+.12*Math.cos(3*a+.5)+.08*Math.sin(12*a+.6*layer))*shelfShade;
-      colors.push(light,light*(.98-.07*drop),light*(.93-.12*drop),1);uvs.push(j/count*3+seed*.37,1-drop+.07*Math.sin(a*2+seed));
-      if(j&&layer){const k=layer*(count+1)+j,b=k-count-1;indices.push(k,b-1,b,k,k-1,b-1);}
+  const B=BABYLON, count=60;
+  // Adjacent outcrops expose different successions of beds. Thin dark seams sit
+  // between the thick sandstone and limestone shelves, following the bedding dip.
+  const sections=[
+    [[1,0],[1.01,.05],[.98,.21],[.89,.23],[.94,.26],[.90,.51],[.80,.55],[.81,.64],[.51,.76]],
+    [[1,0],[1.025,.04],[1.03,.12],[.96,.15],[.99,.19],[.96,.32],[.80,.37],[.83,.59],[.62,.68]],
+    [[1,0],[1.015,.04],[.96,.28],[.87,.30],[.91,.33],[.81,.61],[.68,.65],[.69,.80],[.37,.91]],
+  ];
+  const pigments=[
+    ['#87934c','#ffe4ac','#f6c880','#855647','#ffd194','#da834f','#927080','#dfad87'],
+    ['#a0a553','#ffdf9f','#fff2ca','#ab7951','#f6bd68','#f9dbac','#68828a','#bbcab6'],
+    ['#918f4a','#ffd58e','#f19962','#83534b','#f7c78f','#eeab74','#776b83','#be99a2'],
+  ];
+  const type=seed%3, profiles=sections[type], points=[],colors=[],uvs=[],indices=[],normals=[];
+  const rim=(j,scale,drop)=>{
+    const a=j%count*Math.PI*2/count;
+    const fold=.07*Math.sin(7*a+seed)+.09*Math.sin(3*a+.3*seed);
+    const joint=Math.pow(.5+.5*Math.sin(5*a+seed),5);
+    const fault=Math.tanh(5*Math.sin(3*a+seed))*.081;
+    const cleft=Math.pow(.5+.5*Math.cos(9*a+.8*seed),12);
+    const r=radius*(1+fold)*(scale+drop*(.20*Math.cos(a-seed)+.13*joint-.20*cleft));
+    const bedding=(.085*Math.sin(2*a+seed)+fault+.025*Math.cos(3*a-seed)) * Math.min(1,drop*3.5);
+    return [r*Math.cos(a)-drop*radius*.14,-depth*(drop*(1+.32*joint*drop)+bedding),r*(.84+.07*type)*Math.sin(a)];
+  };
+  for(let layer=0;layer<profiles.length-1;layer++){
+    const pigment=B.Color3.FromHexString(pigments[type][layer]).toLinearSpace();
+    for(let row=0;row<2;row++){
+      const [scale,drop]=profiles[layer+row];
+      for(let j=0;j<=count;j++){
+        points.push(...rim(j,scale,drop));
+        const bearing=(j%count)*2*Math.PI/count;
+        const cleft=Math.pow(.5+.5*Math.cos(9*bearing+.8*seed),12);
+        const shade=.92+.08*Math.sin(7*bearing+seed)-.19*cleft;
+        colors.push(pigment.r*shade,pigment.g*shade,pigment.b*shade,1);
+        uvs.push(j/count*3+seed*.21,1-drop*1.45);
+        if(row&&j){const k=points.length/3-1,b=k-count-1;indices.push(k,b-1,b,k,k-1,b-1);}
+      }
     }
   }
   const bottom=points.length/3;
   points.push(-radius*.18,-depth*.87,0);colors.push(.46,.36,.29,1);uvs.push(.5,2);
-  const last=(profiles.length-1)*(count+1);
-  for(let j=0;j<count;j++)indices.push(bottom,last+j+1,last+j);
+  const last=bottom-count-1;
+  for(let j=0;j<count;j++)indices.push(bottom,last+j,last+j+1);
   // Test one normal against the radial direction, since the scene uses right-handed rendering.
   B.VertexData.ComputeNormals(points,indices,normals);
   if(normals[0]<0){indices.reverse();B.VertexData.ComputeNormals(points,indices,normals);}

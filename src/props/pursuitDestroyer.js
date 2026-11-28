@@ -1,3 +1,4 @@
+import { installLiftPropellers } from './liftPropellers.js';
 // Local bow faces -X. All fixed fittings are batched by finish on the moving ship.
 import { createLoftedHull } from './flightDeckCruiser.js';
 
@@ -156,5 +157,9 @@ export function buildPursuitDestroyer(scene) {
     const guns=B.Mesh.MergeMeshes(pieces,true,true);guns.name='escortAATwin';guns.parent=pivot;guns.material=mat('DarkSteel');
     root.antiAircraftMounts.push({side,swivel,pivot});
   }
+  root.liftDrive=installLiftPropellers(root,[
+    {x:-29,y:-8.6,offset:7.4,radius:6.3,anchorY:-2,anchorZ:3},
+    {x:30,y:-8.1,offset:7.2,radius:6.4,anchorY:-2,anchorZ:3}
+  ],{mount:mat('HullDark'),blade:mat('White')});
   return root;
 }

@@ -1,3 +1,4 @@
+import { animateLiftPropellers } from './props/liftPropellers.js';
 import { dressMillFields, millCultivated } from './props/millFields.js';
 import { cascadeMesh, riverX, riverLevel } from './props/cascade.js';
 import { AirLine } from './props/airLine.js';
@@ -464,86 +465,6 @@ async function instantiateGLBInto(scene, rootUrl, file, parent, pos, scale, rotY
  * embedded engine support trusses, coolant pipes, and CC0 deck props.
  */
 /**
- * Builds a massive helicopter-style under-island lift rotor (gearbox, armored shroud ring,
- * hub, and 6 riveted lift blades) so every floating island stays aloft mechanically.
- */
-function createGiantIslandLiftRotor(parent, scene, x, y, z, diameter = 44, shadowGen = null) {
-  const frameMat = new BABYLON.PBRMaterial(`islandRotorFrame_${Math.round(diameter)}`, scene);
-  frameMat.albedoColor = c3('#3b4046');
-  frameMat.metallic = 0.82;
-  frameMat.roughness = 0.44;
-
-  const bladeMat = new BABYLON.PBRMaterial(`islandRotorBlade_${Math.round(diameter)}`, scene);
-  bladeMat.albedoColor = c3('#988664');
-  bladeMat.metallic = 0.55;
-  bladeMat.roughness = 0.50;
-
-  const brassMat = new BABYLON.PBRMaterial(`islandRotorBrass_${Math.round(diameter)}`, scene);
-  brassMat.albedoColor = c3('#b67442');
-  brassMat.metallic = 0.85;
-  brassMat.roughness = 0.34;
-
-  const assembly = new BABYLON.TransformNode('islandLiftRotorAssembly', scene);
-  assembly.parent = parent;
-  assembly.position.set(x, y, z);
-
-  // Heavy gearbox housing anchored up into the rock keel
-  const gearbox = BABYLON.MeshBuilder.CreateCylinder('islandRotorGearbox', { diameterTop: diameter * 0.22, diameterBottom: diameter * 0.16, height: 8.5, tessellation: 12 }, scene);
-  gearbox.parent = assembly;
-  gearbox.position.y = 3.2;
-  gearbox.material = frameMat;
-
-  // Armored outer shroud ring + 4 radial support struts
-  const shroud = BABYLON.MeshBuilder.CreateTorus('islandRotorShroud', { diameter: diameter * 0.96, thickness: 1.65, tessellation: 28 }, scene);
-  shroud.parent = assembly;
-  shroud.material = frameMat;
-  if (shadowGen) shadowGen.addShadowCaster(shroud, false);
-
-  // One full X chord, plus two perpendicular half-arms. Four full rotated chords
-  // duplicated the 0/180° and 90/270° faces and overlapped all four at the centre.
-  const span = diameter * .94, chordThickness = .95;
-  const fullStrut = BABYLON.MeshBuilder.CreateBox('islandRotorStrut_X', {width:span,height:.75,depth:chordThickness},scene);
-  fullStrut.parent=assembly;fullStrut.position.y=1.6;fullStrut.material=frameMat;
-  const armLength=(span-chordThickness)/2;
-  for(const side of [-1,1]) {
-    const arm=BABYLON.MeshBuilder.CreateBox(`islandRotorStrut_Z_${side}`, {width:chordThickness,height:.75,depth:armLength},scene);
-    arm.parent=assembly;arm.position.set(0,1.6,side*(chordThickness/2+armLength/2));arm.material=frameMat;
-  }
-
-  // Spinning rotor hub + 6 massive helicopter-style lift blades
-  const hub = new BABYLON.TransformNode('islandLiftRotorHub', scene);
-  hub.parent = assembly;
-  hub.position.y = -0.5;
-
-  const spinner = BABYLON.MeshBuilder.CreateCylinder('islandRotorSpinner', { diameterTop: diameter * 0.14, diameterBottom: 1.2, height: 4.5, tessellation: 12 }, scene);
-  spinner.parent = hub;
-  spinner.position.y = -1.2;
-  spinner.material = brassMat;
-
-  // Merge all 6 rotor blades into 1 single draw call per rotor (saves 15 draw calls across islands!)
-  const bladeCount = 6;
-  const bladeParts = [];
-  for (let b = 0; b < bladeCount; b++) {
-    const ang = (b * Math.PI * 2) / bladeCount;
-    const blade = BABYLON.MeshBuilder.CreateBox(`islandRotorBlade_${b}`, { width: diameter * 0.44, height: 0.24, depth: 2.35 }, scene);
-    blade.rotation.y = ang;
-    blade.rotation.x = 0.24;
-    blade.position.set(Math.cos(ang) * diameter * 0.23, 0.0, -Math.sin(ang) * diameter * 0.23);
-    blade.computeWorldMatrix(true);
-    bladeParts.push(blade);
-  }
-  const mergedBlades = BABYLON.Mesh.MergeMeshes(bladeParts, true, true, undefined, false, false);
-  if (mergedBlades) {
-    mergedBlades.name = `islandRotorBlades_${Math.round(diameter)}`;
-    mergedBlades.parent = hub;
-    mergedBlades.material = bladeMat;
-    mergedBlades.isPickable = false;
-  }
-
-  return hub;
-}
-
-/**
  * Deforms a rock cylinder/cone into a craggy, faceted cliff formation with vertical
  * strata, ledges, and jagged underside spires, then recomputes normals.
  */
@@ -990,11 +911,6 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   applyWorldRockUVs(mossCap, -18.0, 19.7, 0.0, 1.0, 1.0, 9.0);
   mossCap.material = mossRockMat;
   mossCap.receiveShadows = true;
-
-  // Twin sleek cruiser-carrier lift rotors hugging the shallow cruiser keel!
-  const keelRotorHub = createGiantIslandLiftRotor(asteroidBase.group, scene, -10.0, -11.5, 0.0, 30.0, shadowGen);
-  const bowRotorHub = createGiantIslandLiftRotor(asteroidBase.group, scene, 26.0, -4.5, 0.0, 18.0, null);
-  if (asteroidBase.engineRotors) asteroidBase.engineRotors.push(keelRotorHub, bowRotorHub);
 
   // Iconic twin port/starboard armored Sky-Carrier Thruster Nacelles + 1930s raked naval funnel (merged into 2 draw calls!)
   const carrierSteelParts = [], carrierBrassParts = [];
@@ -1584,9 +1500,6 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
       const hm = scene.getMeshByName(hideName);
       if (hm) hm.visibility = 0.0;
     }
-    for (const child of asteroidBase.group.getChildMeshes()) {
-      if (/^islandRotor/i.test(child.name)) child.visibility = 0.0;
-    }
     // Match the portal's exposed load-bearing frame to the exterior plating.
     for (const hName of ['vagHangarPillar_0', 'vagHangarPillar_1', 'vagHangarLintel']) {
       const hm = scene.getMeshByName(hName);
@@ -1677,7 +1590,7 @@ export class ForestIsland {
     this.readyPromise = this.generated.readyPromise;
     makeSolid(this.generated.terrain); makeSolid(this.generated.rock);
 
-    // Multi-root Marching-Tetrahedra underside stalactite cluster around the lower lift rotor (just like Vagabond!)
+    // Exposed rock pinnacles beneath the forest plateau.
     const forestRootCluster = buildMarchingRockCluster(
       this.scene,
       'forestUndersideMultiRoots',
@@ -1925,7 +1838,6 @@ export class ForestIsland {
         // Safe fallback if any GLB fails
       }
     }
-    this.liftRotor = createGiantIslandLiftRotor(this.group, this.scene, -6.5, -56, 3.5, 48, shadowGen);
   }
 
   update(dt) {
@@ -1943,9 +1855,6 @@ export class ForestIsland {
     if (this.waterfallMat) {
       this.waterfallUniformTime += dt;
       this.waterfallMat.setFloat('uTime', this.waterfallUniformTime);
-    }
-    if (this.liftRotor) {
-      this.liftRotor.rotation.y += dt * 1.4;
     }
     if (this.windmillLandmark?.sailHub) {
       this.windmillLandmark.sailHub.rotation.z -= dt * 0.52;
@@ -1994,7 +1903,7 @@ export class IndustrialIsland {
     this.readyPromise = this.generated.readyPromise;
     makeSolid(this.generated.terrain); makeSolid(this.generated.rock);
 
-    // Multi-root Marching-Tetrahedra underside stalactite cluster around IndustrialIsland's lower lift rotor
+    // Exposed rock pinnacles beneath the foundry plateau.
     const indRootCluster = buildMarchingRockCluster(
       this.scene,
       'indUndersideMultiRoots',
@@ -2265,7 +2174,6 @@ export class IndustrialIsland {
       const node = await instantiateGLBInto(this.scene, pr.dir, pr.file, this.group, pr.pos, pr.scale, pr.rot, shadowGen);
       if (node) this.detailNodes.push(node);
     }
-    this.liftRotor = createGiantIslandLiftRotor(this.group, this.scene, -5.5, -49, 3.0, 44, shadowGen);
     // Iconic 28m Striped Sky-Lighthouse & Airship Mooring Mast on the Industrial headland
     this.lighthouseLandmark = buildSkyLighthouseLandmark(this.scene, this.group, new BABYLON.Vector3(34, 2.2, -16), shadowGen);
   }
@@ -2282,9 +2190,6 @@ export class IndustrialIsland {
     );
     this.group.rotation.y = -Math.sin(t * 0.09) * 0.038;
     this.group.rotation.x = Math.sin(t * 0.24) * 0.012;
-    if (this.liftRotor) {
-      this.liftRotor.rotation.y += dt * 1.6;
-    }
     if (this.lighthouseLandmark?.lanternHub) {
       this.lighthouseLandmark.lanternHub.rotation.y += dt * 0.72;
     }
@@ -3144,6 +3049,7 @@ export class SkyArchipelagoWorld {
 
   update(dt, _ship, cameraPos) {
     this.simTime += dt;
+    animateLiftPropellers(this.scene,dt);
     for(const rotor of this.horizonRail.rotors)rotor.rotation.y=this.simTime*8;
     this.airLine?.update(this.simTime);
     this.skyLife?.update(dt, this._skyLifeCtx || {});
