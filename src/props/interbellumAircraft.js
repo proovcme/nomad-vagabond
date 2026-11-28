@@ -1,7 +1,8 @@
+import { fitOpenCockpitFighter } from './openCockpitFighter.js';
 import { fieldRepairTexture } from './repairTexture.js';
 const PROFILES = {
   cargo: { color: '#baa27b', spinner: [[.38,.14],[.41,-.10],[.34,-.26],[.21,-.40],[.045,-.48]] },
-  fighter: { color: '#a34232', spinner: [[.43,.14],[.46,-.06],[.40,-.25],[.29,-.45],[.135,-.61],[.024,-.66]] },
+  fighter: { color: '#a34232', spinner: [[.24,.11],[.25,-.04],[.19,-.16],[.05,-.24]] },
   attacker: { color: '#596048', spinner: [[.36,.14],[.41,-.06],[.42,-.27],[.31,-.45],[.055,-.54]] },
   bomber: { color: '#8e9691', spinner: [[.31,.12],[.37,-.06],[.34,-.20],[.20,-.35],[.035,-.47]] },
 };
@@ -242,10 +243,13 @@ function fitCargoCowling(frame, scene) {
   }
 }
 
-export function fitInterbellumAircraft(meshes, scene, variant, shadowGenerator = null) {
+export function fitInterbellumAircraft(meshes, scene, variant, shadowGenerator = null, occupied = false) {
   const B = BABYLON, profile = PROFILES[variant] || PROFILES.cargo;
   const mat = finishMaterial(scene, variant, profile.color);
-  if (variant === 'fighter') slimFighter(meshes);
+  if (variant === 'fighter') {
+    slimFighter(meshes);
+    fitOpenCockpitFighter(meshes,scene,finishMaterial,occupied);
+  }
   fitTailwheelHubs(meshes, scene, variant === 'cargo' || variant === 'bomber');
   const frameMesh = meshes.find(m => m.name === 'airframe');
   if (variant === 'cargo' && frameMesh) fitCargoCowling(frameMesh,scene);
@@ -264,14 +268,14 @@ export function fitInterbellumAircraft(meshes, scene, variant, shadowGenerator =
   }
 
   const glass = meshes.find(m => m.name === 'cockpit_glass' && m.getTotalVertices() > 0);
-  if (!glass) return;
+  if (!glass || variant === 'fighter') return;
   const { minimum, maximum } = glass.getBoundingInfo().boundingBox;
-  const fraction = variant === 'fighter' ? [.32,.73] : [.20,.43,.65,.84];
+  const fraction = [.20,.43,.65,.84];
   const bows = fraction.flatMap(f => {
     const z = minimum.z + f * (maximum.z - minimum.z);
     const path = canopyBow(glass, z, minimum.y + (maximum.y - minimum.y) * .1);
     return path.length > 2 ? [B.MeshBuilder.CreateTube('aviationCanopyBow', {
-      path, radius:variant === 'fighter' ? .024 : .031, tessellation:6,
+      path, radius:.031, tessellation:6,
     }, scene)] : [];
   });
   if (!bows.length) return;

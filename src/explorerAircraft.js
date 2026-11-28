@@ -202,7 +202,7 @@ class NomadAviationPaint extends BABYLON.MaterialPluginBase {
         } else if (aircraftLiveryParams.x > 1.5) {
           panel = vec4(-2.90, 1.88, 1.48, 1.20); maxWidth = 1.15; wingMark = 4.30;
         } else if (aircraftLiveryParams.x > 0.5) {
-          panel = vec4(0.56, 1.89, 1.51, 1.30); maxWidth = 1.10; wingMark = 3.80;
+          panel = vec4(0.65, 1.88, 1.07, .92); maxWidth = 1.10; wingMark = 3.80;
         }
         vec2 printUv = (p.zy - panel.xy) / panel.zw + 0.5;
         printUv.x = mix(1.0 - printUv.x, printUv.x, step(0.0, p.x));
@@ -218,6 +218,8 @@ class NomadAviationPaint extends BABYLON.MaterialPluginBase {
         // Fictional squadron roundel, sized in metres on both wings.
         float roundel = length(vec2(abs(p.x) - wingMark, p.z + 0.88));
         float wing = smoothstep(0.60, 0.84, abs(n.y)) * step(0.7, p.y);
+        bool pursuit = aircraftLiveryParams.x>.5 && aircraftLiveryParams.x<1.5;
+        if(pursuit)roundel*=1.68;
         float mark = (1.0 - smoothstep(0.54, 0.58, roundel)) * wing;
         vec3 ring = mix(vec3(0.10, 0.19, 0.24), vec3(0.79, 0.71, 0.51), 1.0 - smoothstep(0.42, 0.45, roundel));
         ring = mix(ring, vec3(0.63, 0.23, 0.14), 1.0 - smoothstep(0.20, 0.23, roundel));
@@ -228,7 +230,7 @@ class NomadAviationPaint extends BABYLON.MaterialPluginBase {
         float span=1.20-.23*floor(badge.y/.18);
         float bars=smoothstep(.49,.55,badge.x)*(1.-smoothstep(span-.06,span,badge.x))
           *(1.-smoothstep(.30,.35,badge.y))*feather*wing;
-        surfaceAlbedo=mix(surfaceAlbedo,toLinearSpace(vec3(.93,.79,.53))*panelDetail,bars*(.93-.32*aviationWear));
+        surfaceAlbedo=mix(surfaceAlbedo,toLinearSpace(vec3(.93,.79,.53))*panelDetail,bars*(pursuit ? 0.0 : .93-.32*aviationWear));
         // An oblique squadron flash crosses the fabric at the outer wing.
         float flash=abs(abs(p.x)-wingMark-1.0+.35*(p.z+.88));
         float wingtip=(1.-smoothstep(.13,.18,flash))*wing;
@@ -252,9 +254,17 @@ class NomadAviationPaint extends BABYLON.MaterialPluginBase {
         if(aircraftLiveryParams.w>.5 && (wingRepair || (abs(n.x)>.57 && abs(p.x)<1.6)) &&
            all(greaterThan(patchUv,vec2(.0))) && all(lessThan(patchUv,vec2(1.)))) {
           vec4 repairTexel=texture2D(aviationRepairAtlas,(patchUv+vec2(mod(tile,2.),1.-floor(tile*.5)))*.5);
-          fieldRepair=repairTexel.a;
+          fieldRepair=repairTexel.a*(pursuit ? .60 : 1.);
           surfaceAlbedo=mix(surfaceAlbedo,toLinearSpace(repairTexel.rgb)*clamp(panelDetail,.77,1.15),fieldRepair);
           aviationRelief+=fieldRepair*.28;
+        }
+        if(pursuit){
+          float side=smoothstep(.62,.91,abs(n.x))*(1.-smoothstep(.84,1.14,abs(p.x)));
+          float lengthMask=smoothstep(-2.43,-2.32,p.z)*(1.-smoothstep(2.65,3.05,p.z));
+          float stripeHeight=2.11-.097*(p.z+1.5);
+          float stripe=1.-smoothstep(.035,.053,abs(p.y-stripeHeight));
+          stripe=max(stripe,.84*(1.-smoothstep(.009,.021,abs(p.y-stripeHeight+.094))));
+          surfaceAlbedo=mix(surfaceAlbedo,toLinearSpace(vec3(.98,.86,.62))*clamp(panelDetail,.78,1.05),side*stripe*lengthMask);
         }
         #endif
       `,
@@ -583,7 +593,7 @@ export class ExplorerAircraft {
       // Source GLBs already face -Z (propellers z=-3.82, tail gear z=+4.15).
       glbRoot.rotationQuaternion = BABYLON.Quaternion.Identity();
 
-      fitInterbellumAircraft(res.meshes, this.scene, variant);
+      fitInterbellumAircraft(res.meshes, this.scene, variant, null, true);
       const tunedMaterials = new Set();
       for (const m of res.meshes) {
         if (m.name === '__root__') {
@@ -1670,7 +1680,7 @@ export class ExplorerAircraft {
   }
 
   _setLandingGear(deployed, immediate = false) {
-    this._gearDeployTarget = deployed ? 1 : 0;
+    this._gearDeployTarget = deployed || this.variant === 'fighter' ? 1 : 0;
     if (immediate || this._gearDeployProgress === undefined) {
       this._gearDeployProgress = this._gearDeployTarget;
       this._applyGearPose(this._gearDeployProgress);
@@ -2032,10 +2042,14 @@ export class ExplorerAircraft {
     // Smooth mechanical landing-gear folding animation + manual [L] toggle + aviation strobe/landing lights
     if (isPiloted && !this.dockedAsteroid && !this.dockedPlanet && this._toggleLandingGear) {
       this._toggleLandingGear = false;
-      const nextDeployed = (this._gearDeployTarget ?? 0) < 0.5;
-      this._setLandingGear(nextDeployed, false);
-      this.audio?.playDock?.(nextDeployed);
-      toastCb?.(nextDeployed ? '🛞 Шасси выпущены (L)' : '🛞 Шасси убраны (L)', 1800);
+      if (this.variant === 'fighter') {
+        toastCb?.('У «Осы» неубираемое шасси',1800);
+      } else {
+        const nextDeployed = (this._gearDeployTarget ?? 0) < 0.5;
+        this._setLandingGear(nextDeployed, false);
+        this.audio?.playDock?.(nextDeployed);
+        toastCb?.(nextDeployed ? '🛞 Шасси выпущены (L)' : '🛞 Шасси убраны (L)', 1800);
+      }
     }
     if (this._gearDeployProgress !== undefined && this._gearDeployTarget !== undefined) {
       const diff = this._gearDeployTarget - this._gearDeployProgress;

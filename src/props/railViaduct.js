@@ -1,19 +1,26 @@
 // A continuous rim joins the turf to stepped, fissured rock. Both pieces go into the horizon batches.
 export function headland(scene, seed, radius, depth, stoneParts, turfParts, center) {
-  const B=BABYLON, count=48,profiles=[[1,0],[1.015,.05],[.94,.20],[.96,.25],[.82,.47],[.70,.57],[.48,.77],[.12,1]];
+  const B=BABYLON, count=48,profiles=[[1,0],[1.015,.05],[.94,.20],[.96,.25],[.92,.42],[.78,.47],[.83,.66],[.52,.74]];
   const points=[],colors=[],uvs=[],indices=[],normals=[];
   for(const [layer,[scale,drop]] of profiles.entries()){
     for(let j=0;j<=count;j++){
       const a=j%count*Math.PI*2/count,fold=Math.sin(7*a+seed)*.046+Math.sin(3*a+.3*seed)*.082;
       const tooth=.13*Math.sin(5*a+seed)+.1*Math.cos(3*a-seed);
-      const r=radius*(1+fold)*scale;
-      points.push(r*Math.cos(a)-drop*radius*.12,-depth*drop*(1+tooth),r*.91*Math.sin(a));
+      // Fracture the lower beds into stepped buttresses, with a broad overhang at one end.
+      const joint=Math.pow(.5+.5*Math.sin(5*a+seed),4);
+      const undercut=drop*(.18*Math.cos(a-seed)+.15*joint);
+      const r=radius*(1+fold)*(scale+undercut);
+      points.push(r*Math.cos(a)-drop*radius*.12,-depth*drop*(1+tooth+.29*joint*drop),r*.91*Math.sin(a));
       const shelfShade=[1,.94,.76,.94,.84,.66,.76,.62][layer];
       const light=(.84+.12*Math.cos(3*a+.5)+.08*Math.sin(12*a+.6*layer))*shelfShade;
       colors.push(light,light*(.98-.07*drop),light*(.93-.12*drop),1);uvs.push(j/count*4,drop*2);
       if(j&&layer){const k=layer*(count+1)+j,b=k-count-1;indices.push(k,b-1,b,k,k-1,b-1);}
     }
   }
+  const bottom=points.length/3;
+  points.push(-radius*.18,-depth*.87,0);colors.push(.46,.36,.29,1);uvs.push(.5,2);
+  const last=(profiles.length-1)*(count+1);
+  for(let j=0;j<count;j++)indices.push(bottom,last+j+1,last+j);
   // Test one normal against the radial direction, since the scene uses right-handed rendering.
   B.VertexData.ComputeNormals(points,indices,normals);
   if(normals[0]<0){indices.reverse();B.VertexData.ComputeNormals(points,indices,normals);}

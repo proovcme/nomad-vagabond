@@ -19,6 +19,11 @@ function lowestWheelWorld(gears){let bottom=Infinity;for(const mesh of gears){me
 for(const variant of Object.keys(FILES))check(`${variant}: authored gear contacts moving deck, actual ground roll stays level, then guarded +X takeoff clears the swept collider`,()=>{
  const {scene,world,base,aircraft:a,gears}=fixture(variant);const profile=a.positionForTakeoff(base,{x:8,y:3.38,z:0}),deck=base.group.position.y+3.38;
  let initial=lowestWheelWorld(gears);assert(Math.abs(initial-deck)<.002,`Initial gear clearance ${initial-deck}`);
+ if(variant==='fighter'){
+   a._setLandingGear(false,true);
+   assert.equal(a._gearDeployProgress,1,'fixed gear remains extended');
+   assert(gears.every(node=>node.isEnabled()),'all three fixed wheels stay visible');
+ }
  // A premature Space/E launch request must not create the old vertical impulse.
  const original=a.group.position.clone();assert.equal(a.undockFromAsteroid(),false);for(let i=0;i<15;i++)a.update(1/60,world,'aircraft');assert(a.dockedAsteroid===base);assert(B.Vector3.Distance(a.group.position,original)<.002);
  base.velocity.set(1.5,0,.7);const baseStart=base.group.position.clone();

@@ -301,10 +301,10 @@ function registerSkyShaders() {
             float t = nearT + (float(i) + .5) * stepSize;
             vec3 w = uCamPos + ray * t;
             float altitude = (w.y - vWorldPos.y - 4.0) / 104.0;
-            vec2 q = w.xz * .007 + vec2(uTime * .008, uTime * .003);
+            vec2 q = w.xz * .0036 + vec2(uTime * .008, uTime * .003);
             float large = noise2(q + altitude * .61);
             float folds = noise2(q * 2.65 - altitude * 2.24);
-            float body = large * .76 + folds * .24;
+            float body = large * .85 + folds * .15;
             float envelope = smoothstep(0.0,.16,altitude) * (1.0-smoothstep(.59,1.0,altitude));
             float thickness = smoothstep(.42,.75,body) * envelope;
             float extinction = 1.0 - exp(-thickness * stepSize * .051);
@@ -319,10 +319,10 @@ function registerSkyShaders() {
           alpha = max(alpha * (1.0 - .55 * fog), (1.0-transmission) * fog * .68);
         }
         // Baked cumulus slopes pick up the same raking sunlight as the hull.
-        vec2 bankUV=vWorldPos.xz*.00056+vec2(uTime*.00018,uTime*.00007);
+        vec2 bankUV=vWorldPos.xz*.00032+vec2(uTime*.00018,uTime*.00007);
         vec3 billows=texture2D(cloudRelief,bankUV+vec2(n1,n2)*.08).rgb;
         float crest=clamp(.44+dot(billows.gb-.5,sunXZ)*1.12+(billows.r-.55)*1.15,0.,1.);
-        vec3 bank=mix(vec3(.33,.41,.54),vec3(1.,.88,.69),crest);
+        vec3 bank=mix(vec3(.44,.53,.63),vec3(1.,.92,.76),crest);
         float bankWeight=(1.-nightMask)*(.45-.35*horizonBlend);
         col=mix(col,bank,bankWeight);
         alpha*=mix(.84,1.,smoothstep(.26,.70,billows.r));
@@ -2614,9 +2614,9 @@ export class SkyArchipelagoWorld {
     this.cloudBankMaterial = material;
 
     const placements = [
-      [-240,-15,410,395,156], [86,-43,380,420,168], [326,-42,275,355,142],
+      [-218,-31,413,570,193], [352,-56,300,438,157],
       [484,26,535,480,202], [-495,42,562,490,202], [172,39,738,480,230],
-      [370,-41,-320,430,186], [-400,-51,-340,390,161], [57,-50,-485,454,178],
+      [386,-55,-358,610,211], [-360,-55,-365,555,197],
       [-120,-78,180,265,106], [178,-82,-165,295,112],
     ];
     for (const [index, [x,y,z,width,height]] of placements.entries()) {

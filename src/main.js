@@ -440,13 +440,13 @@ if (shotMode && worldMode === 'sky') {
       world.fleet.setActiveVariant(null); ship.group.setEnabled(false);
       const side = parked.z > 10 ? -1 : 1;
       const offsets = {
-        fighter: [-3.6, 6.7, 7.2], attacker: [4.4, 6.2, 7.8],
+        fighter: [7.4, 6, -6], attacker: [4.4, 6.2, 7.8],
         cargo: [-3.9, 7.2, 8.4], bomber: [-4.5, 7.6, 8.8],
       };
       const offset = offsets[parked.variant];
       camera.position.copyFrom(vPos).addInPlace(new BABYLON.Vector3(parked.x + offset[0], offset[1], parked.z + side * offset[2]));
       camera.setTarget(vPos.add(new BABYLON.Vector3(parked.x + .6, 5.05, parked.z)));
-      camera.fov = .87;
+      camera.fov = parked.variant === 'fighter' ? .99 : .87;
     }
   } else if (shotMode === 'arch_hangar') {
     player.boardShip();controlMode='aircraft';ui.setMode('aircraft');
@@ -520,8 +520,8 @@ if (shotMode && worldMode === 'sky') {
     ship.undockFromAsteroid({force:true});
     ship.group.position.copyFrom(camera.position).addInPlace(forward.scale(21))
       .addInPlace(right.scale(6.6)).y -= 6.1;
-    ship.group.rotationQuaternion = aircraftHeading(forward.scale(1.45).subtract(right).normalize())
-      .multiply(BABYLON.Quaternion.RotationAxis(BABYLON.Axis.Z, -.28));
+    ship.group.rotationQuaternion = aircraftHeading(forward.scale(1.95).subtract(right).normalize())
+      .multiply(BABYLON.Quaternion.RotationAxis(BABYLON.Axis.Z, .68));
   } else if (shotMode === 'arch_vagabond') {
     player.boardShip();
     controlMode = 'aircraft';
