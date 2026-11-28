@@ -1,3 +1,4 @@
+import { riverX, riverLevel } from './props/cascade.js';
 import { fbm3 } from './planet.js?v=mission1';
 
 const TAU = Math.PI * 2;
@@ -58,9 +59,12 @@ export function generateIslandGeometry(options = {}) {
       h = h * (1 - clearing) + (topY - 0.5) * clearing;
       const lake = 1 - smooth(6, 19, Math.hypot(x - 10, z + 4));
       h -= lake * 5.5;
-      if (z > -4 && z < 53) {
-        const riverX = 10 + (z + 4) / 56 * 8 + Math.sin(z * 0.14) * 3.5;
-        h -= (1 - smooth(1.8, 6.5, Math.abs(x - riverX))) * 2.7;
+      if (options.river && z > 3) {
+        const bank = smooth(2.4,5.9,Math.abs(x-riverX(z)));
+        const bed = Math.min(h,riverLevel(z)-.95);
+        h = bed+(h-bed)*bank;
+      } else if (z > -4 && z < 53) {
+        h -= (1-smooth(1.8,6.5,Math.abs(x-riverX(z))))*2.7;
       }
     } else {
       const apron = 1 - smooth(0.45, 0.82, r);

@@ -1,3 +1,4 @@
+import { cascadeMesh, riverX, riverLevel } from './props/cascade.js';
 import { AirLine } from './props/airLine.js';
 import { buildPortMachineWorks } from './props/portMachineWorks.js';
 import { configureBuildingMaterial } from './buildingMaterials.js?v=mission1';
@@ -362,7 +363,7 @@ function registerSkyShaders() {
         );
       }
       void main(void) {
-        vec2 flowUv = vec2(vUv.x * 5.0, vUv.y * 8.0 + uTime * 2.4);
+        vec2 flowUv = vec2(vUv.x * 13.0, vUv.y * 4.0 + uTime * 1.5);
         float s1 = noise2(flowUv);
         float s2 = noise2(flowUv * vec2(2.3, 1.6) + vec2(0.0, uTime * 1.5));
         float streak = smoothstep(0.28, 0.84, s1 * 0.6 + s2 * 0.4);
@@ -1282,6 +1283,14 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
   // Authentic WWII 8.8cm FlaK 36/37 anti-aircraft battery mounted cleanly on aft-starboard superstructure (flight deck 100% clear!)
   const mainFlak = buildFlak88Turret(scene, 'vagFlak88Main', turretPlat, new BABYLON.Vector3(0, 0.45, 0), 0.35, shadowGen);
   asteroidBase.flakTurrets = [mainFlak];
+  for(const side of [-1,1]){
+    const deck=BABYLON.MeshBuilder.CreateCylinder('vagWaistGallery'+side,{diameterTop:6.9,diameterBottom:4.6,height:1.6,tessellation:16},scene);
+    deck.parent=asteroidBase.group;deck.position.set(20,2.68,side*15.4);
+    deck.material=hullMat;deck.receiveShadows=true;
+    const gun=buildFlak88Turret(scene,'vagWaistFlak'+side,asteroidBase.group,
+      new BABYLON.Vector3(20,3.48,side*15.4),side*1.56,null);
+    asteroidBase.flakTurrets.push(gun);
+  }
 
   // Dual Port & Starboard Sculpted Interbellum Quad-Tube SAM Batteries (ЗРК ПВО)
   const vagSamPort = buildSculptedSamLauncher(scene, 'vagSamPort', asteroidBase.group, new BABYLON.Vector3(-12.0, 21.35, -17.5), shadowGen);
@@ -1659,7 +1668,7 @@ export class ForestIsland {
   }
 
   _buildIslandBody(shadowGen) {
-    this.generated = buildGeneratedIsland(this.scene, {seed:this.seedNum, radiusX:68, radiusZ:57, depth:64, style:'forest', parent:this.group, shadowGenerator:shadowGen});
+    this.generated = buildGeneratedIsland(this.scene, {seed:this.seedNum, radiusX:68, radiusZ:57, depth:64, river:true, style:'forest', parent:this.group, shadowGenerator:shadowGen});
     applyRockProjection(this.generated.rock.material, this.scene, 'forest');
     this.getTopHeightLocal = this.generated.getHeight;
     this.readyPromise = this.generated.readyPromise;
@@ -1708,14 +1717,25 @@ export class ForestIsland {
     lake.rotation.x = Math.PI * 0.5;
     lake.material = waterMat;
 
-    // River ribbon to southern cliff edge
-    const river = BABYLON.MeshBuilder.CreateBox('forestRiver', { width: 6.4, height: 0.25, depth: 36 }, this.scene);
-    river.parent = this.group;
-    river.position.set(14.5, -0.68, 24);
-    river.rotation.y = 0.18;
-    river.material = waterMat;
-
-    // Animated Waterfall plunging into the clouds
+    // Each stream edge ends at the generated shoreline, including irregular seed outlines.
+    const lip = u => {
+      const dx=(u-.5)*5;
+      let near=18,far=95;
+      for(let n=0;n<14;n++){
+        const z=(near+far)/2;
+        if(this.generated.contains(riverX(z)+dx,z))near=z;else far=z;
+      }
+      return new BABYLON.Vector3(riverX(near)+dx,riverLevel(near),near);
+    };
+    const streams=Array.from({length:11},(_,j)=>{
+      const u=j/10,end=lip(u);
+      return Array.from({length:32},(_,r)=>{
+        const z=8+(end.z-8)*r/31;
+        return new BABYLON.Vector3(riverX(z)+(u-.5)*5,riverLevel(z),z);
+      });
+    });
+    const river=BABYLON.MeshBuilder.CreateRibbon('forestRiver',{pathArray:streams,sideOrientation:BABYLON.Mesh.DOUBLESIDE},this.scene);
+    river.parent=this.group;river.material=waterMat;
     registerSkyShaders();
     this.waterfallMat = new BABYLON.ShaderMaterial(
       'forestWaterfallShader',
@@ -1732,11 +1752,9 @@ export class ForestIsland {
     this.waterfallMat.setFloat('uTime', 0);
     this.waterfallMat.backFaceCulling = false;
 
-    const fall = BABYLON.MeshBuilder.CreatePlane('forestWaterfall', { width: 8.6, height: 92 }, this.scene);
-    fall.parent = this.group;
-    fall.position.set(18.5, -46.5, 45.5);
-    fall.rotation.x = -0.08;
-    fall.rotation.y = 0.14;
+    const fall=cascadeMesh(this.scene,'forestWaterfall',lip,98,5,{x:0,z:1},2.8);
+    fall.parent=this.group;
+    this.waterfallLip=lip(.5);
     fall.material = this.waterfallMat;
 
     // Falling water and foam are drawn by the waterfall shader, without sphere puffs.
@@ -1819,9 +1837,9 @@ export class ForestIsland {
     if (this.scene.getEngine().constructor.name === 'NullEngine' || !BABYLON.SceneLoader) return;
 
     const specs = [
-      { dir: './assets/benchmark/models/trees/', file: 'pine_hero.glb', count: 20, scaleMin: 0.9, scaleMax: 1.45, minR: 0.0, maxR: 0.86 },
-      { dir: './assets/benchmark/models/trees/', file: 'fir_medium.glb', count: 24, scaleMin: 0.85, scaleMax: 1.35, minR: 0.0, maxR: 0.88 },
-      { dir: './assets/benchmark/models/trees/', file: 'coastal_alder.glb', count: 16, scaleMin: 0.85, scaleMax: 1.25, minR: 0.08, maxR: 0.84 },
+      { dir: './assets/benchmark/models/trees/', file: 'pine_hero.glb', count: 31, scaleMin: 0.9, scaleMax: 1.45, minR: 0.0, maxR: 0.86 },
+      { dir: './assets/benchmark/models/trees/', file: 'fir_medium.glb', count: 34, scaleMin: 0.85, scaleMax: 1.35, minR: 0.0, maxR: 0.88 },
+      { dir: './assets/benchmark/models/trees/', file: 'coastal_alder.glb', count: 24, scaleMin: 0.85, scaleMax: 1.25, minR: 0.08, maxR: 0.84 },
       { dir: './assets/benchmark/models/fern_02/', file: 'fern_02_1k.gltf', count: 12, scaleMin: 1.6, scaleMax: 2.5, minR: 0.0, maxR: 0.86 },
       { dir: './assets/benchmark/models/trees/', file: 'grass_clump.glb', count: 36, scaleMin: 1.3, scaleMax: 2.3, minR: 0.0, maxR: 0.88 },
       { dir: './assets/benchmark/models/boulder_01/', file: 'boulder_01_1k.gltf', count: 8, scaleMin: 1.3, scaleMax: 2.7, minR: 0.45, maxR: 0.90 },
@@ -1839,11 +1857,17 @@ export class ForestIsland {
         if (sp.file === 'coastal_alder.glb') applyAutumnFoliage(res.meshes);
         else if (/pine_|fir_|fern_|grass_/.test(sp.file)) applySunlitCanopy(res.meshes);
         const matrices = [];
-        for (let i = 0; i < sp.count; i++) {
+        const tree=/pine_|fir_|coastal_alder/.test(sp.file);
+        const groves=[[-35,-22],[-40,11],[11,-33],[34,12],[32,-4],[-4,37],[4,-30]];
+        for (let i = 0; i < (tree?sp.count*8:sp.count) && matrices.length<sp.count; i++) {
           const ang = rand() * Math.PI * 2;
           const r = sp.minR + rand() * (sp.maxR - sp.minR);
-          const lx = Math.cos(ang) * 58 * r;
-          const lz = Math.sin(ang) * 48 * r;
+          const grove=groves[i%groves.length];
+          const lx=tree?grove[0]+14*Math.sqrt(r)*Math.cos(ang):Math.cos(ang)*58*r;
+          const lz=tree?grove[1]+12*Math.sqrt(r)*Math.sin(ang):Math.sin(ang)*48*r;
+          if (!this.generated.contains(lx,lz,.035)) continue;
+          if (Math.hypot(lx-22,lz+18)<8 || Math.hypot(lx+10,lz-18)<14 ||
+              Math.hypot(lx+35,lz+10)<9 || (lz>5 && Math.abs(lx-riverX(lz))<4.8)) continue;
 
           // Keep landing clearing, lake, and ruin center clear of large trees
           if (Math.hypot(lx + 22, lz - 16) < 12.5) continue;

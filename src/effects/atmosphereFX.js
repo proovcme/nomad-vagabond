@@ -4,7 +4,6 @@
  * - WWII / Interbellum dark Flak burst clouds + brief orange-amber detonation core
  * - Muzzle flash & gun-smoke puffs for AA cannon & SAM launches
  * - Diesel chimney smoke (Vagabond generator + Industrial stacks) & damaged aircraft smoke plumes
- * - Forest Island cliff waterfall cascade into the cloud sea
  * - Storm horizon lightning flashes + distant muffled thunder cue
  */
 
@@ -31,14 +30,12 @@ export class AtmosphereFX {
     this._lightningTimer = 5 + Math.random() * 7;
     this._lightningFlash = 0;
     this._morseTimer = 14 + Math.random() * 14;
-    this._waterfallMat = null;
     this._wingTrails = null;
     this._prevForward = new BABYLON.Vector3(0, 0, 1);
 
     if (this._isNull) return;
 
     this._initPuffPool();
-    this._buildForestWaterfall();
     scene.onDisposeObservable.addOnce(() => this.dispose());
   }
 
@@ -179,48 +176,6 @@ export class AtmosphereFX {
       alpha: 0,
       sampleAcc: 0,
     };
-  }
-
-  _buildForestWaterfall() {
-    if (!this.forestIsland?.group || typeof document === 'undefined') return;
-    const B = BABYLON;
-    const tex = new B.DynamicTexture('forestWaterfallTex', { width: 64, height: 256 }, this.scene, false);
-    const ctx = tex.getContext();
-    ctx.clearRect(0, 0, 64, 256);
-    const g = ctx.createLinearGradient(0, 0, 0, 256);
-    g.addColorStop(0.0, 'rgba(225, 244, 255, 0.85)');
-    g.addColorStop(0.25, 'rgba(185, 228, 248, 0.65)');
-    g.addColorStop(0.70, 'rgba(165, 214, 238, 0.35)');
-    g.addColorStop(1.0, 'rgba(190, 224, 244, 0.0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 64, 256);
-    // Vertical foam streaks
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-    for (let s = 0; s < 6; s++) {
-      ctx.fillRect(6 + s * 10, (s * 37) % 120, 4, 95);
-    }
-    tex.update();
-    tex.hasAlpha = true;
-    tex.wrapV = B.Texture.WRAP_ADDRESSMODE;
-
-    const wfMat = new B.StandardMaterial('forestWaterfallMat', this.scene);
-    wfMat.emissiveTexture = tex;
-    wfMat.opacityTexture = tex;
-    wfMat.disableLighting = true;
-    wfMat.backFaceCulling = false;
-    wfMat.depthWrite = false;
-    wfMat.alpha = 0.72;
-    this._waterfallMat = wfMat;
-    this._waterfallTex = tex;
-
-    // Graceful curved water sheet spilling off the southern cliff rim of Forest Island into the cloud abyss
-    const sheet = B.MeshBuilder.CreatePlane('forestCliffWaterfall', { width: 14, height: 145 }, this.scene);
-    sheet.parent = this.forestIsland.group;
-    sheet.position.set(-18, -72, 46);
-    sheet.rotation.y = 0.28;
-    sheet.material = wfMat;
-    sheet.isPickable = false;
-    sheet.checkCollisions = false;
   }
 
   _allocPuff() {
@@ -389,11 +344,6 @@ export class AtmosphereFX {
     const safeDt = Math.min(0.05, Math.max(0.001, dt));
     this.time += safeDt;
 
-    // 1. Scroll waterfall UV shimmer
-    if (this._waterfallTex) {
-      this._waterfallTex.vOffset = (this._waterfallTex.vOffset + safeDt * 0.42) % 1;
-    }
-
     // 2. Diesel chimney smoke (Vagabond Ether Generator) + periodic steam vent
     this._chimneyTimer -= safeDt;
     if (this._chimneyTimer <= 0 && this.asteroidBase?.group) {
@@ -495,7 +445,5 @@ export class AtmosphereFX {
     this._smokeTex?.dispose();
     this._steamTex?.dispose();
     this._flashTex?.dispose();
-    this._waterfallMat?.dispose();
-    this._waterfallTex?.dispose();
   }
 }

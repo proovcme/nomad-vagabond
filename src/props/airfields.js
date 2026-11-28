@@ -1,7 +1,7 @@
 // Local +Z follows the route between the two terminals.
 export function buildAirfields(scene, islands, materials) {
   const B = BABYLON;
-  const ports = islands.map(island => island.group.position.add(new B.Vector3(0, 13, 94)));
+  const ports = islands.map((island,i) => island.group.position.add(i ? new B.Vector3(-76,13,69) : new B.Vector3(0,13,94)));
   const axis = ports[1].subtract(ports[0]); axis.y = 0; axis.normalize();
   const side = new B.Vector3(axis.z, 0, -axis.x);
   const yaw = Math.atan2(axis.x, axis.z);
@@ -38,7 +38,7 @@ export function buildAirfields(scene, islands, materials) {
     for(const z of [-35,35])for(const x of [-6,-3,3,6])slab('ivory',x,.026,z,.58,.048,3);
     const terminal = i ? 1 : -1;
     const counter = (ink,x,y,z,w,h,d) => slab(ink,x*terminal,y,z*terminal,w,h,d);
-    counter('blue',17,-.55,11,12,1.1,54);
+    counter('blue',18,-.55,11,12,1.1,54);
     counter('ivory',19,2.3,4,8.5,4.6,22);
     counter('glass',19,3.5,4,8.7,1.23,21.6);
     for(let z=-5;z<=13;z+=3)counter('ivory',14.62,3.5,z,.25,1.3,.2);
@@ -51,7 +51,7 @@ export function buildAirfields(scene, islands, materials) {
     drum('red',19*terminal,9.9,-6*terminal,6.6,6.6,.35);
     for(let n=0;n<8;n++){
       const a=n*Math.PI/4;
-      drum('ivory',19*terminal+2.9*Math.sin(a),8.8,-6*terminal+2.9*Math.cos(a),.15,.15,1.9);
+      drum('ivory',19*terminal+2.9*Math.sin(a),8.8,-6*terminal+2.9*Math.cos(a),.15,.15,2.02);
     }
     slab('ivory',19*terminal,12,-6*terminal,.18,4.3,.18);
     const sock=drum('red',19*terminal,13.75,-6*terminal+1,.4,.77,2.2);sock.rotation.x=1.32;
@@ -102,7 +102,7 @@ export function buildAirfields(scene, islands, materials) {
       workers.push(person);
     }
     services.push({cart,workers,sign:terminal});
-    const from=islands[i].group.position.add(new B.Vector3(0,12,26));
+    const from=islands[i].group.position.add(new B.Vector3(i?-34:0,12,26));
     const to=port.add(side.scale(terminal*16)).addInPlace(axis.scale(terminal*14));
     const distance=B.Vector3.Distance(from,to);
     const pier=B.MeshBuilder.CreateBox('airfieldAccessPier'+i,{width:4,height:1.3,depth:distance},scene);

@@ -1,3 +1,4 @@
+import { cascadeMesh } from './cascade.js';
 /**
  * «Осколки Европы Интербеллума (1920–1939)» — High-Detail Textured 3D European Islands & Architecture.
  * Built with Babylon.js 8 PBR paired albedo + tangent-space normal maps, CreateLathe profiles,
@@ -696,6 +697,14 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
     [5.30, 1480, 44, 'viaduct', 1.80],
   ];
 
+  const groveMatrices=[];
+  const cypress=B.MeshBuilder.CreateLathe('horizonCypressGroves',{
+    shape:[[0,0],[.35,0],[.34,1.4],[1.05,1.7],[1.5,3.4],[1.18,5.5],[.68,7.2],[.05,8.4]].map(([r,h])=>new B.Vector3(r,h,0)),
+    tessellation:7
+  },scene);
+  const cypressMat=new B.StandardMaterial('horizonCypressFoliage',scene);
+  cypressMat.diffuseColor=c3('#566037');cypressMat.specularColor=B.Color3.Black();
+  cypress.material=cypressMat;cypress.isPickable=false;
   islands.forEach(([ang, dist, y, kind, s], idx) => {
     const cx = Math.cos(ang) * dist;
     const cz = Math.sin(ang) * dist;
@@ -719,10 +728,21 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
     const cap = B.MeshBuilder.CreateCylinder(`euHCap_${idx}`, { diameterTop: 90 * s, diameterBottom: 96 * s, height: 6 * s, tessellation: 10 }, scene);
     put(meadowParts, cap, cx, y + 6 * s, cz, 0, ang);
 
+    // Small hillside groves flank settlements, leaving the market and viaduct clear.
+    for(const flank of [-1,1])for(let j=0;j<6;j++){
+      const along=flank*(19+j*1.7), across=17+4*Math.sin(j*2.1+idx);
+      const size=s*(.62+.34*Math.abs(Math.sin(j*1.8+idx)));
+      groveMatrices.push(B.Matrix.Compose(new B.Vector3(size,size*(1+.2*Math.sin(j)),size),
+        B.Quaternion.RotationYawPitchRoll(j*1.9,0,.035*Math.cos(j)),
+        new B.Vector3(cx+(ux*along+nx*across)*s,y+8.9*s,cz+(uz*along+nz*across)*s)));
+    }
     // Cascading white cliff waterfall plunging from the island edge into the cloud sea (artbook signature!)
     if (idx % 2 === 0) {
-      const wf = B.MeshBuilder.CreateBox(`euHWaterfall_${idx}`, { width: 10 * s, height: 85 * s, depth: 2.2 * s }, scene);
-      put(waterfallParts, wf, cx + nx * 44 * s, y - 36 * s, cz + nz * 44 * s, 0, ang + Math.PI * 0.5);
+      const wf=cascadeMesh(scene,'euHCascade'+idx,u=>{
+        const w=(u-.5)*6.8*s;
+        return new B.Vector3(cx+nx*44*s+ux*w,y+9*s,cz+nz*44*s+uz*w);
+      },78*s,6.8*s,{x:nx,z:nz});
+      waterfallParts.push(wf);
     }
 
     if (kind === 'paris') {
@@ -750,6 +770,10 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
     }
   });
 
+  const canopyBuffer=new Float32Array(groveMatrices.length*16);
+  groveMatrices.forEach((matrix,i)=>matrix.copyToArray(canopyBuffer,i*16));
+  cypress.thinInstanceSetBuffer('matrix',canopyBuffer,16,true);
+  cypress.thinInstanceRefreshBoundingInfo(true);
   const finalize = (arr, name, mat) => {
     if (!arr.length) return;
     const m = B.Mesh.MergeMeshes(arr, true, true, undefined, false, false);

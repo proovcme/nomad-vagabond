@@ -13,6 +13,21 @@ const {bakeTargets,refineBakeSurface,geometryKey,sceneTriangles,buildBakeBVH,bak
 const engine=new B.NullEngine(),scene=new B.Scene(engine);scene.useRightHandedSystem=true;
 const cam=new B.FreeCamera('validationCamera',new B.Vector3(0,60,100),scene);scene.activeCamera=cam;
 const world=new SkyArchipelagoWorld(scene,'AETHER-742'),base=new AsteroidBase(scene,742);world.registerVagabondBase(base);
+// Every spill point has a matching river vertex and lies at the generated cliff edge.
+const fall=scene.getMeshByName('forestWaterfall');
+const water=fall.getVerticesData('position'),uv=fall.getVerticesData('uv');
+const river=scene.getMeshByName('forestRiver').getVerticesData('position');
+for(let i=0;i<uv.length/2;i++){
+ if(uv[2*i+1]!==1)continue;
+ const lip=B.Vector3.FromArray(water,3*i);
+ assert(Math.abs(world.forestIsland.generated.geometry.radial(lip.x,lip.z)-1)<.002,'spill detached from rim');
+ assert(river.some((_,j)=>j%3===0 && B.Vector3.DistanceSquared(lip,B.Vector3.FromArray(river,j))<.0001),'gap at river outlet');
+}
+assert.equal(base.flakTurrets.length,3,'mounted deck guns');
+for(const rig of base.flakTurrets.slice(1)){
+ const pos=rig.root.position,walk=pos.clone();base.clampWalkPos(walk);
+ assert(B.Vector3.Distance(pos,walk)<7.5,'gun outside on-foot interaction range');
+}
 const targets=bakeTargets(scene),winding=[];
 function orientation(mesh){
  const p=mesh.getVerticesData('position'),n=mesh.getVerticesData('normal'),ids=mesh.getIndices();let wrong=0,area=0,badArea=0,volume=0;

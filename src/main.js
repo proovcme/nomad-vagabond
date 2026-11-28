@@ -469,6 +469,11 @@ if (shotMode && worldMode === 'sky') {
     camera.position.copyFrom(vPos).addInPlace(new BABYLON.Vector3(11, 32, -52));
     camera.setTarget(vPos.add(new BABYLON.Vector3(-25, 17, -13)));
     camera.fov = .88;
+  } else if (shotMode === 'arch_cascade') {
+    player.boardShip(); controlMode='aircraft'; ui.setMode('aircraft');
+    const lip=fPos.add(world.forestIsland.waterfallLip);
+    camera.position.copyFrom(lip).addInPlace(new BABYLON.Vector3(23,3,79));
+    camera.setTarget(lip.add(new BABYLON.Vector3(-3,-11,0))); camera.fov=.9;
   } else if (shotMode === 'arch_airfield') {
     player.boardShip();
     controlMode = 'aircraft';
