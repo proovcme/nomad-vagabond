@@ -211,6 +211,7 @@ function registerSkyShaders() {
       uniform vec3 uSunDir;
       uniform float uTimeOfDay;
       uniform float uCloudVolume;
+      uniform sampler2D cloudRelief;
 
       float hash21(vec2 p) {
         p = fract(p * vec2(127.1, 311.7));
@@ -317,6 +318,14 @@ function registerSkyShaders() {
           col = mix(col, scattered / max(.01,1.0-transmission), fog * smoothstep(.02,.22,1.0-transmission));
           alpha = max(alpha * (1.0 - .55 * fog), (1.0-transmission) * fog * .68);
         }
+        // Baked cumulus slopes pick up the same raking sunlight as the hull.
+        vec2 bankUV=vWorldPos.xz*.00056+vec2(uTime*.00018,uTime*.00007);
+        vec3 billows=texture2D(cloudRelief,bankUV+vec2(n1,n2)*.08).rgb;
+        float crest=clamp(.44+dot(billows.gb-.5,sunXZ)*1.12+(billows.r-.55)*1.15,0.,1.);
+        vec3 bank=mix(vec3(.33,.41,.54),vec3(1.,.88,.69),crest);
+        float bankWeight=(1.-nightMask)*(.45-.35*horizonBlend);
+        col=mix(col,bank,bankWeight);
+        alpha*=mix(.84,1.,smoothstep(.26,.70,billows.r));
         gl_FragColor = vec4(col, alpha);
         #include<imageProcessingCompatibility>
       }
@@ -360,10 +369,10 @@ function registerSkyShaders() {
         float s1 = noise2(flowUv);
         float s2 = noise2(flowUv * vec2(2.3, 1.6) + vec2(0.0, uTime * 1.5));
         float streak = smoothstep(0.28, 0.84, s1 * 0.6 + s2 * 0.4);
-        float sideFade = smoothstep(0.0, 0.16, vUv.x) * smoothstep(1.0, 0.84, vUv.x);
+        float sideFade = smoothstep(0.0, 0.16, vUv.x) * (1.0-smoothstep(.84,1.0,vUv.x));
         float bottomFade = smoothstep(0.0, 0.24, vUv.y);
-        vec3 waterCol = mix(vec3(0.14, 0.72, 0.90), vec3(0.88, 0.99, 1.00), streak);
-        float alpha = (0.64 + streak * 0.34) * sideFade * bottomFade;
+        vec3 waterCol = mix(vec3(.35,.55,.61), vec3(.94,.92,.82), streak);
+        float alpha = (0.28 + streak * 0.55) * sideFade * bottomFade;
         gl_FragColor = vec4(waterCol, alpha);
         #include<imageProcessingCompatibility>
       }
@@ -1687,8 +1696,8 @@ export class ForestIsland {
 
   _buildWaterAndWaterfall() {
     const waterMat = new BABYLON.PBRMaterial('forestLakeMat', this.scene);
-    waterMat.albedoColor = c3('#12a8dc');
-    waterMat.emissiveColor = c3('#09425a');
+    waterMat.albedoColor = c3('#387f83');
+    waterMat.emissiveColor = c3('#081e23');
     waterMat.metallic = 0.12;
     waterMat.roughness = 0.06;
     waterMat.alpha = 0.88;
@@ -2489,6 +2498,8 @@ export class SkyArchipelagoWorld {
     const seaLayers = [
       { y: -135, scale: 0.0035, opacity: 0.72 },
     ];
+    const cloudRelief=new BABYLON.Texture('./assets/textures/nomad/cloud-bank-relief.webp',this.scene);
+    cloudRelief.gammaSpace=false;
     seaLayers.forEach((sl, idx) => {
       const plane = BABYLON.MeshBuilder.CreateGround(`archCloudSea_${idx}`, { width: 14000, height: 14000, subdivisions: 2 }, this.scene);
       plane.position.y = sl.y;
@@ -2501,10 +2512,12 @@ export class SkyArchipelagoWorld {
         {
           defines:['#define IMAGEPROCESSINGPOSTPROCESS'],
         attributes: ['position', 'uv'],
+          samplers:['cloudRelief'],
           uniforms: ['world', 'worldViewProjection', 'uTime', 'uScale', 'uOpacity', 'uCamPos', 'uSunDir', 'uTimeOfDay', 'uCloudVolume'],
           needAlphaBlending: true,
         }
       );
+      mat.setTexture('cloudRelief',cloudRelief);
       mat.setFloat('uTime', idx * 35);
       mat.setFloat('uScale', sl.scale);
       mat.setFloat('uOpacity', sl.opacity);

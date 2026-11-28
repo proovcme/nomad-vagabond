@@ -1,3 +1,4 @@
+import { mountServiceEnsign } from './serviceEnsign.js';
 import { fieldRepairTexture } from './repairTexture.js';
 /**
  * Authentic 235-Meter 1930s Interbellum Flight-Deck Cruiser (CF) «Бродяга».
@@ -314,13 +315,13 @@ export function createCruiserMaterials(scene) {
   const isNull = scene.getEngine() instanceof B.NullEngine;
 
   const hull = new B.PBRMaterial('cfCruiserHullMat', scene);
-  hull.albedoColor = c3('#a9b9c2').toLinearSpace();
+  hull.albedoColor = c3('#81a4ad').toLinearSpace();
   hull.metallic = 0.12;
   hull.roughness = 0.83;
   hull.environmentIntensity = 0.80;
 
   const hullDark = new B.PBRMaterial('cfCruiserHullDarkMat', scene);
-  hullDark.albedoColor = c3('#818c95').toLinearSpace();
+  hullDark.albedoColor = c3('#677b82').toLinearSpace();
   hullDark.metallic = 0.15;
   hullDark.roughness = 0.82;
   hullDark.environmentIntensity = 0.75;
@@ -341,7 +342,7 @@ export function createCruiserMaterials(scene) {
   boatWood.roughness = .94;
 
   const crimson = new B.PBRMaterial('cfCruiserCrimsonMat', scene);
-  crimson.albedoColor = c3('#c3674e').toLinearSpace();
+  crimson.albedoColor = c3('#b75a40').toLinearSpace();
   crimson.metallic = 0.06;
   crimson.roughness = 0.91;
   if (!isNull) {
@@ -476,6 +477,16 @@ function buildCruiserHull(scene, parent, mats, shadowGen) {
     for(let i=0;i<3;i++) {
       const w=74-i*16;
       for(const x of [76,692]) ctx.fillRect(x-w/2,47+i*12,w,4);
+    }
+    // Compass rose between stepped wings on both bow nameplates.
+    for(const x of [76,692]){
+      ctx.fillStyle='#284b50';ctx.beginPath();ctx.arc(x,65,23,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#e4c88b';ctx.lineWidth=3;ctx.stroke();
+      ctx.fillStyle='#eed9a7';ctx.beginPath();
+      for(let i=0;i<8;i++){const angle=i*Math.PI/4,r=i%2?5:18;
+        const px=x+Math.sin(angle)*r,py=65-Math.cos(angle)*r;
+        if(i)ctx.lineTo(px,py);else ctx.moveTo(px,py);}
+      ctx.closePath();ctx.fill();
     }
     const chip=textureRandom(1936);
     ctx.globalCompositeOperation='destination-out';
@@ -768,6 +779,7 @@ function buildMidshipsSuperstructure(scene, parent, mats, shadowGen) {
   put(hullParts, B.MeshBuilder.CreateCylinder('cfSpottingTop', { diameterTop: 5.2, diameterBottom: 4.4, height: 2.0, tessellation: 12 }, scene), bx, 47.4, bz, 0, 0, 0, 0.85, 1.0, 1.15);
   put(darkParts, B.MeshBuilder.CreateBox('cfYardMain', { width: 0.28, height: 0.28, depth: 18.5 }, scene), bx, 53.0, bz);
   put(darkParts, B.MeshBuilder.CreateBox('cfYardUpper', { width: 0.20, height: 0.20, depth: 11.5 }, scene), bx, 56.8, bz);
+  mountServiceEnsign(scene, parent, new B.Vector3(bx, 60.5, bz), 10.5, 3.5);
   // Sweeping naval wire rigging stays (Babylon.js CreateTube!) from foremast top to bow & bridge wings
   const riggingSpans = [
     [new B.Vector3(bx, 57.5, 0), new B.Vector3(-148, 12.2, 0)],

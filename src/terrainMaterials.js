@@ -192,11 +192,11 @@ class RockProjection extends BABYLON.MaterialPluginBase {
         } else {
           // FOREST SANCTUARY ('forest'): High-contrast sunlit warm chalk-limestone cliffs with lush olive-terracotta turf
           vec3 creviceCol = vec3(0.24, 0.26, 0.30);
-          vec3 slateTone = mix(vec3(0.56, 0.56, 0.52), vec3(0.86, 0.84, 0.76), cliffLuma);
-          vec3 warmStone = mix(vec3(0.69, 0.43, 0.27), vec3(0.94, 0.72, 0.49), cliffLuma);
+          vec3 slateTone = mix(vec3(.48,.37,.30), vec3(.84,.65,.47), cliffLuma);
+          vec3 warmStone = mix(vec3(.68,.30,.15), vec3(.97,.64,.36), cliffLuma);
           vec3 limestoneBody = mix(slateTone, warmStone, macroPatch);
           rockPaint = mix(creviceCol, limestoneBody, crackMask);
-          rockPaint = mix(rockPaint, liftedRock * vec3(1.02, 0.98, 0.90), 0.38) * strataWave;
+          rockPaint = mix(rockPaint, liftedRock * vec3(1.10,.87,.72),.27) * strataWave;
           // Natural photogrammetry alpine turf with exposed limestone outcrops
           float fTurfHeight = topLedge * 0.84 + mossSpill * 0.44 + (grassLuma - cliffLuma) * 0.54;
           float fTurfMask = smoothstep(0.32, 0.54, fTurfHeight) * (1.0 - smoothstep(0.72, 0.90, cliffLuma) * 0.55);

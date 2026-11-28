@@ -1,3 +1,4 @@
+import { mountServiceEnsign } from './serviceEnsign.js';
 /**
  * Project Nomads × Interbellum World-Building Landmarks & Living Carrier Details.
  * Every static kit merges into 1–3 draw calls so 60 FPS is preserved across all presets.
@@ -37,7 +38,8 @@ function getNomadPalette(scene) {
   });
   const canvas = getOrCreateMat(scene, 'nomadKitCanvasMat', () => {
     const m = new BABYLON.PBRMaterial('nomadKitCanvasMat', scene);
-    m.albedoColor = c3('#dfd2b4');
+    m.albedoColor = c3('#e3c38b');
+    m.albedoTexture = new BABYLON.Texture('./assets/textures/nomad/ochre-aircraft-canvas.png', scene);
     m.metallic = 0.0;
     m.roughness = 0.92;
     m.backFaceCulling = false;
@@ -251,8 +253,23 @@ export function buildAncientWindmillLandmark(scene, parent, pos, shadowGen = nul
     spar.rotation.z = -a;
     sparParts.push(spar);
 
-    const cloth = BABYLON.MeshBuilder.CreateBox(`wmCloth_${i}`, { width: 2.2, height: 8.6, depth: 0.08 }, scene);
-    cloth.position.set(Math.sin(a) * 6.4 + Math.cos(a) * 1.15, Math.cos(a) * 6.4 - Math.sin(a) * 1.15, 0.42);
+    // The wind catches the canvas between the ribs. The last two bays stay open.
+    for (let span = 3; span <= 11; span++) {
+      const rib = BABYLON.MeshBuilder.CreateBox('wmRib', { width: 2.35, height: 0.12, depth: 0.14 }, scene);
+      rib.position.set(Math.sin(a) * span + Math.cos(a), Math.cos(a) * span - Math.sin(a), 0.4);
+      rib.rotation.z = -a;
+      sparParts.push(rib);
+    }
+    const edge = BABYLON.MeshBuilder.CreateBox('wmOuterRail', { width: 0.12, height: 8.2, depth: 0.14 }, scene);
+    edge.position.set(Math.sin(a) * 7 + Math.cos(a) * 2.1, Math.cos(a) * 7 - Math.sin(a) * 2.1, 0.4);
+    edge.rotation.z = -a;
+    sparParts.push(edge);
+    const strips = [0, 0.5, 1].map(u => Array.from({ length: 13 }, (_, j) =>
+      new BABYLON.Vector3(0.12 + u * (1.5 + j * 0.038), 3 + j * 0.5,
+        0.48 + Math.sin(Math.PI * u) * (0.19 + 0.09 * (j % 2)))));
+    const cloth = BABYLON.MeshBuilder.CreateRibbon('wmCloth', {
+      pathArray: strips, sideOrientation: BABYLON.Mesh.DOUBLESIDE,
+    }, scene);
     cloth.rotation.z = -a;
     clothParts.push(cloth);
   }
@@ -296,6 +313,7 @@ export function buildSkyLighthouseLandmark(scene, parent, pos, shadowGen = null)
   cupola.position.set(0, 27.4, 0); brassParts.push(cupola);
   const mast = BABYLON.MeshBuilder.CreateCylinder('lhMooringMast', { diameterTop: 0.18, diameterBottom: 0.55, height: 7.5, tessellation: 8 }, scene);
   mast.position.set(0, 32.0, 0); brassParts.push(mast);
+  mountServiceEnsign(scene, root, new BABYLON.Vector3(0, 35.6, 0), 5.1, 1.9);
 
   mergeGroup(stoneParts, 'nomadLighthouseStone', root, pal.limestone, shadowGen);
   mergeGroup(redParts, 'nomadLighthouseRed', root, pal.terracotta, shadowGen);

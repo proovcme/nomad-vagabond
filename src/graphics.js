@@ -210,7 +210,7 @@ export class GraphicsManager {
 
     const dpr = Math.min(window.devicePixelRatio || 1, key === 'ultra' ? 1.5 : key === 'high' ? 1.2 : 1.0);
     engine.setHardwareScalingLevel(cfg.scaleFactor / dpr);
-    this.scene.environmentIntensity = this.scene.metadata?.skyLighting ? 0.86 : cfg.envIntensity;
+    if (!this.scene.metadata?.skyLighting) this.scene.environmentIntensity = cfg.envIntensity;
     this.scene.getMaterialByName('archSkyShader')?.setFloat('uVolumetricClouds', key === 'low' ? 0 : 1);
 
     if (shadowGenerator) {

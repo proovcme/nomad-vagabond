@@ -123,6 +123,21 @@ function createTimberCottageTextures(scene) {
     nCtx.fillRect(x, 0, 12, 256);
 
   }
+  // Upper-storey casements sit inside the oak bays, with a shaded reveal and a projecting sill.
+  for (const x of [22, 86, 150, 214]) {
+    ctx.fillStyle = '#5c5044';
+    ctx.fillRect(x - 3, 42, 32, 49);
+    ctx.fillStyle = '#2e494b';
+    ctx.fillRect(x, 46, 26, 41);
+    ctx.fillStyle = '#698080';
+    ctx.fillRect(x + 2, 48, 10, 17);
+    ctx.fillStyle = '#d9be90';
+    ctx.fillRect(x + 12, 46, 2, 41);
+    ctx.fillRect(x, 65, 26, 2);
+    ctx.fillRect(x - 5, 89, 36, 4);
+    nCtx.fillStyle = 'rgb(128,92,249)';
+    nCtx.fillRect(x - 5, 89, 36, 2);
+  }
   // Stone foundation plinth
   ctx.fillStyle = '#8b8272';
   ctx.fillRect(0, 196, 256, 60);

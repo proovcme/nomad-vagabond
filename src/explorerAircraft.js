@@ -188,6 +188,17 @@ class NomadAviationPaint extends BABYLON.MaterialPluginBase {
         vec3 ring = mix(vec3(0.10, 0.19, 0.24), vec3(0.79, 0.71, 0.51), 1.0 - smoothstep(0.42, 0.45, roundel));
         ring = mix(ring, vec3(0.63, 0.23, 0.14), 1.0 - smoothstep(0.20, 0.23, roundel));
         surfaceAlbedo = mix(surfaceAlbedo, toLinearSpace(ring) * clamp(panelDetail, 0.58, 1.18), mark * (0.92 - aviationWear * 0.22));
+        // Stepped ivory wings around the service roundel, following the skin.
+        vec2 badge=abs(vec2(abs(p.x)-wingMark,p.z+.88));
+        float feather=1.-smoothstep(.044,.070,abs(mod(p.z+.88+.09,.18)-.09));
+        float span=1.20-.23*floor(badge.y/.18);
+        float bars=smoothstep(.49,.55,badge.x)*(1.-smoothstep(span-.06,span,badge.x))
+          *(1.-smoothstep(.30,.35,badge.y))*feather*wing;
+        surfaceAlbedo=mix(surfaceAlbedo,toLinearSpace(vec3(.93,.79,.53))*panelDetail,bars*(.93-.32*aviationWear));
+        // An oblique squadron flash crosses the fabric at the outer wing.
+        float flash=abs(abs(p.x)-wingMark-1.0+.35*(p.z+.88));
+        float wingtip=(1.-smoothstep(.13,.18,flash))*wing;
+        surfaceAlbedo=mix(surfaceAlbedo,toLinearSpace(trimTone)*panelDetail,wingtip*.83);
         // Salvaged metal and stitched fabric repairs follow the host skin even on the moving aircraft.
         float role=aircraftLiveryParams.x;
         // Exhaust follows the slipstream along the cowling and narrows down the fuselage.

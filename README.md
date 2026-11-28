@@ -65,6 +65,8 @@ python3 scripts/repair_building_surfaces.py --report artifacts/first-pass/models
 
 `?qa=1` exposes development checkpoints. They set up test situations; they are not evidence of an uninterrupted first-mission playthrough. `?metrics=1` writes sampled canvas metrics to the body's DOM dataset. Neither appears on the normal route.
 
+Визуальный язык архипелага опирается на окраску портовой авиации 1930-х. Морская зелень объединяет флот и портовые сооружения, киноварь выделяет пояс корпуса и край вымпела, охра и слоновая кость читаются на полотне и эмблемах. У «Бродяги» и маяка один раздвоенный вымпел с крылатой розой ветров. Для новых ассетов сравнивайте силуэт с палубной камеры, а масштаб краски, швов и потёртостей — с камеры у самолёта.
+
 Fixed camera views: `?shot=arch_vagabond`, `arch_forest`, `arch_industrial`, `arch_panorama`, `arch_flight`, `arch_shipyard`.
 
 This remains a prototype: desktop keyboard/mouse controls, no touch flight controls, no save system, preliminary mission pacing and audio. Dense imported vegetation and shadow passes still require a measured performance pass before release.

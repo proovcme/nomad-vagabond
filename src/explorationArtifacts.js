@@ -97,14 +97,6 @@ export class ExplorationArtifacts {
     this.ringMat.emissiveColor = BABYLON.Color3.FromHexString('#48e4ff');
     this.ringMat.disableLighting = true;
 
-    this.beamMat = new BABYLON.StandardMaterial('artifactBeamMat', scene);
-    this.beamMat.emissiveColor = BABYLON.Color3.FromHexString('#ffe082');
-    this.beamMat.disableLighting = true;
-    this.beamMat.alpha = 0.22;
-    this.beamMat.alphaMode = BABYLON.Engine.ALPHA_ADD;
-    this.beamMat.backFaceCulling = false;
-    this.beamMat.depthWrite = false;
-
     this._createOverlay(isNull);
     this._spawnArtifacts();
     scene.onDisposeObservable.addOnce(() => this.dispose());
@@ -155,13 +147,6 @@ export class ExplorationArtifacts {
       ring.material = this.ringMat;
       ring.isPickable = false;
 
-      // Vertical beacon pillar visible from 1.5 km away (classic Project Nomads landmark pull!)
-      const pillar = BABYLON.MeshBuilder.CreateCylinder(`artifactBeacon_${spec.id}`, { diameterTop: 0.7, diameterBottom: 2.8, height: 68, tessellation: 8, cap: BABYLON.Mesh.NO_CAP }, this.scene);
-      pillar.parent = root;
-      pillar.position.y = 32;
-      pillar.material = this.beamMat;
-      pillar.isPickable = false;
-
       let markerEl = null;
       if (this.overlay) {
         markerEl = document.createElement('div');
@@ -169,7 +154,7 @@ export class ExplorationArtifacts {
         this.overlay.appendChild(markerEl);
       }
 
-      this.items.push({ spec, root, crystal, ring, pillar, markerEl, collected: false });
+      this.items.push({ spec, root, crystal, ring, markerEl, collected: false });
     }
   }
 
@@ -248,6 +233,5 @@ export class ExplorationArtifacts {
     this.counterEl?.remove();
     this.coreMat?.dispose();
     this.ringMat?.dispose();
-    this.beamMat?.dispose();
   }
 }
