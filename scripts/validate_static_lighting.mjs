@@ -68,6 +68,16 @@ function orientation(mesh){
  }
  return {name:mesh.name,triangles:ids.length/3,wrong,wrongAreaFraction:badArea/area,signedVolume:volume};
 }
+const loose=world.floatingOrbiters.filter(({node})=>node.name.startsWith('driftingCrag'));
+assert.equal(loose.length,13);
+assert(loose.every(({node,orbitSpeed})=>node.checkCollisions && !node.getChildren().length && orbitSpeed>0));
+for(const {island} of world.satelliteNodes.values()){
+ const {geometry:g,terrain,rock}=island;
+ const top=g.top.positions,cliff=rock.getVerticesData('position');
+ const rimOffset=top.length-3*g.segments;
+ for(let i=0;i<3*g.segments;i++)assert(Math.abs(top[rimOffset+i]-cliff[i])<.0001,'torn cliff must meet the playable meadow');
+ assert(orientation(terrain).signedVolume+orientation(rock).signedVolume<0,'fractured satellite winding');
+}
 const reference=B.MeshBuilder.CreateBox('nativeReference',{},scene);assert.equal(reference.sideOrientation,B.Material.ClockWiseSideOrientation);assert.equal(orientation(reference).wrong,0);
 reference.flipFaces(false);assert(orientation(reference).wrong>0,'synthetic inversion caught');reference.dispose();
 for(const mesh of targets.filter(m=>/^generatedIsland_|vagabondUnifiedRockShell/.test(m.name))){assert.equal(mesh.sideOrientation,reference.sideOrientation,'native front-face state');const result=orientation(mesh);assert(result.wrongAreaFraction<.005,JSON.stringify(result));winding.push(result);}

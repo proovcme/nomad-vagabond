@@ -1,3 +1,4 @@
+import { fractureGeometry, cliffMaterial } from './props/railViaduct.js';
 import { paintMillFields } from './props/millFields.js';
 import { riverX, riverLevel } from './props/cascade.js';
 import { fbm3 } from './planet.js?v=mission1';
@@ -312,6 +313,17 @@ async function bakeTerrainTexture(scene, geometry, material, millFields) {
 /** Two watertight joined surfaces, painted autumn meadow + ochre cliff. */
 export function buildGeneratedIsland(scene, options = {}) {
   const geometry = generateIslandGeometry(options);
+  if(options.fractured){
+    const edge=[],top=geometry.top.positions;
+    for(let i=top.length-3*geometry.segments;i<top.length;i+=3)edge.push(top.slice(i,i+3));
+    geometry.rock=fractureGeometry(geometry.seed,geometry.radiusX,geometry.depth*.90,edge);
+    const vertices=geometry.rock.positions;
+    for(let i=0;i<vertices.length;i++){
+      const axis=i%3;
+      geometry.bounds.min[axis]=Math.min(geometry.bounds.min[axis],vertices[i]);
+      geometry.bounds.max[axis]=Math.max(geometry.bounds.max[axis],vertices[i]);
+    }
+  }
   const prefix = `generatedIsland_${geometry.style}_${geometry.seed}`;
   const topMat = createMaterial(scene, `${prefix}_terrainMat`, '#ffffff');
   topMat.albedoColor.set(1, 1, 1);
@@ -322,8 +334,8 @@ export function buildGeneratedIsland(scene, options = {}) {
     paintMillFields(ctx,256,geometry);
     preview.update(false);topMat.albedoTexture=preview;
   }
-  const rockMat = createMaterial(scene, `${prefix}_rockMat`, '#f5efe6');
-  if (scene.getEngine().constructor.name !== 'NullEngine') {
+  const rockMat = options.fractured ? cliffMaterial(scene) : createMaterial(scene, `${prefix}_rockMat`, '#f5efe6');
+  if (!options.fractured && scene.getEngine().constructor.name !== 'NullEngine') {
     const texture = new BABYLON.Texture('./assets/benchmark/textures/aerial_rocks_02/Diffuse.jpg', scene);
     texture.anisotropicFilteringLevel = 8;
     rockMat.albedoTexture = texture;
@@ -344,6 +356,6 @@ export function buildGeneratedIsland(scene, options = {}) {
   return {terrain:meshes[0], rock:meshes[1], getHeight:geometry.getHeight, contains:geometry.contains, bounds:geometry.bounds,
     readyPromise, seed:geometry.seed, geometry,
     diagnostics:{meshes:2, triangles:(geometry.top.indices.length+geometry.rock.indices.length)/3, vertices:(geometry.top.positions.length+geometry.rock.positions.length)/3, textureSources:3},
-    dispose(){ meshes.forEach(mesh=>mesh.dispose()); topMat.dispose(false,true); rockMat.dispose(false,true); },
+    dispose(){ meshes.forEach(mesh=>mesh.dispose()); topMat.dispose(false,true); if(!options.fractured)rockMat.dispose(false,true); },
   };
 }

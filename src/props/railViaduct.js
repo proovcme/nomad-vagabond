@@ -1,6 +1,15 @@
 // A continuous rim joins the turf to stepped, fissured rock. Both pieces go into the horizon batches.
-export function headland(scene, seed, radius, depth, stoneParts, turfParts, center) {
-  const B=BABYLON, count=60;
+export function cliffMaterial(scene){
+  const B=BABYLON,existing=scene.getMaterialByName('horizonSunlitSandstone');
+  if(existing)return existing;
+  const mat=new B.PBRMaterial('horizonSunlitSandstone',scene);
+  mat.albedoTexture=new B.Texture('./assets/textures/nomad/railway-sandstone.webp',scene);
+  mat.albedoColor=B.Color3.FromHexString('#fff0d9').toLinearSpace();
+  mat.roughness=.98;mat.metallic=0;return mat;
+}
+
+export function fractureGeometry(seed, radius, depth, edge){
+  const B=BABYLON, count=edge.length, phase=seed%817*.47;
   // Adjacent outcrops expose different successions of beds. Thin dark seams sit
   // between the thick sandstone and limestone shelves, following the bedding dip.
   const sections=[
@@ -14,15 +23,17 @@ export function headland(scene, seed, radius, depth, stoneParts, turfParts, cent
     ['#918f4a','#ffd58e','#f19962','#83534b','#f7c78f','#eeab74','#776b83','#be99a2'],
   ];
   const type=seed%3, profiles=sections[type], points=[],colors=[],uvs=[],indices=[],normals=[];
+  const bedrock=B.Color3.FromHexString(['#e8ab76','#eed6a2','#db9e75'][type]).toLinearSpace();
   const rim=(j,scale,drop)=>{
-    const a=j%count*Math.PI*2/count;
-    const fold=.07*Math.sin(7*a+seed)+.09*Math.sin(3*a+.3*seed);
-    const joint=Math.pow(.5+.5*Math.sin(5*a+seed),5);
-    const fault=Math.tanh(5*Math.sin(3*a+seed))*.081;
-    const cleft=Math.pow(.5+.5*Math.cos(9*a+.8*seed),12);
-    const r=radius*(1+fold)*(scale+drop*(.20*Math.cos(a-seed)+.13*joint-.20*cleft));
-    const bedding=(.085*Math.sin(2*a+seed)+fault+.025*Math.cos(3*a-seed)) * Math.min(1,drop*3.5);
-    return [r*Math.cos(a)-drop*radius*.14,-depth*(drop*(1+.32*joint*drop)+bedding),r*(.84+.07*type)*Math.sin(a)];
+    const [ex,ey,ez]=edge[j%count];
+    const a=j%count*Math.PI*2/count, cleft=Math.pow(.5+.5*Math.cos(7*a+phase),8);
+    // A slanting shear plane removes a wedge from one flank. The opposite
+    // flank carries a long spur; the keel sits to one side of the meadow.
+    const spur=Math.max(0,Math.cos(a-phase)), cleaved=Math.max(0,Math.cos(a-phase-2.6));
+    const width=Math.max(.075,scale+drop*(.16*spur-.38*cleaved-.16*cleft));
+    const dip=(.12*Math.cos(a-phase)+.045*Math.tanh(4*Math.sin(2*a+phase)))*Math.min(1,drop*3.3);
+    const toe=(.25*spur*spur-.23*cleaved+.11*cleft)*drop;
+    return [ex*width-radius*.22*drop,ey*(1-drop)-depth*(drop+toe+dip),ez*width+radius*.11*drop];
   };
   for(let layer=0;layer<profiles.length-1;layer++){
     const pigment=B.Color3.FromHexString(pigments[type][layer]).toLinearSpace();
@@ -32,9 +43,12 @@ export function headland(scene, seed, radius, depth, stoneParts, turfParts, cent
         points.push(...rim(j,scale,drop));
         const bearing=(j%count)*2*Math.PI/count;
         const cleft=Math.pow(.5+.5*Math.cos(9*bearing+.8*seed),12);
-        const shade=.92+.08*Math.sin(7*bearing+seed)-.19*cleft;
-        colors.push(pigment.r*shade,pigment.g*shade,pigment.b*shade,1);
-        uvs.push(j/count*3+seed*.21,1-drop*1.45);
+        const shade=.96+.06*Math.sin(7*bearing+phase)-.15*cleft;
+        // Fault faces expose the underlying buff limestone across several beds.
+        const exposed=Math.max(0,Math.cos(2*bearing+phase+drop*.8))**2*.86;
+        const base=B.Color3.Lerp(pigment,bedrock,exposed);
+        colors.push(base.r*shade,base.g*shade,base.b*shade,1);
+        uvs.push(j/count*3+(seed%37)*.21,1-drop*1.45);
         if(row&&j){const k=points.length/3-1,b=k-count-1;indices.push(k,b-1,b,k,k-1,b-1);}
       }
     }
@@ -46,17 +60,33 @@ export function headland(scene, seed, radius, depth, stoneParts, turfParts, cent
   // Test one normal against the radial direction, since the scene uses right-handed rendering.
   B.VertexData.ComputeNormals(points,indices,normals);
   if(normals[0]<0){indices.reverse();B.VertexData.ComputeNormals(points,indices,normals);}
+  return {positions:points,indices,normals,colors,uvs};
+}
+
+export function headland(scene,seed,radius,depth,stoneParts,turfParts,center){
+  const B=BABYLON,count=60,edge=[];
+  for(let j=0;j<count;j++){
+    const a=j*2*Math.PI/count,c=Math.cos(a),s=Math.sin(a);
+    // The shoreline meets two near-planar breaks. Preserve a central pad for the town.
+    const reach=Math.min(1.14+.08*Math.cos(3*a+seed),.88/Math.max(.1,Math.cos(a-seed)),
+      .86/Math.max(.1,Math.cos(a-seed-2.1)))+.037*Math.sin(9*a+seed);
+    edge.push([radius*1.14*c*reach,radius*(.023*Math.sin(3*a+seed)+.015*Math.cos(7*a)),radius*.89*s*reach]);
+  }
   const shell=new B.Mesh('terracedHeadland',scene);
-  const data=new B.VertexData();Object.assign(data,{positions:points,indices,normals,colors,uvs});data.applyToMesh(shell);
+  const data=new B.VertexData();Object.assign(data,fractureGeometry(seed,radius,depth*.82,edge));data.applyToMesh(shell);
   shell.position.copyFrom(center);stoneParts.push(shell);
   const grass=new B.Mesh('headlandMeadow',scene),top=new B.VertexData();
-  top.positions=[0,0,0,...points.slice(0,count*3)];top.indices=[];top.uvs=[];top.normals=[];
-  for(let j=0;j<=count;j++){
-    top.uvs.push(.5+top.positions[j*3]/(2.4*radius),.5+top.positions[j*3+2]/(2.4*radius));
-    top.normals.push(0,1,0);
-    if(j)top.indices.push(0,j,j%count+1);
+  top.positions=[0,0,0];top.indices=[];top.uvs=[.5,.5];top.normals=[];
+  const turn=seed*1.37,ct=Math.cos(turn),st=Math.sin(turn);
+  for(const [row,f] of [.55,.79,1].entries())for(let j=0;j<count;j++){
+    const [x,y,z]=edge[j],k=1+row*count+j,next=1+row*count+(j+1)%count;
+    top.positions.push(x*f,row===0?0:y*(row===1 ? .25 : 1),z*f);
+    top.uvs.push(.5+(x*ct-z*st)*f/(radius*2.7),.5+(z*ct+x*st)*f/(radius*2.7));
+    if(row)top.indices.push(k-count,k,next,k-count,next,next-count);
+    else top.indices.push(0,k,next);
   }
-  top.applyToMesh(grass);grass.position.copyFrom(center);turfParts.push(grass);
+  B.VertexData.ComputeNormals(top.positions,top.indices,top.normals);
+  top.applyToMesh(grass);grass.position.copyFrom(center);turfParts.push(grass);return edge;
 }
 
 export function bridgeLift(scene,kind,scale,heading,base,materials,rotors) {

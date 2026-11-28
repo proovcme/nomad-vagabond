@@ -316,7 +316,7 @@ export function createCruiserMaterials(scene) {
   const isNull = scene.getEngine() instanceof B.NullEngine;
 
   const hull = new B.PBRMaterial('cfCruiserHullMat', scene);
-  hull.albedoColor = c3('#405c78').toLinearSpace();
+  hull.albedoColor = c3('#496683').toLinearSpace();
   hull.metallic = 0.12;
   hull.roughness = 0.83;
   hull.environmentIntensity = 0.80;

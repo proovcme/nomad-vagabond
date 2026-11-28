@@ -509,6 +509,9 @@ if (shotMode && worldMode === 'sky') {
       camera.setTarget(BABYLON.Vector3.Zero());
     }
     camera.fov=.86;
+  } else if (shotMode === 'arch_crags') {
+    player.boardShip();controlMode='aircraft';ui.setMode('aircraft');
+    camera.position.set(-147,71,13);camera.setTarget(new BABYLON.Vector3(-131,55,73));camera.fov=.96;
   } else if (shotMode === 'arch_propellers') {
     player.boardShip();controlMode='aircraft';ui.setMode('aircraft');
     camera.position.copyFrom(vPos).addInPlaceFromFloats(-117,-44,-88);

@@ -1,3 +1,5 @@
+import { cliffMaterial, headland } from './props/railViaduct.js';
+import { addDriftingCrags } from './props/driftingCrags.js';
 import { animateLiftPropellers } from './props/liftPropellers.js';
 import { dressMillFields, millCultivated } from './props/millFields.js';
 import { cascadeMesh, riverX, riverLevel } from './props/cascade.js';
@@ -18,7 +20,7 @@ import { buildFlak88Turret } from './flak88.js?v=mission1';
 import { buildSculptedRadar, buildSculptedSamLauncher } from './props/dieselpunkStructures.js?v=mission1';
 import { decorateVagabondCarrier, buildAncientWindmillLandmark, buildSkyLighthouseLandmark, buildAetherMonolithLandmark, populateSatelliteIslandDiorama } from './props/nomadLandmarks.js?v=mission1';
 import { applyCruiserDeckMaterial, buildFlightDeckCruiserModel } from './props/flightDeckCruiser.js?v=mission1';
-import { applyDoverChalkCliffs, buildDoverCliffVillage, buildContinentalSkyCity, buildAlpineCastleDiorama, buildGothicRuinsDiorama, buildEuropeHorizonArchipelago } from './props/europeIslands.js?v=mission1';
+import { buildDoverCliffVillage, buildContinentalSkyCity, buildAlpineCastleDiorama, buildGothicRuinsDiorama, buildEuropeHorizonArchipelago } from './props/europeIslands.js?v=mission1';
 import { AssetManager } from './engine/assetManager.js?v=mission1';
 import { getLevel } from './levels/levelRegistry.js?v=mission1';
 import { buildBiomeIsland } from './islands/biomeIslands.js?v=mission1';
@@ -679,25 +681,14 @@ function buildSatelliteIsland(scene, { id = 'sat', seed = 101, radiusX = 24, rad
     topY: 1.6,
     depth,
     style: style === 'military' ? 'forest' : style,
+    fractured:true,
     parent: node,
     shadowGenerator: shadowGen,
   });
   // Rename so offline static-irradiance bake only targets the main hero islands
   isl.terrain.name = `satelliteIsland_${id}_terrain`;
   isl.rock.name = `satelliteIsland_${id}_rock`;
-  applyRockProjection(isl.rock.material, scene, style);
-  makeSolid(isl.terrain);
-  makeSolid(isl.rock);
-
-  // Add offset multi-root stalactite spires to the underside so the silhouette has 3 asymmetric roots (not 1 cone!)
-  const rootOffsets = [
-    { x: -radiusX * 0.48, y: -depth * 0.62, z: -radiusZ * 0.26, h: depth * 0.82, dTop: radiusX * 0.64, dBot: 1.8 },
-    { x: radiusX * 0.45,  y: -depth * 0.58, z: radiusZ * 0.28,  h: depth * 0.76, dTop: radiusX * 0.58, dBot: 1.6 },
-  ];
-  const rootMesh = buildMarchingRockCluster(scene, `satelliteRoots_${id}`, rootOffsets, {
-    step: 2.4, seed: typeof seed === 'number' ? seed : 209, material: isl.rock.material, parent: node, shadowGen,
-  });
-  makeSolid(rootMesh);
+  makeSolid(isl.terrain);makeSolid(isl.rock);
 
   for (const t of trees) {
     const tx = t.x ?? 0, tz = t.z ?? 0;
@@ -1379,7 +1370,6 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
     style: 'forest', parent: asteroidBase.group, pos: [-195.0, 52.0, 175.0], rot: [0.04, 0.6, 0.04],
     trees: [{ file: 'pine_hero.glb', x: -12, z: 6, s: 1.15, r: 0.4 }, { file: 'fir_medium.glb', x: 10, z: -8, s: 1.0, r: 1.5 }, { file: 'coastal_alder.glb', x: -8, z: -10, s: 1.05, r: 2.3 }], shadowGen,
   });
-  applyDoverChalkCliffs(vistaDover, scene);
   buildDoverCliffVillage(scene, vistaDover.node, vistaDover.island, 26, 22);
 
   const vistaParis = buildSatelliteIsland(scene, {
@@ -1387,7 +1377,6 @@ export function enhanceVagabondIsland(asteroidBase, scene, shadowGen = null) {
     style: 'forest', parent: asteroidBase.group, pos: [65.0, 38.0, 195.0], rot: [-0.04, 1.8, 0.04],
     trees: [{ file: 'fir_medium.glb', x: -11, z: 8, s: 1.1, r: 1.2 }, { file: 'pine_hero.glb', x: 11, z: -8, s: 1.05, r: 2.1 }], shadowGen,
   });
-  applyDoverChalkCliffs(vistaParis, scene);
   buildContinentalSkyCity(scene, vistaParis.node, vistaParis.island, 24, 20);
 
   const vagRustTex = createRustedMetalTexture(scene, [158, 120, 62]);
@@ -2643,7 +2632,6 @@ export class SkyArchipelagoWorld {
       });
       // Populate each satellite island as a recognizable Fragment of Interbellum Europe!
       if (sat.diorama === 'watchtower') {
-        applyDoverChalkCliffs(builtSat, this.scene);
         buildDoverCliffVillage(this.scene, builtSat.node, builtSat.island, sat.rx, sat.rz);
       } else if (sat.diorama === 'villa') {
         buildContinentalSkyCity(this.scene, builtSat.node, builtSat.island, sat.rx, sat.rz);
@@ -2668,6 +2656,8 @@ export class SkyArchipelagoWorld {
         phase: sIdx * 1.15,
       });
     }
+
+    addDriftingCrags(this.scene,this.shatteredFieldRoot,this.floatingOrbiters);
 
     // 2. Multi-Root Marching-Tetrahedra Floating Rock Formations & Monoliths (same SDF technique & RockProjection shader as Vagabond!)
     const forestRockMat = makeTerrainPBRMaterial(this.scene, 'shatteredForestRockMat', 'aerial_rocks_02', 2, 2, '#d8c4a8');
@@ -2828,8 +2818,14 @@ export class SkyArchipelagoWorld {
     viaduct.position.set(-92, 56, -140);
     viaduct.rotation.set(0.06, 0.52, -0.05);
     this.monolithLandmark = buildAetherMonolithLandmark(this.scene, this.shatteredFieldRoot, new BABYLON.Vector3(-145, 58, 160));
-    const monoRock = BABYLON.MeshBuilder.CreateCylinder('nomadMonolithIslandBase', { diameterTop: 22, diameterBottom: 5, height: 24, tessellation: 10 }, this.scene);
-    monoRock.parent = this.monolithLandmark.root; monoRock.position.y = -12; monoRock.material = stoneMat; makeSolid(monoRock);
+    const relicCliffs = [], relicCaps = [];
+    headland(this.scene, 37, 12, 26, relicCliffs, relicCaps, BABYLON.Vector3.Zero());
+    for (const part of [...relicCliffs, ...relicCaps]) {
+      part.name = part === relicCliffs[0] ? 'nomadMonolithIslandBase' : 'nomadMonolithIslandCap';
+      part.parent = this.monolithLandmark.root;
+      part.material = cliffMaterial(this.scene);
+      makeSolid(part);
+    }
     this.floatingOrbiters.push({
       node: viaduct,
       basePos: new BABYLON.Vector3(-92, 56, -140),
@@ -2975,7 +2971,7 @@ export class SkyArchipelagoWorld {
     }
     if (this.floatingOrbiters) {
       for (const orb of this.floatingOrbiters) {
-        if (orb.basePos) orb.basePos.subtractInPlace(shift);
+        if (orb.basePos && !orb.node.isDescendantOf(this.shatteredFieldRoot)) orb.basePos.subtractInPlace(shift);
       }
     }
     if (this.shatteredFieldRoot) this.shatteredFieldRoot.position.subtractInPlace(shift);

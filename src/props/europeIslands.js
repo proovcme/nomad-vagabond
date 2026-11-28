@@ -1,4 +1,4 @@
-import { headland, bridgeLift } from './railViaduct.js';
+import { headland, bridgeLift, cliffMaterial } from './railViaduct.js';
 import { cascadeMesh } from './cascade.js';
 /**
  * «Осколки Европы Интербеллума (1920–1939)» — High-Detail Textured 3D European Islands & Architecture.
@@ -216,22 +216,6 @@ export function getEuropePalette(scene) {
   const B = BABYLON;
   const isNull = scene.getEngine() instanceof B.NullEngine;
 
-  const chalk = getOrCreateMat(scene, 'euChalkCliffMat', () => {
-    const m = new B.PBRMaterial('euChalkCliffMat', scene);
-    m.albedoColor = c3('#d8d2c2'); // sunlit White Cliffs of Dover chalk-limestone (textured, never flat white!)
-    m.metallic = 0.0; m.roughness = 0.92;
-    if (!isNull) {
-      const diff = new B.Texture('./assets/benchmark/textures/aerial_rocks_02/Diffuse.jpg', scene);
-      diff.uScale = diff.vScale = 3.2;
-      m.albedoTexture = diff;
-      const bump = new B.Texture('./assets/benchmark/textures/aerial_rocks_02/nor_gl.jpg', scene);
-      bump.uScale = bump.vScale = 3.2;
-      m.bumpTexture = bump;
-      m.bumpTexture.level = 1.25;
-    }
-    return m;
-  });
-
   const limestone = getOrCreateMat(scene, 'euLimestoneMat', () => {
     const m = new B.PBRMaterial('euLimestoneMat', scene);
     m.albedoColor = c3('#ddd3be');
@@ -293,17 +277,8 @@ export function getEuropePalette(scene) {
 
   const grass = getOrCreateMat(scene, 'euMeadowGrassMat', () => {
     const m = new B.PBRMaterial('euMeadowGrassMat', scene);
-    m.albedoColor = c3('#96aa6f');
-    m.metallic = 0.0; m.roughness = 0.92;
-    if (!isNull) {
-      const diff = new B.Texture('./assets/benchmark/textures/aerial_grass_rock/Diffuse.jpg', scene);
-      diff.uScale = diff.vScale = 4.0;
-      m.albedoTexture = diff;
-      const bump = new B.Texture('./assets/benchmark/textures/aerial_grass_rock/nor_gl.jpg', scene);
-      bump.uScale = bump.vScale = 4.0;
-      m.bumpTexture = bump;
-      m.bumpTexture.level = 0.85;
-    }
+    m.albedoColor = c3('#fff9dc');m.metallic=0;m.roughness=.96;
+    if (!isNull) m.albedoTexture=new B.Texture('./assets/textures/nomad/headland-farmland.webp',scene);
     return m;
   });
 
@@ -341,7 +316,7 @@ export function getEuropePalette(scene) {
     return m;
   });
 
-  return { chalk, limestone, timber, slateRoof, terracotta, iron, grass, waterfallMat, warmWin };
+  return { limestone, timber, slateRoof, terracotta, iron, grass, waterfallMat, warmWin };
 }
 
 function mergeGroup(meshes, name, parent, material, shadowGen = null) {
@@ -356,16 +331,6 @@ function mergeGroup(meshes, name, parent, material, shadowGen = null) {
   merged.isPickable = false;
   if (shadowGen) shadowGen.addShadowCaster(merged, false);
   return merged;
-}
-
-export function applyDoverChalkCliffs(builtSat, scene) {
-  const pal = getEuropePalette(scene);
-  if (builtSat?.island?.rock) builtSat.island.rock.material = pal.chalk;
-  if (builtSat?.node) {
-    for (const m of builtSat.node.getChildMeshes()) {
-      if (m.name.includes('satelliteRoots_')) m.material = pal.chalk;
-    }
-  }
 }
 
 /**
@@ -719,7 +684,7 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
     const ux = Math.cos(face), uz = Math.sin(face);
     const nx = -Math.cos(ang), nz = -Math.sin(ang); // inward toward center
 
-    headland(scene,idx,46*s,68*s,chalkParts,meadowParts,new B.Vector3(cx,y+9*s,cz));
+    const coast=headland(scene,idx,46*s,68*s,chalkParts,meadowParts,new B.Vector3(cx,y+9*s,cz));
 
     // Small hillside groves flank settlements, leaving the market and viaduct clear.
     for(const flank of [-1,1])for(let j=0;j<6;j++){
@@ -731,9 +696,14 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
     }
     // Cascading white cliff waterfall plunging from the island edge into the cloud sea (artbook signature!)
     if (idx % 2 === 0) {
+      let lip=coast[0],alignment=-Infinity;
+      for(const point of coast){
+        const d=(point[0]*nx+point[2]*nz)/Math.hypot(point[0],point[2]);
+        if(d>alignment){alignment=d;lip=point;}
+      }
       const wf=cascadeMesh(scene,'euHCascade'+idx,u=>{
         const w=(u-.5)*6.8*s;
-        return new B.Vector3(cx+nx*44*s+ux*w,y+9*s,cz+nz*44*s+uz*w);
+        return new B.Vector3(cx+lip[0]+ux*w,y+9*s+lip[1],cz+lip[2]+uz*w);
       },78*s,6.8*s,{x:nx,z:nz});
       waterfallParts.push(wf);
     }
@@ -800,12 +770,7 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
       m.freezeWorldMatrix();
     }
   };
-  const sandstone=new B.PBRMaterial('horizonSunlitSandstone',scene);
-  sandstone.albedoTexture=new B.Texture('./assets/textures/nomad/railway-sandstone.webp',scene);
-  sandstone.albedoColor=c3('#fff0d9').toLinearSpace();
-  sandstone.roughness=.98;
-  sandstone.metallic=0;
-  finalize(chalkParts,'horizonEuropeChalkCliffs',sandstone);
+  finalize(chalkParts,'horizonEuropeChalkCliffs',cliffMaterial(scene));
   finalize(meadowParts, 'horizonEuropeMeadows', pal.grass);
   finalize(cityParts, 'horizonEuropeCities', pal.limestone);
   finalize(roofParts, 'horizonEuropeSpires', pal.slateRoof);
