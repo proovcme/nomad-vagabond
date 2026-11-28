@@ -1,3 +1,4 @@
+import { buildPortMachineWorks } from './props/portMachineWorks.js';
 import { configureBuildingMaterial } from './buildingMaterials.js?v=mission1';
 import { SkyCelestials } from './skyCelestials.js?v=mission1';
 import { ArchipelagoLandmarks } from './archipelagoLandmarks.js?v=mission1';
@@ -2055,14 +2056,6 @@ export class IndustrialIsland {
     hazardMat.albedoTexture = steelMat.albedoTexture;
     hazardMat.bumpTexture = fRustTex.bumpTex;
 
-    const glowMat = new BABYLON.StandardMaterial('indFurnaceGlow', this.scene);
-    glowMat.diffuseColor = c3('#ffd068');
-    glowMat.emissiveColor = c3('#ff9e2c');
-
-    const aetherCoilMat = new BABYLON.StandardMaterial('indAetherCoilGlow', this.scene);
-    aetherCoilMat.diffuseColor = c3('#5cf4ff');
-    aetherCoilMat.emissiveColor = c3('#24dcff');
-
     // 1. Main Refinery / Factory Hall
     const hall = BABYLON.MeshBuilder.CreateBox('indRefineryHall', { width: 26, height: 12, depth: 17.5 }, this.scene);
     hall.parent = this.group;
@@ -2126,19 +2119,6 @@ export class IndustrialIsland {
         data.applyToMesh(gable);
         windowFrames.push(gable);
       }
-      framePiece('indHallColumn',left,8.2,1.10,.23,12,.23);
-      const win = BABYLON.MeshBuilder.CreateBox(`indFurnaceWin_${i}`, { width: 4.5, height: 2.2, depth: 0.4 }, this.scene);
-      win.parent = this.group;
-      win.position.set(-21 + i * 7, 7.2, 1.1);
-      win.material = glowMat;
-      const wx = win.position.x;
-      for (const side of [-1,1]) {
-        framePiece('indWindowJamb',wx+side*2.32,7.2,1.29,.20,2.45,.46);
-        framePiece('indWindowMullion',wx+side*.76,7.2,1.34,.105,2.2,.18);
-      }
-      framePiece('indWindowTransom',wx,7.53,1.34,4.5,.12,.22);
-      framePiece('indWindowLintel',wx,8.48,1.26,5,.26,.62);
-      framePiece('indWindowSill',wx,5.99,1.33,4.95,.21,.72);
     }
     const ironwork = BABYLON.Mesh.MergeMeshes(windowFrames,true,true);
     ironwork.name = 'indRefineryWindowIronwork';
@@ -2170,7 +2150,12 @@ export class IndustrialIsland {
       const stack = BABYLON.MeshBuilder.CreateCylinder(`indStack_${i}`, { diameterTop: 2.1, diameterBottom: 3.1, height: stackH, tessellation: 12 }, this.scene);
       stack.parent = this.group;
       stack.position.set(sx, sy, sz);
-      stack.material = rustMat;
+      stack.material = brickwork;
+      const stackUV = stack.getVerticesData(BABYLON.VertexBuffer.UVKind);
+      for(let k=0;k<stackUV.length;k+=2){stackUV[k]*=2.1;stackUV[k+1]*=stackH/2.5;}
+      stack.setVerticesData(BABYLON.VertexBuffer.UVKind,stackUV);
+      const coping = BABYLON.MeshBuilder.CreateCylinder('indStackCoping',{diameterTop:2.53,diameterBottom:2.38,height:.93,tessellation:20},this.scene);
+      coping.parent=this.group;coping.position.set(sx,sy+stackH*.5-.36,sz);coping.material=steelMat;
       if (shadowGen) shadowGen.addShadowCaster(stack, false);
 
       const coil = BABYLON.MeshBuilder.CreateTorus(`indStackLampRing_${i}`, { diameter: 2.65, thickness: 0.28, tessellation: 16 }, this.scene);
@@ -2209,62 +2194,7 @@ export class IndustrialIsland {
       }
     }
 
-    // Local industrial smog & heat-haze envelope around the refinery & cranes
-    if (!(this.scene.getEngine() instanceof BABYLON.NullEngine)) {
-      const smogTex = new BABYLON.DynamicTexture('indSmogTex', { width: 128, height: 128 }, this.scene, false);
-      const mctx = smogTex.getContext();
-      const mgrad = mctx.createRadialGradient(64, 64, 6, 64, 64, 62);
-      mgrad.addColorStop(0, 'rgba(138, 114, 92, 0.28)');
-      mgrad.addColorStop(0.55, 'rgba(118, 102, 88, 0.14)');
-      mgrad.addColorStop(1, 'rgba(110, 98, 86, 0.0)');
-      mctx.fillStyle = mgrad;
-      mctx.fillRect(0, 0, 128, 128);
-      smogTex.update();
-      smogTex.hasAlpha = true;
-
-      const smogMat = new BABYLON.StandardMaterial('indSmogHazeMat', this.scene);
-      smogMat.diffuseTexture = smogTex;
-      smogMat.diffuseTexture.hasAlpha = true;
-      smogMat.useAlphaFromDiffuseTexture = true;
-      smogMat.emissiveColor = c3('#8a725a');
-      smogMat.disableLighting = true;
-      smogMat.backFaceCulling = false;
-      smogMat.depthWrite = false;
-
-      [
-        { pos: [-8, 14, -4], w: 96, d: 82, rot: 0.2 },
-        { pos: [4, 24, -8], w: 88, d: 74, rot: 1.1 },
-      ].forEach((layer, idx) => {
-        const smogPlane = BABYLON.MeshBuilder.CreateGround(`indSmogPlane_${idx}`, { width: layer.w, height: layer.d }, this.scene);
-        smogPlane.parent = this.group;
-        smogPlane.position.set(...layer.pos);
-        smogPlane.rotation.y = layer.rot;
-        smogPlane.material = smogMat;
-        smogPlane.isPickable = false;
-        smogPlane.checkCollisions = false;
-      });
-    }
-
-    // 2. Open-frame Hangar Bay
-    const hangarRoof = BABYLON.MeshBuilder.CreateBox('indHangarRoof', { width: 18, height: .38, depth: 16 }, this.scene);
-    hangarRoof.parent = this.group;
-    hangarRoof.position.set(-10, 12.5, 14);
-    hangarRoof.material = steelMat;
-    for (const sx of [-18, -2]) {
-      for (const sz of [7, 21]) {
-        const sections = [[0,.18,.76],[-.35,.75,.13],[.35,.75,.13]];
-        const pieces = sections.map(([offset,width,depth])=>{
-          const part=BABYLON.MeshBuilder.CreateBox('indRolledSteel',{width,height:10.5,depth},this.scene);
-          part.position.z=offset;
-          return part;
-        });
-        const leg = BABYLON.Mesh.MergeMeshes(pieces,true);
-        leg.name = `indHangarLeg_${sx}_${sz}`;
-        leg.parent = this.group;
-        leg.position.set(sx, 7.2, sz);
-        leg.material = hazardMat;
-      }
-    }
+    buildPortMachineWorks(this.scene, this.group, steelMat, shadowGen);
 
     // 3. Two Towering Cargo Cranes
     const craneSpecs = [
@@ -2289,9 +2219,9 @@ export class IndustrialIsland {
 
     // 4. Overhead Pipelines
     for (let i = 0; i < 2; i++) {
-      const pipe = BABYLON.MeshBuilder.CreateCylinder(`indPipeRun_${i}`, { diameter: 1.25, height: 34, tessellation: 10 }, this.scene);
+      const pipe = BABYLON.MeshBuilder.CreateCylinder(`indPipeRun_${i}`, { diameter: .78, height: 32, tessellation: 10 }, this.scene);
       pipe.parent = this.group;
-      pipe.position.set(2, 6.2 + i * 1.6, -2);
+      pipe.position.set(14, 3.68, -14.98 - i * 1.02);
       pipe.rotation.z = Math.PI * 0.5;
       pipe.material = rustMat;
     }

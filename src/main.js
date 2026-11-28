@@ -485,6 +485,11 @@ if (shotMode && worldMode === 'sky') {
     camera.upVector.set(0, 1, 0);
     camera.setTarget(fPos.add(new BABYLON.Vector3(0, -6, 0)));
     camera.fov = 0.94;
+  } else if (shotMode === 'arch_workshops') {
+    player.boardShip(); controlMode = 'aircraft'; ui.setMode('aircraft');
+    camera.position.copyFrom(iPos).addInPlace(new BABYLON.Vector3(19, 16, 40));
+    camera.setTarget(iPos.add(new BABYLON.Vector3(-13, 12, 0)));
+    camera.fov = .80;
   } else if (shotMode === 'arch_industrial') {
     player.boardShip();
     controlMode = 'aircraft';
@@ -3978,7 +3983,7 @@ engine.runRenderLoop(() => {
       }
     }
 
-    world.updateShadowFocus(freezeCameraForShot ? (shotMode==='arch_forest'?world.forestIsland.group.position:shotMode==='arch_industrial'||shotMode==='arch_crane'?world.industrialIsland.group.position:shotMode==='arch_landmark'?world.landmarks.root.position:asteroidBase.group.position) : controlMode === 'foot' ? player.group.position : ship.group.position);
+    world.updateShadowFocus(freezeCameraForShot ? (shotMode==='arch_forest'?world.forestIsland.group.position:shotMode==='arch_industrial'||shotMode==='arch_workshops'||shotMode==='arch_crane'?world.industrialIsland.group.position:shotMode==='arch_landmark'?world.landmarks.root.position:asteroidBase.group.position) : controlMode === 'foot' ? player.group.position : ship.group.position);
 
     // Sync controlMode when aircraft lifts off from planet
     if (controlMode === 'drive' && !ship.dockedPlanet) {

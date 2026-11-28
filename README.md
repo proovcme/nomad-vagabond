@@ -69,6 +69,8 @@ python3 scripts/repair_building_surfaces.py --report artifacts/first-pass/models
 
 Скрипт `python3 scripts/bake_workshop_surfaces.py` собирает карты обшивки самолётов, кирпича портовой фабрики и рельефа ангара. Зависимости указаны в `requirements.txt`. В карте обшивки красный канал хранит высоту стыков и заклёпок, зелёный — участки обнажённого металла, синий — вариацию покрытия.
 
+В порту у механических мастерских тот же крылатый компас, что у флота. Часовая башня служит ориентиром при заходе, высокие пролёты освещают станки, а грузовые ставни выходят на крытый перрон. Общий силуэт проверяется с `?shot=arch_industrial`, вход и стыки фасада — с `?shot=arch_workshops&hud=0`. Карты заводского остекления, облицовки и эмалированной вывески воспроизводятся командой `python3 scripts/bake_port_works.py`.
+
 Fixed camera views: `?shot=arch_vagabond`, `arch_forest`, `arch_industrial`, `arch_panorama`, `arch_flight`, `arch_shipyard`.
 
 This remains a prototype: desktop keyboard/mouse controls, no touch flight controls, no save system, preliminary mission pacing and audio. Dense imported vegetation and shadow passes still require a measured performance pass before release.
