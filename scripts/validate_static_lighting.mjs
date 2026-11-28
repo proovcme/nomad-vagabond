@@ -13,6 +13,14 @@ const {bakeTargets,refineBakeSurface,geometryKey,sceneTriangles,buildBakeBVH,bak
 const engine=new B.NullEngine(),scene=new B.Scene(engine);scene.useRightHandedSystem=true;
 const cam=new B.FreeCamera('validationCamera',new B.Vector3(0,60,100),scene);scene.activeCamera=cam;
 const world=new SkyArchipelagoWorld(scene,'AETHER-742'),base=new AsteroidBase(scene,742);world.registerVagabondBase(base);
+const lifts=scene.transformNodes.filter(node=>node.name.startsWith('bridgeLift_'));
+assert.equal(lifts.length,3);
+assert.equal(world.horizonRail.rotors.length,4);
+for(const lift of lifts){
+ const stone=lift.getChildMeshes().find(mesh=>mesh.name.endsWith('_stone'));
+ const vertices=stone.getVerticesData('position');
+ for(let i=0;i<vertices.length;i+=3)assert(vertices[i]<=2.01||vertices[i]>=72.99,'stone pier hangs under the span');
+}
 // Every spill point has a matching river vertex and lies at the generated cliff edge.
 const fall=scene.getMeshByName('forestWaterfall');
 const water=fall.getVerticesData('position'),uv=fall.getVerticesData('uv');

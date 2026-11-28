@@ -480,6 +480,12 @@ if (shotMode && worldMode === 'sky') {
     const lip=fPos.add(world.forestIsland.waterfallLip);
     camera.position.copyFrom(lip).addInPlace(new BABYLON.Vector3(23,3,79));
     camera.setTarget(lip.add(new BABYLON.Vector3(-3,-11,0))); camera.fov=.9;
+  } else if (shotMode === 'arch_granary') {
+    player.boardShip();controlMode='aircraft';ui.setMode('aircraft');
+    const {ports,axis,side}=world.airLine.fields;
+    camera.position.copyFrom(ports[1]).addInPlace(side.scale(-22)).addInPlace(axis.scale(47));camera.position.y+=4.8;
+    const station=ports[1].add(side.scale(18)).addInPlace(axis.scale(14));station.y+=6;
+    camera.setTarget(station);camera.fov=.88;
   } else if (shotMode === 'arch_airfield') {
     player.boardShip();
     controlMode = 'aircraft';
@@ -505,15 +511,15 @@ if (shotMode && worldMode === 'sky') {
     camera.fov=.86;
   } else if (shotMode === 'arch_poster') {
     player.boardShip();controlMode='aircraft';ui.setMode('aircraft');
-    camera.position.copyFrom(vPos).addInPlace(new BABYLON.Vector3(-195,-16,-115));
+    camera.position.copyFrom(vPos).addInPlace(new BABYLON.Vector3(-179,-17,-105));
     const target = vPos.add(new BABYLON.Vector3(-55, 12, 0));
     camera.setTarget(target);
     camera.fov = .80;
     const forward = target.subtract(camera.position).normalize();
     const right = BABYLON.Vector3.Cross(forward, BABYLON.Axis.Y).normalize();
     ship.undockFromAsteroid({force:true});
-    ship.group.position.copyFrom(camera.position).addInPlace(forward.scale(25))
-      .addInPlace(right.scale(8)).y -= 6;
+    ship.group.position.copyFrom(camera.position).addInPlace(forward.scale(21))
+      .addInPlace(right.scale(6.6)).y -= 6.1;
     ship.group.rotationQuaternion = aircraftHeading(forward.scale(1.45).subtract(right).normalize())
       .multiply(BABYLON.Quaternion.RotationAxis(BABYLON.Axis.Z, -.28));
   } else if (shotMode === 'arch_vagabond') {
@@ -545,6 +551,10 @@ if (shotMode && worldMode === 'sky') {
     camera.upVector.set(0, 1, 0);
     camera.setTarget(iPos.add(new BABYLON.Vector3(0, -4, 0)));
     camera.fov = 0.92;
+  } else if (shotMode === 'arch_viaduct' || shotMode === 'arch_rotorbridge') {
+    player.boardShip();controlMode='aircraft';ui.setMode('aircraft');
+    const view=world.horizonRail.views[shotMode==='arch_viaduct'?0:1];
+    camera.position.copyFrom(view.eye);camera.setTarget(view.target);camera.fov=.83;
   } else if (shotMode === 'arch_vista') {
     controlMode = 'foot';
     ui.setMode('foot');

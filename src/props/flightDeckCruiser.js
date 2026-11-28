@@ -48,7 +48,7 @@ function createNavalHullTextures(scene, deck = false) {
   const rows = deck ? 3 : 6;
   const rowH = 512 / rows;
   for (let r = 0; r < rows; r++) {
-    const shade = (deck ? 111 : 156) + ((r * 17) % 14) - 7;
+    const shade = (deck ? 111 : 198) + ((r * 17) % 14) - 7;
     ctx.fillStyle = `rgb(${shade}, ${shade + 6}, ${shade + 11})`;
     ctx.fillRect(0, r * rowH, 512, rowH);
     // Horizontal strake seam (albedo + real 3D normal bevel!)
@@ -172,7 +172,7 @@ export function createLoftedHull(scene, name, stations, mats, parent, shadowGen 
     for (let j = 0; j < ringPts - 1; j++) {
       const a = rowA + j, b = rowB + j, c = rowB + j + 1, d = rowA + j + 1;
       const middleX = (stations[i].x + stations[i + 1].x) * 0.5;
-      const lowerBelt = j >= 2 && j < ringPts - 3;
+      const lowerBelt = j >= 3 && j < ringPts - 4;
       const band = decorate && middleX >= -128 && middleX < -120;
       const paintedRed = middleX >= -126 && middleX < -122;
       const faces = lowerBelt || (band && paintedRed) ? oxide : band ? stripe : steel;
@@ -206,7 +206,7 @@ export function createLoftedHull(scene, name, stations, mats, parent, shadowGen 
     deckUvs.push(station.x / 6.4, 0);
     for (let j = 0; j < ringPts; j++) {
       const a = row + j, b = row + (j + 1) % ringPts;
-      const faces = j >= 2 && j < ringPts - 3 ? oxide : steel;
+      const faces = j >= 3 && j < ringPts - 4 ? oxide : steel;
       if (end === 0) faces.push(center, a, b);
       else faces.push(center, b, a);
     }
@@ -315,7 +315,7 @@ export function createCruiserMaterials(scene) {
   const isNull = scene.getEngine() instanceof B.NullEngine;
 
   const hull = new B.PBRMaterial('cfCruiserHullMat', scene);
-  hull.albedoColor = c3('#596e85').toLinearSpace();
+  hull.albedoColor = c3('#405c78').toLinearSpace();
   hull.metallic = 0.12;
   hull.roughness = 0.83;
   hull.environmentIntensity = 0.80;
@@ -342,7 +342,7 @@ export function createCruiserMaterials(scene) {
   boatWood.roughness = .94;
 
   const crimson = new B.PBRMaterial('cfCruiserCrimsonMat', scene);
-  crimson.albedoColor = c3('#ce5139').toLinearSpace();
+  crimson.albedoColor = c3('#ee5233').toLinearSpace();
   crimson.metallic = 0.06;
   crimson.roughness = 0.91;
   if (!isNull) {
@@ -812,8 +812,11 @@ function buildMidshipsSuperstructure(scene, parent, mats, shadowGen) {
     put(brassParts, B.MeshBuilder.CreateCylinder(`cfSteamPipe_${fx}`, { diameter: 0.34, height: 13.5, tessellation: 8 }, scene), fx - 2.9, 28.4, fz, 0, 0, -0.18);
   }
 
-  const buff=mats.hull.clone('cfFunnelOchre');
-  buff.albedoColor=c3('#efbb71').toLinearSpace();
+  const buff=new B.PBRMaterial('cfFunnelOchre',scene);
+  buff.bumpTexture=mats.hull.bumpTexture;
+  buff.metallic=.08;
+  buff.roughness=.76;
+  buff.albedoColor=c3('#f6b74e').toLinearSpace();
   mergeKit(bridgeIvory,'cfIvoryBridgeGalleries',parent,mats.white,shadowGen);
   mergeKit(jackets,'cfFunnelJackets',parent,buff,shadowGen);
   mergeKit(hullParts, 'cfSuperstructureHull', parent, mats.hull, shadowGen);

@@ -124,7 +124,7 @@ class NomadAviationPaint extends BABYLON.MaterialPluginBase {
           cowlingTone = vec3(0.24, 0.27, 0.26);
         } else if (aircraftLiveryParams.x < 1.5) {
           // FIGHTER ('fighter' — Porco Rosso Savoia/Curtiss: weathered Adriatic crimson-terracotta, warm cream band, charcoal nose)
-          bodyTone = vec3(0.73, 0.24, 0.16);
+          bodyTone = vec3(0.93, 0.235, 0.095);
           trimTone = vec3(0.84, 0.78, 0.64);
           cowlingTone = vec3(0.21, 0.24, 0.26);
         } else if (aircraftLiveryParams.x < 2.5) {
@@ -175,7 +175,7 @@ class NomadAviationPaint extends BABYLON.MaterialPluginBase {
         // The outer wing fabric has its own dope and rib tapes, including on atlas
         // islands shared with hardware. Mask by height, span and face orientation.
         float upperWing = linen * smoothstep(1.52,1.74,p.y);
-        vec3 fabricPaint = mix(bodyTone, trimTone, .19);
+        vec3 fabricPaint = mix(bodyTone, trimTone, .075);
         float chordFade = smoothstep(-2.8,.55,p.z);
         vec3 canvasTone = toLinearSpace(fabricPaint) * (.79+.35*sheet.b+.16*ribs+.12*chordFade);
         surfaceAlbedo = mix(surfaceAlbedo,canvasTone,upperWing*.89);

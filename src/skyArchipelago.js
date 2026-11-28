@@ -125,7 +125,9 @@ function registerSkyShaders() {
         vec2 artUv=vec2(fract(atan(d.z,d.x)/6.2831853+.5+uTime*.00005),
                         clamp(.84-asin(clamp(h,-1.,1.))*.62,.015,.985));
         vec3 printed=texture2D(uSkyArtwork,artUv).rgb;
-        vec3 skyArt=printed;
+        // Deep cyan in openings between clouds; keep the cream paper in sunlit cloud banks.
+        float blueInk=smoothstep(.035,.23,min(printed.g,printed.b)-printed.r);
+        vec3 skyArt=mix(printed,printed*vec3(.55,.98,1.03),blueInk*(1.-nightMask));
         float artWeight=smoothstep(-.28,-.06,h)*(1.-smoothstep(.88,1.,h));
         col=mix(col,skyArt*mix(1.,.08,nightMask),uArtworkReady*artWeight*mix(.94,.25,nightMask));
 
@@ -164,7 +166,7 @@ function registerSkyShaders() {
         vec3 dayMie = vec3(0.94, 0.64, 0.40) * s4 * 0.18 * (1.0 - smoothstep(0.05, 0.56, abs(h - 0.10)))
                     + vec3(0.96, 0.84, 0.64) * (s24 * 0.24 + godRays * 0.72);
         vec3 nightMie = vec3(0.22, 0.36, 0.62) * (s8 * s4) * 0.35;
-        col += mix(dayMie, nightMie, nightMask);
+        col += mix(dayMie * (1. - .68*uArtworkReady), nightMie, nightMask);
 
         float horizBand = exp(-abs(h - 0.008) * 9.0);
         col = mix(col, mix(vec3(0.88, 0.78, 0.65), vec3(0.07, 0.11, 0.20), nightMask), horizBand * (0.15 + 0.16 * s2) * mix(1.0, 0.45, nightMask));
@@ -2409,7 +2411,7 @@ export class SkyArchipelagoWorld {
     ipc.vignetteColor = new BABYLON.Color4(0.04, 0.06, 0.12, 0);
     // Unified Interbellum 1930s Aviation Poster Color Grading (warm parchment-gold highlights + Adriatic-azure depth, 0ms GPU cost)
     const curves = new BABYLON.ColorCurves();
-    curves.globalSaturation = isNight ? 4 : isStorm ? -6 : 9;
+    curves.globalSaturation = isNight ? 4 : isStorm ? -6 : 18;
     curves.highlightsHue = 38;
     curves.highlightsDensity = isNight ? 10 : 22;
     curves.highlightsSaturation = 16;
@@ -2695,7 +2697,7 @@ export class SkyArchipelagoWorld {
    */
   _buildHorizonSilhouetteIslands() {
     // Replaces dark geometric spikes with sunlit distant low-LOD Fragments of Interbellum Europe (Dover chalk cliffs, Parisian spire cities, Alpine castles & stone viaducts)!
-    buildEuropeHorizonArchipelago(this.scene, sculptCraggyRock);
+    this.horizonRail = buildEuropeHorizonArchipelago(this.scene, sculptCraggyRock);
   }
 
   _buildShatteredWorldField(seedValue = 101) {
@@ -3142,6 +3144,7 @@ export class SkyArchipelagoWorld {
 
   update(dt, _ship, cameraPos) {
     this.simTime += dt;
+    for(const rotor of this.horizonRail.rotors)rotor.rotation.y=this.simTime*8;
     this.airLine?.update(this.simTime);
     this.skyLife?.update(dt, this._skyLifeCtx || {});
     this.landmarks?.update(dt);

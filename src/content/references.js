@@ -1,6 +1,82 @@
 // Original Russian articles and production notes. Each object links to its historical source.
 export const references = [
   {
+    "category": "Техника",
+    "title": "Schienenzeppelin · рельсовый цеппелин",
+    "date": "1931",
+    "source": "Deutsches Museum",
+    "url": "https://www.deutsches-museum.de/assets/Verlag/Download/Kultur_und_Technik/2006/Kultur_Technik_2006_Heft2.pdf",
+    "article": "Франц Крукенберг перенёс авиационный винт на железную дорогу. В июне 1931 года вагон достиг 230 км/ч на испытании между Берлином и Гамбургом. Название связано с обтекаемым силуэтом.",
+    "note": "Вариант для будущего почтового вагона между островами. Винт прототипа разгонял машину вдоль рельсов.",
+    "gallery": [
+      {
+        "file": "experiment-rail.webp",
+        "caption": "Опытный вагон в Берлине.",
+        "credit": "Bundesarchiv, Georg Pahl · уменьшено для атласа",
+        "source": "https://commons.wikimedia.org/wiki/File:Bundesarchiv_Bild_102-11902,_Berlin,_Schienenzeppelin.jpg",
+        "license": "CC BY-SA 3.0 de",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/de/deed.en"
+      }
+    ]
+  },
+  {
+    "category": "Авиация",
+    "title": "USS Macon · воздушный ангар",
+    "date": "1933",
+    "source": "National Museum of the U.S. Navy",
+    "url": "https://www.history.navy.mil/content/history/museums/nmusn/explore/photography/aircraft-us/aircraft-usn-m/uss-macon-zrs-5.html",
+    "article": "Жёсткий дирижабль впервые поднялся в апреле 1933 года. Он брал на борт небольшие самолёты, которые цеплялись за выдвижную трапецию и поднимались в ангар.",
+    "note": "Для парящих конструкций интересны видимые места подвеса и соотношение размеров оболочки и оборудования. Наши подвесные мосты — фантазия мира игры.",
+    "gallery": [
+      {
+        "file": "experiment-macon.webp",
+        "caption": "Macon у ангара.",
+        "credit": "United States Navy · уменьшено для атласа",
+        "source": "https://commons.wikimedia.org/wiki/File:USS_Macon_at_Hangar_One.jpg",
+        "license": "Public domain",
+        "licenseUrl": ""
+      }
+    ]
+  },
+  {
+    "category": "Авиация",
+    "title": "Pitcairn PCA-2 · автожир",
+    "date": "Начало 1930-х",
+    "source": "National Air and Space Museum",
+    "url": "https://airandspace.si.edu/collection-objects/model-static-pitcairn-pca-2-beech-nut/nasm_A19800402000",
+    "article": "У автожира есть и носовой винт, и большой несущий ротор над кабиной. В полёте встречный поток раскручивает несущий ротор. Pitcairn рассчитывал заинтересовать гражданских пилотов управляемым полётом на малой скорости.",
+    "note": "Возможный связной борт для коротких маршрутов. Его легко узнать по просвету между кабиной и несущим винтом.",
+    "gallery": [
+      {
+        "file": "experiment-pca.webp",
+        "caption": "Сохранившийся PCA-2 «Miss Champion», съёмка 2023 года.",
+        "credit": "ZLEA · уменьшено для атласа",
+        "source": "https://commons.wikimedia.org/wiki/File:Pitcairn_PCA-2_Autogiro_%27Miss_Champion%27_(NC11609,_cn_B-27)_(7-29-2023).jpg",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+      }
+    ]
+  },
+  {
+    "category": "Авиация",
+    "title": "Dornier Do X · летающий корабль",
+    "date": "1929",
+    "source": "Dornier Museum Friedrichshafen",
+    "url": "https://www.dorniermuseum.de/ms-altenrhein/",
+    "article": "Do X впервые поднялась с Боденского озера 12 июля 1929 года. Группы двигателей над крылом делали её узнаваемой издалека. На воде ей помогала моторная лодка Altenrhein, доставлявшая пассажиров и обслуживавшая машину.",
+    "note": "Референс для пассажирского порта — показать рядом с большим лайнером небольшой служебный транспорт.",
+    "gallery": [
+      {
+        "file": "experiment-dox.webp",
+        "caption": "Моторная установка Do X, архивная фотография.",
+        "credit": "Bundesarchiv, фотограф неизвестен · уменьшено для атласа",
+        "source": "https://commons.wikimedia.org/wiki/File:Bundesarchiv_Bild_102-10659,_Flugschiff_Dornier_%22Do_X%22,_Motorenanlage.jpg",
+        "license": "CC BY-SA 3.0 de",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/de/deed.en"
+      }
+    ]
+  },
+  {
     "category": "Авиация",
     "title": "ZR-3 Los Angeles · жёсткий дирижабль",
     "date": "1924 · фотография",

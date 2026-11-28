@@ -1,3 +1,4 @@
+import { headland, bridgeLift } from './railViaduct.js';
 import { cascadeMesh } from './cascade.js';
 /**
  * «Осколки Европы Интербеллума (1920–1939)» — High-Detail Textured 3D European Islands & Architecture.
@@ -697,6 +698,12 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
     [5.30, 1480, 44, 'viaduct', 1.80],
   ];
 
+  const tiledRoofs=[];
+  const railwayViews=[],rotors=[];
+  const paint=(name,color)=>{
+    const m=new B.StandardMaterial(name,scene);m.diffuseColor=c3(color);m.specularColor=B.Color3.Black();m.emissiveColor=m.diffuseColor.scale(.22);return m;
+  };
+  const liftPaint={deck:paint('trackSleepers','#906948'),stone:paint('abutmentStone','#cab79a'),canvas:paint('airCellLinen','#f2cb87'),red:paint('airCellEnamel','#a63e2d'),metal:paint('viaductIron','#304854')};
   const groveMatrices=[];
   const cypress=B.MeshBuilder.CreateLathe('horizonCypressGroves',{
     shape:[[0,0],[.35,0],[.34,1.4],[1.05,1.7],[1.5,3.4],[1.18,5.5],[.68,7.2],[.05,8.4]].map(([r,h])=>new B.Vector3(r,h,0)),
@@ -712,21 +719,7 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
     const ux = Math.cos(face), uz = Math.sin(face);
     const nx = -Math.cos(ang), nz = -Math.sin(ang); // inward toward center
 
-    // 5-part organic multi-root sculpted cliff cluster (never a single geometric cone!)
-    const core = B.MeshBuilder.CreateCylinder(`euHCliff_${idx}`, { diameterTop: 94 * s, diameterBottom: 26 * s, height: 66 * s, tessellation: 10, subdivisions: 3 }, scene);
-    if (sculptCraggyRock) sculptCraggyRock(core, 91 + idx * 17.3, 0.34);
-    put(chalkParts, core, cx, y - 28 * s, cz, 0, ang);
-    for (const [ox, oz, dTop, h, seedOff] of [
-      [-32, -8, 52, 62, 11], [34, 6, 48, 56, 23], [-12, 26, 42, 52, 37], [16, -24, 40, 48, 53],
-    ]) {
-      const sh = B.MeshBuilder.CreateCylinder(`euHSh_${idx}_${seedOff}`, { diameterTop: dTop * s, diameterBottom: 7 * s, height: h * s, tessellation: 8, subdivisions: 2 }, scene);
-      if (sculptCraggyRock) sculptCraggyRock(sh, 131 + idx * 13 + seedOff, 0.36);
-      put(chalkParts, sh, cx + (ux * ox + nx * oz) * s, y - (28 + (seedOff % 9)) * s, cz + (uz * ox + nz * oz) * s, 0, ang + seedOff * 0.2);
-    }
-
-    // Textured lush green European meadow cap
-    const cap = B.MeshBuilder.CreateCylinder(`euHCap_${idx}`, { diameterTop: 90 * s, diameterBottom: 96 * s, height: 6 * s, tessellation: 10 }, scene);
-    put(meadowParts, cap, cx, y + 6 * s, cz, 0, ang);
+    headland(scene,idx,46*s,68*s,chalkParts,meadowParts,new B.Vector3(cx,y+9*s,cz));
 
     // Small hillside groves flank settlements, leaving the market and viaduct clear.
     for(const flank of [-1,1])for(let j=0;j<6;j++){
@@ -745,6 +738,18 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
       waterfallParts.push(wf);
     }
 
+    const heading=-face;
+    const at=(along,across)=>[cx+(ux*along+nx*across)*s,cz+(uz*along+nz*across)*s];
+    const house=(along,across,w,d,h,red)=>{
+      const [x,z]=at(along,across),roof=red?tiledRoofs:roofParts;
+      put(cityParts,B.MeshBuilder.CreateBox('horizonHouse',{width:w*s,height:h*s,depth:d*s},scene),x,y+(9+h*.5)*s,z,0,heading);
+      addGableRoof(roof,scene,'horizonGable',(w+1)*s,d*.42*s,(d+1)*s,x,y+(9+h)*s,z,heading);
+      const [chimX,chimZ]=at(along+w*.28,across);
+      put(roof,B.MeshBuilder.CreateBox('horizonChimney',{width:1.3*s,height:2.6*s,depth:1.2*s},scene),chimX,y+(9+h+d*.42+.3)*s,chimZ,0,heading);
+    };
+    for(let j=0;j<5;j++){
+      house(-22+j*10,12+2*Math.sin(idx+j),7+(j%3),5+(j%2),5+(j+idx)%4,j%3!==0);
+    }
     if (kind === 'paris') {
       put(cityParts, B.MeshBuilder.CreateBox(`euHCit1_${idx}`, { width: 34 * s, height: 14 * s, depth: 22 * s }, scene), cx, y + 14 * s, cz, 0, ang);
       put(roofParts, B.MeshBuilder.CreateCylinder(`euHSpire_${idx}`, { diameterTop: 1.6 * s, diameterBottom: 14 * s, height: 58 * s, tessellation: 4 }, scene), cx, y + 42 * s, cz, 0, ang + Math.PI * 0.25);
@@ -762,11 +767,20 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
         put(roofParts, B.MeshBuilder.CreateCylinder(`euHCon_${idx}_${side}`, { diameterTop: 0.8 * s, diameterBottom: 9.5 * s, height: 16 * s, tessellation: 10 }, scene), cx + ux * side * 15 * s, y + 48 * s, cz + uz * side * 15 * s);
       }
     } else {
-      const cliff2 = B.MeshBuilder.CreateCylinder(`euHCliffB_${idx}`, { diameterTop: 56 * s, diameterBottom: 10 * s, height: 64 * s, tessellation: 9, subdivisions: 2 }, scene);
-      if (sculptCraggyRock) sculptCraggyRock(cliff2, 203 + idx * 11, 0.34);
-      put(chalkParts, cliff2, cx + ux * 70 * s, y - 28 * s, cz + uz * 70 * s, 0, ang);
-      put(meadowParts, B.MeshBuilder.CreateCylinder(`euHCapB_${idx}`, { diameterTop: 52 * s, diameterBottom: 56 * s, height: 6 * s, tessellation: 9 }, scene), cx + ux * 70 * s, y + 5 * s, cz + uz * 70 * s);
-      put(cityParts, B.MeshBuilder.CreateBox(`euHBridge_${idx}`, { width: 74 * s, height: 7 * s, depth: 8 * s }, scene), cx + ux * 35 * s, y + 11 * s, cz + uz * 35 * s, 0, face);
+      const [endX,endZ]=at(124,0);
+      headland(scene,idx+19,28*s,51*s,chalkParts,meadowParts,new B.Vector3(endX,y+9*s,endZ));
+      const [bx,bz]=at(36,0);
+      house(121,-5,19,8,6,true);house(132,4,9,6,8,false);
+      house(12,-9,18,9,7,true);house(-12,-9,13,8,9,false);
+      const [tx,tz]=at(-2,-7);
+      put(cityParts,B.MeshBuilder.CreateBox('stationTower',{width:6*s,height:20*s,depth:6*s},scene),tx,y+19*s,tz,0,heading);
+      put(tiledRoofs,B.MeshBuilder.CreateCylinder('stationBelfry',{diameterTop:.6*s,diameterBottom:10*s,height:6*s,tessellation:4},scene),tx,y+32*s,tz,0,heading+Math.PI*.25);
+      const support=railwayViews.length===1?'rotor':'balloon';
+      bridgeLift(scene,support,s,heading,new B.Vector3(bx,y-2*s,bz),liftPaint,rotors);
+      {
+        const [x,z]=at(50,0),[eyeX,eyeZ]=at(63,175);
+        railwayViews.push({target:new B.Vector3(x,y+9*s,z),eye:new B.Vector3(eyeX,y+28*s,eyeZ)});
+      }
     }
   });
 
@@ -786,9 +800,16 @@ export function buildEuropeHorizonArchipelago(scene, sculptCraggyRock) {
       m.freezeWorldMatrix();
     }
   };
-  finalize(chalkParts, 'horizonEuropeChalkCliffs', pal.chalk);
+  const sandstone=new B.PBRMaterial('horizonSunlitSandstone',scene);
+  sandstone.albedoTexture=new B.Texture('./assets/textures/nomad/railway-sandstone.webp',scene);
+  sandstone.albedoColor=c3('#b9774c').toLinearSpace();
+  sandstone.roughness=.98;
+  sandstone.metallic=0;
+  finalize(chalkParts,'horizonEuropeChalkCliffs',sandstone);
   finalize(meadowParts, 'horizonEuropeMeadows', pal.grass);
   finalize(cityParts, 'horizonEuropeCities', pal.limestone);
   finalize(roofParts, 'horizonEuropeSpires', pal.slateRoof);
   finalize(waterfallParts, 'horizonEuropeWaterfalls', pal.waterfallMat);
+  finalize(tiledRoofs,'horizonTerracottaRoofs',pal.terracotta);
+  return {views:railwayViews,rotors};
 }

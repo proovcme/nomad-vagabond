@@ -55,6 +55,33 @@ export function buildAirfields(scene, islands, materials) {
     }
     slab('ivory',19*terminal,12,-6*terminal,.18,4.3,.18);
     const sock=drum('red',19*terminal,13.75,-6*terminal+1,.4,.77,2.2);sock.rotation.x=1.32;
+    // Daylight lantern over the booking hall. The ribs follow the curved glazing.
+    const hall=add('glass',B.MeshBuilder.CreateSphere('bookingHallLantern',{diameter:2,segments:18,slice:.5},scene),19*terminal,4.91,4*terminal);
+    hall.scaling.set(3.45,2.35,5.0);
+    for(const angle of [0,Math.PI/4,Math.PI/2,3*Math.PI/4]){
+      const path=Array.from({length:17},(_,n)=>{
+        const a=n*Math.PI/16;
+        return new B.Vector3(Math.cos(a)*Math.cos(angle)*3.49,Math.sin(a)*2.39,Math.cos(a)*Math.sin(angle)*5.05);
+      });
+      add('ochre',B.MeshBuilder.CreateTube('glazingBar',{path,radius:.09,tessellation:6},scene),19*terminal,4.91,4*terminal);
+    }
+    const clockRoot=new B.TransformNode('stationClock'+i,scene);
+    clockRoot.parent=root;clockRoot.position.set(16.17*terminal,6.15,-6*terminal);
+    clockRoot.rotation.y=-terminal*Math.PI/2;
+    const clockFace=B.MeshBuilder.CreateCylinder('enamelClock',{height:.23,diameter:2.65,tessellation:28},scene);
+    clockFace.parent=clockRoot;clockFace.rotation.x=Math.PI/2;clockFace.material=materials.get('ivory');
+    const clockMarks=[];
+    for(let n=0;n<12;n++){
+      const a=n*Math.PI/6;
+      const mark=B.MeshBuilder.CreateBox('clockIndex',{width:.09,height:n%3?.18:.30,depth:.065},scene);
+      mark.position.set(Math.sin(a)*1.08,Math.cos(a)*1.08,.15);mark.rotation.z=-a;clockMarks.push(mark);
+    }
+    const marks=B.Mesh.MergeMeshes(clockMarks,true,true);marks.parent=clockRoot;marks.material=materials.get('blue');
+    const hands=[.63,.96].map((length,j)=>{
+      const pivot=new B.TransformNode('stationHand',scene);pivot.parent=clockRoot;
+      const hand=B.MeshBuilder.CreateBox('clockHand',{width:j?.09:.15,height:length,depth:.05},scene);
+      hand.parent=pivot;hand.position.set(0,length*.45,.23+j*.065);hand.material=materials.get('blue');return pivot;
+    });
     const board=B.MeshBuilder.CreatePlane('terminalLettering',{width:10.5,height:1.55,sideOrientation:B.Mesh.DOUBLESIDE},scene);
     board.parent=root;board.position.set(14.68*terminal,5.55,4*terminal);
     board.rotation.y=terminal*Math.PI/2;
@@ -75,12 +102,18 @@ export function buildAirfields(scene, islands, materials) {
     if(i===1){
 
       for(const z of [22,26.8,31.6]){
-        drum('ivory',20,3.7,z,4.45,4.45,7.4);
-        drum('ochre',20,7.7,z,2.45,4.6,.60);
+        drum('ivory',20,6.2,z,4.45,4.45,12.4);
+        drum('ochre',20,12.70,z,2.45,4.6,.60);
         drum('blue',20,1.12,z,4.48,4.48,.24);
       }
-      counter('ochre',20,8.45,27,1.45,1,11.4);
-      counter('blue',20,9.07,27,1.7,.22,11.7);
+      counter('ochre',20,13.48,27,1.45,1,11.4);
+      counter('blue',20,14.09,27,1.7,.22,11.7);
+      counter('ivory',20,8.5,35.1,3.5,17,3.3);
+      counter('glass',20,16.2,35.1,3.57,.8,3.37);
+      counter('red',20,17.23,35.1,4,.42,3.8);
+      const chute=counter('ochre',17.25,7.5,28,1,1.15,14);
+      chute.rotation.x=-.70;chute.rotation.y=.24;
+
     }
     for(const [ink,parts] of batches){
       const mesh=B.Mesh.MergeMeshes(parts,true,true);mesh.parent=root;mesh.name=root.name+'_'+ink;
@@ -121,7 +154,7 @@ export function buildAirfields(scene, islands, materials) {
       person.parent=root;
       workers.push(person);
     }
-    services.push({cart,workers,sign:terminal});
+    services.push({cart,workers,hands,sign:terminal});
     const from=islands[i].group.position.add(new B.Vector3(i?-34:0,12,26));
     const to=port.add(side.scale(terminal*16)).addInPlace(axis.scale(terminal*14));
     const distance=B.Vector3.Distance(from,to);
@@ -168,8 +201,12 @@ export function updateShuttle(line, time) {
   plane.rotation.set(pitch,Math.atan2(-sign*axis.x,-sign*axis.z)+yawOffset,0);
   for(const hub of line.planes[1].hubs)hub.rotation.z=time*(t>58||t<6?7:32);
   // The ramp team comes out only after the aircraft has turned and stopped.
-  for(const [index,{cart,workers,sign:station}] of line.fields.services.entries()){
+  for(const [index,{cart,workers,hands,sign:station}] of line.fields.services.entries()){
     const dwell=index===1-origin && t>=58?t-58:index===origin && t<6?t+10:-1;
+    if(hands){
+      const minutes=8*60+time;
+      hands[0].rotation.z=-minutes*Math.PI/360;hands[1].rotation.z=-minutes*Math.PI/30;
+    }
     const ramp=dwell<0?0:Math.max(0,Math.min(1,dwell/3,(16-dwell)/4));
     cart.position.set(station*(16-9*ramp),0,station*(17+13*ramp));
     workers.forEach((person,n)=>{
